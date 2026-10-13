@@ -1,0 +1,72 @@
+package web
+
+import (
+	"errors"
+	"net/http"
+	"strings"
+
+	"shengen/internal/store"
+	"shengen/internal/tenant"
+)
+
+type settingsDriversData struct {
+	baseData
+	Drivers []store.Driver
+}
+
+func (s *Server) handleSettingsDriversPage(w http.ResponseWriter, r *http.Request) {
+	t, _ := tenant.FromContext(r.Context())
+	drivers, err := s.Store.ListDrivers(r.Context(), t.ID, false)
+	if err != nil {
+		http.Error(w, "greška servera", http.StatusInternalServerError)
+		return
+	}
+	data := settingsDriversData{baseData: s.base(r, "vozaci"), Drivers: drivers}
+	if msg := r.URL.Query().Get("ok"); msg != "" {
+		data.Flash = msg
+	}
+	if msg := r.URL.Query().Get("err"); msg != "" {
+		data.FlashErr = msg
+	}
+	s.render(w, "podesavanja_vozaci.html", data)
+}
+
+func (s *Server) handleSettingsDriverCreate(w http.ResponseWriter, r *http.Request) {
+	t, _ := tenant.FromContext(r.Context())
+	name := strings.TrimSpace(r.FormValue("name"))
+	vehicle := strings.TrimSpace(r.FormValue("vehicle_label"))
+	if name == "" {
+		http.Redirect(w, r, "/podesavanja/vozaci?err=Ime+vozača+je+obavezno.", http.StatusSeeOther)
+		return
+	}
+	if _, err := s.Store.CreateDriver(r.Context(), t.ID, name, vehicle); err != nil {
+		http.Error(w, "greška servera", http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/podesavanja/vozaci?ok=Vozač+dodat.", http.StatusSeeOther)
+}
+
+func (s *Server) setDriverActive(w http.ResponseWriter, r *http.Request, active bool) {
+	t, _ := tenant.FromContext(r.Context())
+	id, err := pathInt64(r, "id")
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if err := s.Store.SetDriverActive(r.Context(), t.ID, id, active); errors.Is(err, store.ErrNotFound) {
+		http.NotFound(w, r)
+		return
+	} else if err != nil {
+		http.Error(w, "greška servera", http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/podesavanja/vozaci", http.StatusSeeOther)
+}
+
+func (s *Server) handleSettingsDriverDeactivate(w http.ResponseWriter, r *http.Request) {
+	s.setDriverActive(w, r, false)
+}
+
+func (s *Server) handleSettingsDriverActivate(w http.ResponseWriter, r *http.Request) {
+	s.setDriverActive(w, r, true)
+}

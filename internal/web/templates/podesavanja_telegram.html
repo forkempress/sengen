@@ -1,0 +1,40 @@
+{{define "content"}}
+<h1>Podešavanja — Telegram</h1>
+
+{{if .LinkMsg}}<div class="flash flash-ok">{{.LinkMsg}}</div>{{end}}
+
+<p class="muted">
+  1. Napravite bota kod <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a> (komanda <code>/newbot</code>) i nalepite token ispod.<br>
+  2. Sačuvajte — webhook secret se generiše automatski.<br>
+  3. Kliknite „Postavi webhook" da Telegram počne da šalje poruke ovoj aplikaciji.
+</p>
+
+<form method="post" action="/podesavanja/telegram">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <div class="form-grid">
+    <div><label>Bot token (od @BotFather)</label><input type="text" name="bot_token" value="{{.Settings.TelegramBotToken}}" placeholder="123456:ABC-..."></div>
+    <div><label>Chat ID za upozorenja dispečeru</label><input type="text" name="alert_chat_id" value="{{if .Settings.TelegramAlertChatID}}{{.Settings.TelegramAlertChatID}}{{end}}" placeholder="npr. -1001234567890"></div>
+    <div><label>Prag — crveno (dana)</label><input type="number" name="threshold_red" value="{{if .Settings.ThresholdRedDays}}{{.Settings.ThresholdRedDays}}{{else}}15{{end}}"></div>
+    <div><label>Prag — narandžasto (dana)</label><input type="number" name="threshold_orange" value="{{if .Settings.ThresholdOrangeDays}}{{.Settings.ThresholdOrangeDays}}{{else}}30{{end}}"></div>
+  </div>
+  <button type="submit" class="btn btn-primary">Sačuvaj</button>
+</form>
+
+{{if .Settings.TelegramBotToken}}
+<h2>Webhook</h2>
+<p class="muted">URL: <span class="num">{{.WebhookURL}}</span></p>
+<form method="post" action="/podesavanja/telegram/webhook">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <button type="submit" class="btn">Postavi webhook kod Telegrama</button>
+</form>
+
+<h2>Poveži svoj nalog</h2>
+<p class="muted">Povežite svoj Telegram da biste koristili admin komande bota (/pregled, /vozac, /dodaj, /link, /ispravi, uvoz fajla, brzi unos teksta).</p>
+<form method="post" action="/podesavanja/telegram/poveži-nalog">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <button type="submit" class="btn btn-primary">Generiši link za povezivanje</button>
+</form>
+{{else}}
+<p class="muted">Unesite i sačuvajte bot token da biste videli opcije za webhook i povezivanje.</p>
+{{end}}
+{{end}}

@@ -1,0 +1,49 @@
+{{define "content"}}
+<h1>Podešavanja — Vozači</h1>
+
+<h2>Dodaj vozača</h2>
+<form method="post" action="/podesavanja/vozaci">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <div class="form-grid">
+    <div><label>Ime i prezime</label><input type="text" name="name" required maxlength="120"></div>
+    <div><label>Vozilo</label><input type="text" name="vehicle_label" maxlength="60" placeholder="npr. BG-123-AB"></div>
+  </div>
+  <button type="submit" class="btn btn-primary">Dodaj vozača</button>
+</form>
+
+<h2>Svi vozači</h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Ime</th><th>Vozilo</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+    {{$csrf := .CSRFToken}}
+    {{range .Drivers}}
+    <tr>
+      <td><a href="/vozaci/{{.ID}}">{{.Name}}</a></td>
+      <td>{{.VehicleLabel}}</td>
+      <td>{{if .Active}}aktivan{{else}}<span class="muted">deaktiviran</span>{{end}}</td>
+      <td>
+        <form class="inline" method="post" action="/podesavanja/vozaci/{{.ID}}/telegram-link">
+          <input type="hidden" name="csrf_token" value="{{$csrf}}">
+          <button type="submit" class="btn btn-sm">{{if .TelegramChatID}}Ponovo poveži Telegram{{else}}Telegram link{{end}}</button>
+        </form>
+        {{if .Active}}
+        <form class="inline" method="post" action="/podesavanja/vozaci/{{.ID}}/deaktiviraj" hx-confirm="Deaktivirati ovog vozača?">
+          <input type="hidden" name="csrf_token" value="{{$csrf}}">
+          <button type="submit" class="btn btn-sm">Deaktiviraj</button>
+        </form>
+        {{else}}
+        <form class="inline" method="post" action="/podesavanja/vozaci/{{.ID}}/aktiviraj">
+          <input type="hidden" name="csrf_token" value="{{$csrf}}">
+          <button type="submit" class="btn btn-sm btn-primary">Aktiviraj</button>
+        </form>
+        {{end}}
+      </td>
+    </tr>
+    {{else}}
+    <tr><td colspan="4" class="muted">Nema unetih vozača.</td></tr>
+    {{end}}
+  </tbody>
+</table>
+</div>
+{{end}}

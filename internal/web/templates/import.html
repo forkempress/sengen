@@ -1,0 +1,53 @@
+{{define "content"}}
+<h1>Uvoz istorije</h1>
+<p class="muted">CSV fajl sa kolonama: vozač, ulaz (dd.mm.gggg), izlaz (prazno = u toku), tip (posao/privatno), napomena (opciono). Prvi red je zaglavlje. Vozači moraju već postojati u <a href="/podesavanja/vozaci">podešavanjima</a>.</p>
+
+<form method="post" action="/import/preview" enctype="multipart/form-data">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <div class="form-grid">
+    <div><label>CSV fajl</label><input type="file" name="file" accept=".csv" required></div>
+  </div>
+  <button type="submit" class="btn btn-primary">Prikaži pregled</button>
+</form>
+
+{{if .HasFile}}
+<h2>Pregled ({{len .Rows}} redova, {{len .ValidRows}} ispravnih)</h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Red</th><th>Vozač</th><th>Ulaz</th><th>Izlaz</th><th>Tip</th><th>Status</th></tr></thead>
+  <tbody>
+    {{range .Rows}}
+    <tr>
+      <td class="num">{{.LineNum}}</td>
+      <td>{{.DriverName}}</td>
+      <td class="num">{{if not .Entry.IsZero}}{{fmtDate .Entry}}{{end}}</td>
+      <td class="num">{{fmtDatePtr .Exit}}</td>
+      <td>{{.Type}}</td>
+      <td>
+        {{if .Valid}}<span class="badge badge-green">OK</span>
+        {{else}}{{range .Errors}}<div class="muted" style="color:var(--status-urgent);">{{.}}</div>{{end}}
+        {{end}}
+      </td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+</div>
+
+{{if .ValidRows}}
+<form method="post" action="/import/potvrdi" style="margin-top:1rem;">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  {{range .ValidRows}}
+  <input type="hidden" name="row_driver_id" value="{{.DriverID}}">
+  <input type="hidden" name="row_entry" value="{{fmtDateInput .Entry}}">
+  <input type="hidden" name="row_exit" value="{{if .Exit}}{{fmtDateInput (deref .Exit)}}{{end}}">
+  <input type="hidden" name="row_type" value="{{.Type}}">
+  <input type="hidden" name="row_note" value="{{.Note}}">
+  {{end}}
+  <button type="submit" class="btn btn-primary">Potvrdi uvoz ({{len .ValidRows}} boravaka)</button>
+</form>
+{{else}}
+<p class="muted">Nema ispravnih redova za uvoz — ispravite greške i pokušajte ponovo.</p>
+{{end}}
+{{end}}
+{{end}}

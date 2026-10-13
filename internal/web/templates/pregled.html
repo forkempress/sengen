@@ -1,0 +1,57 @@
+{{define "content"}}
+<h1>Pregled</h1>
+
+{{if .UrgentDrivers}}
+<div class="urgent-banner">
+  <strong>HITNO:</strong> {{range $i, $u := .UrgentDrivers}}{{if $i}}, {{end}}<a href="/vozaci/{{$u.Driver.ID}}">{{$u.Driver.Name}}</a>{{end}}
+  — iskorišćeno je 90/90 dana, vozač mora napustiti Šengen odmah.
+</div>
+{{end}}
+
+<div class="cards-row">
+  <div class="card"><div class="label">Ukupno vozača</div><div class="value">{{.TotalDrivers}}</div></div>
+  <div class="card"><div class="label">U Šengenu</div><div class="value">{{.InSchengenNow}}</div></div>
+  <div class="card"><div class="label">Ispod 15 dana</div><div class="value">{{.Under15Count}}</div></div>
+  <div class="card"><div class="label">Slobodni 30+ dana</div><div class="value">{{.Free30PlusCount}}</div></div>
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>Vozač / vozilo</th>
+      <th>Gde je / od kada</th>
+      <th>Iskorišćeno/90</th>
+      <th>Preostalo danas</th>
+      <th>Može do / najduža tura</th>
+      <th>Sledeće oslobađanje</th>
+      <th>Izvor</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .Statuses}}
+    <tr>
+      <td><a href="/vozaci/{{.Driver.ID}}">{{.Driver.Name}}</a><br><span class="muted">{{.Driver.VehicleLabel}}</span></td>
+      <td>
+        {{if .InSchengen}}U Šengenu od {{fmtDate (deref .CurrentSince)}}{{else}}U Srbiji / van Šengena{{end}}
+      </td>
+      <td>
+        <span class="bar-track"><span class="bar-fill{{if ge .UsedDays 90}} danger{{end}}" style="width: {{barPct .UsedDays}}%;"></span></span>
+        <span class="num muted">{{.UsedDays}}/90</span>
+      </td>
+      <td><span class="badge {{.BadgeClass}}">{{.BadgeLabel}}</span></td>
+      <td class="num">
+        {{if .InSchengen}}{{fmtDate (deref .MaxContinuousUntil)}}{{else}}{{.MaxTripLengthToday}} dana{{end}}
+      </td>
+      <td class="num">
+        {{if .NextFreeUp}}{{fmtDate .NextFreeUp.Date}} (+{{.NextFreeUp.DaysFreed}}){{else}}—{{end}}
+      </td>
+      <td class="muted">{{sourceLabel .LastStaySource}}</td>
+    </tr>
+    {{else}}
+    <tr><td colspan="7" class="muted">Nema vozača. Dodajte ih u <a href="/podesavanja/vozaci">podešavanjima</a>.</td></tr>
+    {{end}}
+  </tbody>
+</table>
+</div>
+{{end}}
