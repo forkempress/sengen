@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="sr-Latn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dani90 — evidencija dana vozača u Šengenu (pravilo 90/180)</title>
+  <meta name="description" content="Dani90 broji dane vaših vozača u Šengenu po pravilu 90/180. Vozač jednim dugmetom u Telegramu javi prelazak granice, a vi vidite ko sme na turu i do kog dana.">
+  <link rel="canonical" href="https://dani90.rs/">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="sr_RS">
+  <meta property="og:site_name" content="Dani90">
+  <meta property="og:title" content="Dani90 — koliko dana vaš vozač još sme u Šengenu">
+  <meta property="og:description" content="Evidencija dana vozača po pravilu 90/180. Vozač javlja granicu dugmetom u Telegramu, vi vidite ko sme na turu.">
+  <meta property="og:url" content="https://dani90.rs/">
+  <meta property="og:image" content="https://dani90.rs/images/pregled.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Dani90",
+    "alternateName": "Evidencija 90/180",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web, Telegram",
+    "inLanguage": "sr-Latn",
+    "url": "https://dani90.rs/",
+    "description": "Evidencija dana vozača u Šengen zoni po pravilu 90/180 za prevozničke firme. Vozači javljaju prelazak granice preko Telegram bota, dispečer vidi stanje celog voznog parka.",
+    "screenshot": "https://dani90.rs/images/pregled.jpg"
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {"@type": "Question", "name": "Da li vozači moraju da instaliraju aplikaciju?",
+       "acceptedAnswer": {"@type": "Answer", "text": "Ne. Vozači koriste Telegram koji već imaju. Dobiju link, tapnu ga i povezani su sa botom."}},
+      {"@type": "Question", "name": "Šta ako vozač zaboravi da pritisne dugme?",
+       "acceptedAnswer": {"@type": "Answer", "text": "Ako boravak ostane otvoren 7 dana, bot vozača pita da li je još u EU. Dispečer u aplikaciji ispravlja datum, a svaka izmena se beleži."}},
+      {"@type": "Question", "name": "Da li se računaju privatna putovanja?",
+       "acceptedAnswer": {"@type": "Answer", "text": "Da. Pravilo 90/180 važi za osobu, ne za vozilo, pa se broje i privatni boravci u Šengenu."}},
+      {"@type": "Question", "name": "Da li je ovo zvanično stanje sa granice?",
+       "acceptedAnswer": {"@type": "Answer", "text": "Ne. Dani90 služi za internu kontrolu i planiranje. Zvanično stanje vodi EES sistem na granici."}},
+      {"@type": "Question", "name": "Koliko košta?",
+       "acceptedAnswer": {"@type": "Answer", "text": "Cena zavisi od broja vozača. Javite se za ponudu."}}
+    ]
+  }
+  </script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a href="/" class="logo" aria-label="Dani90 — početna">
+      <span class="logo-mark" aria-hidden="true">90</span>
+      <span class="logo-text">Dani90</span>
+    </a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
+      <span class="sr-only">Meni</span>
+      <span class="nav-toggle-bar" aria-hidden="true"></span>
+    </button>
+    <nav id="site-nav" class="site-nav" aria-label="Glavni meni">
+      <a href="#kako-radi">Kako radi</a>
+      <a href="#mogucnosti">Mogućnosti</a>
+      <a href="#vozaci">Za vozače</a>
+      <a href="#pitanja">Pitanja</a>
+      <a href="https://app.dani90.rs/login" class="nav-login">Prijava</a>
+      <a href="#demo" class="btn btn-yellow nav-cta">Zakažite demo</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <section class="hero">
+    <div class="wrap hero-inner">
+      <div class="hero-copy">
+        <p class="eyebrow">Za prevoznike sa kombijima · pravilo 90/180</p>
+        <h1>Znajte tačno koliko dana vaš vozač još sme u Šengenu.</h1>
+        <p class="lead">Dani90 broji dane svakog vozača po pravilu 90/180. Vozač jednim dugmetom u Telegramu javi kad pređe granicu, a vi na jednom ekranu vidite ko sme na turu, do kog dana, i ko je blizu limita.</p>
+        <div class="hero-actions">
+          <a href="#demo" class="btn btn-primary btn-lg">Zakažite demo</a>
+          <a href="#kako-radi" class="btn btn-ghost btn-lg">Kako radi</a>
+        </div>
+        <ul class="hero-points">
+          <li>Vozači ne instaliraju ništa — koriste Telegram</li>
+          <li>Radi na telefonu i računaru</li>
+          <li>Šengen, ne EU — tačno po pravilu</li>
+        </ul>
+      </div>
+      <figure class="hero-shot">
+        <div class="browser">
+          <div class="browser-bar" aria-hidden="true"><span></span><span></span><span></span><em>app.dani90.rs/pregled</em></div>
+          <img src="/images/pregled.jpg" width="2560" height="1200"
+               alt="Pregled voznog parka u Dani90: vozači poređani po riziku, sa iskorišćenim danima, preostalim danima u boji i datumom do kog smeju da ostanu.">
+        </div>
+        <figcaption>Pregled sa demo podacima: vozači sa najmanje preostalih dana su na vrhu.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="section why" aria-labelledby="zasto-naslov">
+    <div class="wrap">
+      <h2 id="zasto-naslov">Zašto baš sada</h2>
+      <div class="cards-3">
+        <article class="card">
+          <h3>Granica sada broji sama</h3>
+          <p>EES (Entry/Exit System) elektronski beleži svaki ulazak i izlazak iz Šengena. Prekoračenje se više ne previdi pri pečatiranju pasoša.</p>
+        </article>
+        <article class="card">
+          <h3>Računica se menja svakog jutra</h3>
+          <p>Gleda se uvek poslednjih 180 dana, pa stari dani ispadaju, a novi ulaze. Sveska ili Excel pamte boravke, ali ne odgovaraju na pitanje „koliko danas sme".</p>
+        </article>
+        <article class="card">
+          <h3>Prekoračenje je skupo</h3>
+          <p>Kazna, zabrana ulaska u Šengen i vozilo koje stoji dok se stvar ne reši — a vozač koji ne sme da uđe ne može ni da vozi.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="kako-radi" aria-labelledby="kako-naslov">
+    <div class="wrap">
+      <h2 id="kako-naslov">Kako radi</h2>
+      <ol class="steps">
+        <li class="step">
+          <span class="step-num" aria-hidden="true">1</span>
+          <h3>Unesete istoriju</h3>
+          <p>Boravke iz poslednjih 180 dana uvezete iz Excela (CSV) ili unesete ručno. Pre upisa vidite pregled sa greškama po redu, pa su brojke tačne od prvog dana.</p>
+        </li>
+        <li class="step">
+          <span class="step-num" aria-hidden="true">2</span>
+          <h3>Vozač javlja granicu</h3>
+          <p>Vozač dobije link, tapne ga i povezan je sa botom. Na granici pritisne <strong>Izašao iz Srbije</strong> ili <strong>Vratio se u Srbiju</strong> i odmah dobije odgovor do kog dana sme da ostane.</p>
+        </li>
+        <li class="step">
+          <span class="step-num" aria-hidden="true">3</span>
+          <h3>Vi vidite ko sme na turu</h3>
+          <p>Pregled je sortiran po riziku, a upozorenja stižu na Telegram kad neko padne ispod praga ili mu ističe rok. Svako jutro u 07:00 stiže i dnevni pregled.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section alt" id="mogucnosti" aria-labelledby="mog-naslov">
+    <div class="wrap">
+      <h2 id="mog-naslov">Šta dobijate</h2>
+      <div class="features">
+        <article class="feature">
+          <h3>Pregled po riziku</h3>
+          <p>Vozači sa najmanje preostalih dana su na vrhu. Uz svaku boju piše i broj, pa se vidi i bez boja.</p>
+          <p class="legend">
+            <span class="pill pill-red">ispod 15</span>
+            <span class="pill pill-orange">15–30</span>
+            <span class="pill pill-green">preko 30</span>
+          </p>
+          <p class="small muted">Pragove podešavate sami.</p>
+        </article>
+        <article class="feature">
+          <h3>„Može da ostane do"</h3>
+          <p>Tačan datum do kog vozač sme da ostane bez prekida. Obično je kasniji nego što „preostali dani" govore, jer mu tokom boravka stari dani ispadaju iz perioda.</p>
+        </article>
+        <article class="feature">
+          <h3>Stanje na bilo koji dan</h3>
+          <p>Izaberite datum u prošlosti ili budućnosti i vidite kako će vozni park stajati tog dana — pre nego što pošaljete nekoga na turu.</p>
+        </article>
+        <article class="feature">
+          <h3>Provera ture</h3>
+          <p>U Telegramu: <code>/planer Marko 25.10 20</code> — može li Marko na turu od 20 dana i koja je najduža koju sme da vozi.</p>
+        </article>
+        <article class="feature">
+          <h3>Upozorenja na Telegram</h3>
+          <p>Kad vozač padne ispod praga, kad mu za tri dana ističe rok i kad je preko limita. Isto upozorenje ne stiže dvaput istog dana.</p>
+        </article>
+        <article class="feature">
+          <h3>Šengen, a ne EU</h3>
+          <p>Hrvatska, Bugarska i Rumunija se broje. BiH, Crna Gora, Makedonija, Albanija i Kipar se ne broje. Računaju se i privatna putovanja.</p>
+        </article>
+        <article class="feature">
+          <h3>Uvoz iz Excela</h3>
+          <p>CSV sa boravcima, uz pregled grešaka po redu pre upisa. Ništa se ne upisuje dok ne potvrdite.</p>
+        </article>
+        <article class="feature">
+          <h3>Vlasnik i dispečeri</h3>
+          <p>Svako ima svoj nalog i svoju ulogu. Podaci vaše firme su odvojeni od svih drugih firmi.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="kal-naslov">
+    <div class="wrap split">
+      <div class="split-copy">
+        <h2 id="kal-naslov">Svaki vozač na jednoj strani</h2>
+        <p>Kalendar po mesecima pokazuje svaki dan u boji: posao, privatno, dane koje će provesti ako ostane, i dane kad mu se dani vraćaju.</p>
+        <ul class="checks">
+          <li>Iskorišćeno, preostalo i datum do kog sme da ostane</li>
+          <li>Istorija boravaka sa izvorom unosa — ručno, uvoz ili Telegram</li>
+          <li>„Vratio se danas" jednim klikom, ako vozač zaboravi</li>
+        </ul>
+      </div>
+      <figure class="split-shot">
+        <div class="browser">
+          <div class="browser-bar" aria-hidden="true"><span></span><span></span><span></span><em>app.dani90.rs/vozaci</em></div>
+          <img src="/images/vozac.jpg" width="2560" height="1380" loading="lazy"
+               alt="Profil vozača u Dani90: 77 od 90 iskorišćenih dana, 13 preostalih, može da ostane do 14.11.2026, i kalendar sa danima posla, privatnih putovanja i projekcijom trenutnog boravka.">
+        </div>
+      </figure>
+    </div>
+  </section>
+
+  <section class="section dark" id="vozaci" aria-labelledby="voz-naslov">
+    <div class="wrap split">
+      <div class="split-copy">
+        <h2 id="voz-naslov">Vozaču ne treba nova aplikacija</h2>
+        <p>Vozači već imaju Telegram. Link za povezivanje dobiju porukom — jedan tap i gotovo. Posle toga imaju četiri dugmeta i odgovor odmah.</p>
+        <ul class="checks">
+          <li>Na granici: jedno dugme, i stiže datum do kog sme da ostane</li>
+          <li>Pogrešno pritisnuo? „Poništi" važi 10 minuta</li>
+          <li>Zaboravio da javi povratak? Bot ga pita posle 7 dana</li>
+          <li>„Moji dani" — svoje stanje vidi bilo kad</li>
+        </ul>
+      </div>
+      <div class="phone" role="img" aria-label="Primer razgovora vozača sa Dani90 botom u Telegramu: potvrda izlaska sa datumom do kog sme da ostane, i odgovor na Moji dani.">
+        <div class="phone-top" aria-hidden="true"><strong>Dani90</strong><span>bot</span></div>
+        <div class="chat" aria-hidden="true">
+          <p class="msg msg-me">Izašao iz Srbije</p>
+          <div class="msg msg-bot">
+            Zabeleženo: izlazak iz Srbije 10.10.2026. Možeš ostati najduže do <b>14.11.2026</b>.
+            <span class="inline-btn">Poništi</span>
+          </div>
+          <p class="msg msg-me">Moji dani</p>
+          <p class="msg msg-bot mono">Iskorišćeno: 77/90<br>Preostalo danas: 13<br>Može da ostane do: 14.11.2026<br>Sledeće oslobađanje: 19.10.2026 (+1)</p>
+        </div>
+        <div class="keyboard" aria-hidden="true">
+          <span>Izašao iz Srbije</span><span>Vratio se u Srbiju</span>
+          <span>Moji dani</span><span>Pomoć</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="tacnost-naslov">
+    <div class="wrap narrow">
+      <h2 id="tacnost-naslov">Računica tačno po pravilu</h2>
+      <ul class="rules">
+        <li>Za svaki dan gleda se 180 dana unazad, uključujući i taj dan — najviše 90 u Šengenu.</li>
+        <li>Dan ulaska i dan izlaska se računaju kao celi dani. Ulazak i izlazak istog dana je jedan dan.</li>
+        <li>Broji se osoba, ne vozilo: vozač koji promeni kombi nosi svoje dane sa sobom.</li>
+        <li>Datum je lokalni datum u Srbiji.</li>
+      </ul>
+      <p class="disclaimer">Dani90 služi za internu kontrolu i planiranje. Zvanično stanje vodi EES sistem na granici.</p>
+    </div>
+  </section>
+
+  <section class="section alt" id="pitanja" aria-labelledby="faq-naslov">
+    <div class="wrap narrow">
+      <h2 id="faq-naslov">Česta pitanja</h2>
+      <div class="faq">
+        <details>
+          <summary>Da li vozači moraju da instaliraju aplikaciju?</summary>
+          <p>Ne. Vozači koriste Telegram koji već imaju. Dobiju link, tapnu ga i povezani su sa botom.</p>
+        </details>
+        <details>
+          <summary>Šta ako vozač zaboravi da pritisne dugme?</summary>
+          <p>Ako boravak ostane otvoren 7 dana, bot vozača pita da li je još u EU. Dispečer u aplikaciji ispravlja datum, a svaka izmena se beleži.</p>
+        </details>
+        <details>
+          <summary>Šta ako ide preko BiH ili Makedonije?</summary>
+          <p>Dani provedeni van Šengena se ne broje. Vozač pritiska dugme kad uđe u Šengen — na primer u Hrvatsku ili Grčku — a uputstvo u botu mu to objašnjava.</p>
+        </details>
+        <details>
+          <summary>Da li se računaju privatna putovanja?</summary>
+          <p>Da. Pravilo važi za osobu, ne za vozilo, pa se broje i privatni boravci u Šengenu.</p>
+        </details>
+        <details>
+          <summary>Imamo istoriju u Excelu. Šta sa njom?</summary>
+          <p>Sačuvate je kao CSV (vozač, ulaz, izlaz, tip) i uvezete. Pre upisa vidite pregled sa greškama po redu, pa ništa pogrešno ne uđe u evidenciju.</p>
+        </details>
+        <details>
+          <summary>Da li je ovo zvanično stanje sa granice?</summary>
+          <p>Ne. Dani90 služi za internu kontrolu i planiranje. Zvanično stanje vodi EES sistem na granici.</p>
+        </details>
+        <details>
+          <summary>Koliko košta?</summary>
+          <p>Cena zavisi od broja vozača. <a href="#demo">Javite se</a> i poslaćemo ponudu.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="section demo" id="demo" aria-labelledby="demo-naslov">
+    <div class="wrap demo-inner">
+      <div class="demo-copy">
+        <h2 id="demo-naslov">Zakažite demo</h2>
+        <p>Pokazaćemo vam kako bi Dani90 izgledao na vašem voznom parku i odgovoriti na sva pitanja.</p>
+        <!-- TODO-KONTAKT: upisati javni email i telefon pre objave. -->
+        <p class="contact-alt">Ili nam se javite direktno: <span class="todo">email i telefon — upisati pre objave</span></p>
+      </div>
+
+      <form class="demo-form" id="demo-form" action="https://api.web3forms.com/submit" method="POST" novalidate>
+        <!-- TODO-WEB3FORMS: besplatan ključ sa web3forms.com, vezan za email na koji stižu prijave. -->
+        <input type="hidden" name="access_key" value="WEB3FORMS_ACCESS_KEY">
+        <input type="hidden" name="subject" value="Dani90 — zahtev za demo">
+        <input type="hidden" name="from_name" value="dani90.rs">
+        <input type="hidden" name="redirect" value="https://dani90.rs/hvala.html">
+        <input type="checkbox" name="botcheck" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+        <div class="field">
+          <label for="f-name">Ime i prezime</label>
+          <input id="f-name" name="ime" type="text" required autocomplete="name" maxlength="120">
+        </div>
+        <div class="field">
+          <label for="f-company">Firma</label>
+          <input id="f-company" name="firma" type="text" required autocomplete="organization" maxlength="160">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="f-phone">Telefon</label>
+            <input id="f-phone" name="telefon" type="tel" required autocomplete="tel" maxlength="40">
+          </div>
+          <div class="field">
+            <label for="f-drivers">Broj vozača</label>
+            <select id="f-drivers" name="broj_vozaca">
+              <option value="">—</option>
+              <option>1–5</option>
+              <option>6–15</option>
+              <option>16–50</option>
+              <option>više od 50</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-email">Email <span class="optional">(nije obavezno)</span></label>
+          <input id="f-email" name="email" type="email" autocomplete="email" maxlength="254">
+        </div>
+        <div class="field">
+          <label for="f-msg">Poruka <span class="optional">(nije obavezno)</span></label>
+          <textarea id="f-msg" name="poruka" rows="3" maxlength="2000"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">Pošalji</button>
+        <p class="form-note">Podatke koristimo samo da bismo vam se javili povodom demoa.</p>
+        <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <div>
+      <a href="/" class="logo logo-footer"><span class="logo-mark" aria-hidden="true">90</span><span class="logo-text">Dani90</span></a>
+      <p>Evidencija dana vozača u Šengenu po pravilu 90/180.</p>
+    </div>
+    <nav aria-label="Linkovi u podnožju">
+      <a href="https://app.dani90.rs/login">Prijava</a>
+      <a href="#kako-radi">Kako radi</a>
+      <a href="#pitanja">Pitanja</a>
+      <a href="#demo">Zakažite demo</a>
+    </nav>
+    <div>
+      <!-- TODO-KONTAKT -->
+      <p><span class="todo">kontakt — upisati pre objave</span></p>
+      <!-- TODO-FIRMA: naziv firme / preduzetnika i PIB, ako treba da stoji u podnožju. -->
+      <p class="small">© <span id="year">2026</span> Dani90 · <span class="todo">naziv firme i PIB</span></p>
+    </div>
+  </div>
+  <p class="wrap footer-disclaimer">Evidencija služi za internu kontrolu. Zvanično stanje vodi EES sistem na granici.</p>
+</footer>
+
+<script src="/js/main.js" defer></script>
+</body>
+</html>
