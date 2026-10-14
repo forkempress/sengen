@@ -106,3 +106,17 @@ func TestMarkTelegramUpdate_OnlyFirstDeliveryIsFresh(t *testing.T) {
 		t.Error("after cleanup the id is forgotten")
 	}
 }
+
+func TestReleaseAlert_FreesTheSlot(t *testing.T) {
+	st, tn, driverID := newTestStore(t)
+	ctx := context.Background()
+	if ok, err := st.TryRecordAlert(ctx, tn, driverID, "threshold_red", "2026-10-14"); err != nil || !ok {
+		t.Fatalf("first claim = %v, %v", ok, err)
+	}
+	if err := st.ReleaseAlert(ctx, tn, driverID, "threshold_red", "2026-10-14"); err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := st.TryRecordAlert(ctx, tn, driverID, "threshold_red", "2026-10-14"); err != nil || !ok {
+		t.Errorf("claim after release = %v, %v, want true", ok, err)
+	}
+}

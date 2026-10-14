@@ -325,7 +325,7 @@ func (b *Bot) handleStart(ctx context.Context, client *Client, chatID int64, tex
 		if driver != nil {
 			name = driver.Name
 		}
-		client.SendMessage(ctx, chatID, "Zdravo, "+name+"! Povezani ste.\n\n"+driverHelpText, DriverKeyboard())
+		client.SendMessage(ctx, chatID, "Zdravo, "+name+"! Povezan si sa botom.\n\n"+driverHelpText, DriverKeyboard())
 	case lt.UserID != nil:
 		if err := b.Store.SetUserTelegramChatID(ctx, t.ID, *lt.UserID, chatID); err != nil {
 			b.reportLinkError(ctx, client, chatID, err)
