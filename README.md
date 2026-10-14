@@ -17,9 +17,13 @@ nalogu koji mu piše zna o kojoj se firmi radi.
 
 ```bash
 cp .env.example .env
-make seed ARGS="-tenant-name 'Moja Firma' -email ja@firma.rs -password lozinka -name 'Ime Prezime'"
+make seed ARGS="-tenant-name 'Moja Firma' -email ja@firma.rs -name 'Ime Prezime'"
 make run
 ```
+
+Seed pita za lozinku vlasnika (kuca se dva puta, ne vidi se na ekranu).
+Lozinka se ne prosleđuje kao argument, jer bi ostala u istoriji shell-a; za
+skripte se može poslati na stdin ili u promenljivoj `SEED_PASSWORD`.
 
 Aplikacija je na `http://localhost:8080/login`.
 
@@ -102,7 +106,7 @@ preko HTTPS-a, pa sesijski kolačić treba da nosi `Secure` zastavicu.
 `CF-Connecting-IP`; bez toga svi posetioci dele jedan limit prijava.
 
 ```bash
-make seed ARGS="-tenant-name 'Moja Firma' -email ja@firma.rs -password lozinka -name 'Ime Prezime'"
+make seed ARGS="-tenant-name 'Moja Firma' -email ja@firma.rs -name 'Ime Prezime'"
 make run
 ```
 

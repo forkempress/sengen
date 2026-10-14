@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 	"unicode/utf8"
 
@@ -30,12 +29,6 @@ func (s *Server) renderDriversPage(w http.ResponseWriter, r *http.Request, link 
 		return
 	}
 	data := settingsDriversData{baseData: s.base(r, "vozaci"), Drivers: drivers, Link: link}
-	if msg := r.URL.Query().Get("ok"); msg != "" {
-		data.Flash = msg
-	}
-	if msg := r.URL.Query().Get("err"); msg != "" {
-		data.FlashErr = msg
-	}
 	s.render(w, "podesavanja_vozaci.html", data)
 }
 
@@ -44,19 +37,19 @@ func (s *Server) handleSettingsDriverCreate(w http.ResponseWriter, r *http.Reque
 	name := strings.TrimSpace(r.FormValue("name"))
 	vehicle := strings.TrimSpace(r.FormValue("vehicle_label"))
 	if name == "" {
-		http.Redirect(w, r, "/podesavanja/vozaci?err=Ime+vozača+je+obavezno.", http.StatusSeeOther)
+		s.redirectErr(w, r, "/podesavanja/vozaci", "Ime vozača je obavezno.")
 		return
 	}
 	if utf8.RuneCountInString(name) > store.MaxNameLen || utf8.RuneCountInString(vehicle) > store.MaxNameLen {
 		msg := fmt.Sprintf("Ime vozača i oznaka vozila mogu imati najviše %d znakova.", store.MaxNameLen)
-		http.Redirect(w, r, "/podesavanja/vozaci?err="+url.QueryEscape(msg), http.StatusSeeOther)
+		s.redirectErr(w, r, "/podesavanja/vozaci", msg)
 		return
 	}
 	if _, err := s.Store.CreateDriver(r.Context(), t.ID, name, vehicle); err != nil {
 		http.Error(w, "greška servera", http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, "/podesavanja/vozaci?ok=Vozač+dodat.", http.StatusSeeOther)
+	s.redirectOk(w, r, "/podesavanja/vozaci", "Vozač dodat.")
 }
 
 func (s *Server) setDriverActive(w http.ResponseWriter, r *http.Request, active bool) {

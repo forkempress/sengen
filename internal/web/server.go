@@ -48,7 +48,10 @@ func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /login", s.handleLoginPage)
-	mux.HandleFunc("POST /login", s.handleLoginSubmit)
+	// There is no session yet to carry a CSRF token, so login relies on the
+	// browser's Sec-Fetch-Site (or Origin): another site cannot sign a
+	// visitor in to the attacker's account (SEC-21).
+	mux.Handle("POST /login", http.NewCrossOriginProtection().Handler(http.HandlerFunc(s.handleLoginSubmit)))
 	mux.HandleFunc("POST /logout", s.handleLogout)
 	mux.HandleFunc("POST /telegram/webhook", s.Bot.HandleWebhook)
 	staticSub, err := fs.Sub(staticFS, "static")

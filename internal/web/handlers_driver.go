@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -90,12 +89,6 @@ func (s *Server) handleDriverDetail(w http.ResponseWriter, r *http.Request) {
 	if data.PlanStart != "" || data.PlanDays != "" {
 		data.Plan, data.PlanErr = planFromForm(stays, today, data.PlanStart, data.PlanDays)
 	}
-	if msg := r.URL.Query().Get("ok"); msg != "" {
-		data.Flash = msg
-	}
-	if msg := r.URL.Query().Get("err"); msg != "" {
-		data.FlashErr = msg
-	}
 	s.render(w, "vozac_detalj.html", data)
 }
 
@@ -144,11 +137,11 @@ func (s *Server) handleDriverReturned(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) redirectDriverWithError(w http.ResponseWriter, r *http.Request, driverID int64, msg string) {
-	http.Redirect(w, r, "/vozaci/"+strconv.FormatInt(driverID, 10)+"?err="+url.QueryEscape(msg), http.StatusSeeOther)
+	s.redirectErr(w, r, "/vozaci/"+strconv.FormatInt(driverID, 10), msg)
 }
 
 func (s *Server) redirectDriverOk(w http.ResponseWriter, r *http.Request, driverID int64, msg string) {
-	http.Redirect(w, r, "/vozaci/"+strconv.FormatInt(driverID, 10)+"?ok="+url.QueryEscape(msg), http.StatusSeeOther)
+	s.redirectOk(w, r, "/vozaci/"+strconv.FormatInt(driverID, 10), msg)
 }
 
 func parseStayForm(r *http.Request) (entry time.Time, exit *time.Time, typ, note string, err error) {

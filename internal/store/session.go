@@ -81,3 +81,35 @@ func (s *Store) DeleteExpiredSessions(ctx context.Context, now, idleCutoff time.
 	}
 	return res.RowsAffected()
 }
+
+// SetSessionFlash stores a one-time message for the next page this session
+// opens. ok and errMsg replace whatever was waiting there.
+func (s *Store) SetSessionFlash(ctx context.Context, token, ok, errMsg string) error {
+	_, err := s.DB.ExecContext(ctx,
+		`UPDATE sessions SET flash_ok = ?, flash_err = ? WHERE token_hash = ?`, ok, errMsg, hashToken(token))
+	if err != nil {
+		return fmt.Errorf("set session flash: %w", err)
+	}
+	return nil
+}
+
+// TakeSessionFlash returns the waiting message, if any, and clears it so it
+// is shown once.
+func (s *Store) TakeSessionFlash(ctx context.Context, token string) (ok, errMsg string, err error) {
+	err = s.DB.QueryRowContext(ctx,
+		`SELECT flash_ok, flash_err FROM sessions WHERE token_hash = ?`, hashToken(token)).Scan(&ok, &errMsg)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", "", nil
+	}
+	if err != nil {
+		return "", "", fmt.Errorf("get session flash: %w", err)
+	}
+	if ok == "" && errMsg == "" {
+		return "", "", nil
+	}
+	if _, err := s.DB.ExecContext(ctx,
+		`UPDATE sessions SET flash_ok = '', flash_err = '' WHERE token_hash = ?`, hashToken(token)); err != nil {
+		return "", "", fmt.Errorf("clear session flash: %w", err)
+	}
+	return ok, errMsg, nil
+}

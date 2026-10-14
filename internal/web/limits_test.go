@@ -77,7 +77,7 @@ func TestFieldLengthLimits(t *testing.T) {
 	if got := app.stayCount(a.tenant.ID, a.driver.ID); got != before {
 		t.Errorf("501-character note was stored (stays %d -> %d)", before, got)
 	}
-	if msg := flashFrom(w, "err"); !strings.Contains(msg, "500") {
+	if msg := flashFrom(sa, w, "err"); !strings.Contains(msg, "500") {
 		t.Errorf("error = %q, want it to name the 500 limit", msg)
 	}
 

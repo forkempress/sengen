@@ -92,12 +92,12 @@ func (s *Server) handleImportConfirm(w http.ResponseWriter, r *http.Request) {
 	notes := r.Form["row_note"]
 
 	if len(driverIDs) == 0 {
-		http.Redirect(w, r, "/import?err=Nema+redova+za+uvoz.", http.StatusSeeOther)
+		s.redirectErr(w, r, "/import", "Nema redova za uvoz.")
 		return
 	}
 	n := len(driverIDs)
 	if len(entries) != n || len(exits) != n || len(types) != n || len(notes) != n {
-		http.Redirect(w, r, "/import?err=Neispravan+zahtev,+učitajte+fajl+ponovo.", http.StatusSeeOther)
+		s.redirectErr(w, r, "/import", "Neispravan zahtev, učitajte fajl ponovo.")
 		return
 	}
 
@@ -128,9 +128,9 @@ func (s *Server) handleImportConfirm(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		http.Redirect(w, r, "/import?err=Uvoz+neuspešan:+"+err.Error(), http.StatusSeeOther)
+		s.redirectErr(w, r, "/import", "Uvoz neuspešan: "+err.Error())
 		return
 	}
 
-	http.Redirect(w, r, "/import?ok=Uvoz+završen+("+strconv.Itoa(len(driverIDs))+"+boravaka).", http.StatusSeeOther)
+	s.redirectOk(w, r, "/import", "Uvoz završen ("+strconv.Itoa(len(driverIDs))+" boravaka).")
 }

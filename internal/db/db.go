@@ -4,8 +4,10 @@ package db
 import (
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"sort"
 
 	_ "modernc.org/sqlite"
@@ -18,6 +20,14 @@ var embeddedMigrations embed.FS
 // sensible defaults for a single-writer, many-reader web app, and applies any
 // pending migrations.
 func Open(path string) (*sql.DB, error) {
+	// The database holds password hashes and session data: create it
+	// readable by the server's user only. SQLite gives the -wal and -shm
+	// files the same mode as the database file.
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("open database file: %w", err)
+	}
+	f.Close()
 	dsn := fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(ON)", path)
 	conn, err := sql.Open("sqlite", dsn)
 	if err != nil {
@@ -28,7 +38,24 @@ func Open(path string) (*sql.DB, error) {
 		conn.Close()
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
+	// A database created before this check, or copied in, may still be 0644.
+	if err := restrictPermissions(path); err != nil {
+		conn.Close()
+		return nil, err
+	}
 	return conn, nil
+}
+
+// restrictPermissions sets mode 0600 on the database and its -wal and -shm
+// files, whichever exist.
+func restrictPermissions(path string) error {
+	for _, p := range []string{path, path + "-wal", path + "-shm"} {
+		err := os.Chmod(p, 0o600)
+		if err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("chmod %s: %w", p, err)
+		}
+	}
+	return nil
 }
 
 // Migrate applies every embedded migration file that has not yet been

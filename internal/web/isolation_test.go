@@ -388,8 +388,8 @@ func TestImportConfirm_MismatchedFieldsAreRejected(t *testing.T) {
 		"row_driver_id": {id(a.driver.ID), id(a.driver.ID)},
 		"row_entry":     {clock.Today().AddDate(0, 0, -2).Format("2006-01-02")},
 	})
-	if w.Code != http.StatusSeeOther || !strings.Contains(w.Header().Get("Location"), "err=") {
-		t.Errorf("POST /import/potvrdi with mismatched fields = %d %q, want a redirect with an error", w.Code, w.Header().Get("Location"))
+	if msg := flashFrom(sa, w, "err"); msg == "" {
+		t.Errorf("POST /import/potvrdi with mismatched fields = %d, want a redirect with an error", w.Code)
 	}
 	if got := app.stayCount(a.tenant.ID, a.driver.ID); got != before {
 		t.Errorf("stays = %d, want %d", got, before)

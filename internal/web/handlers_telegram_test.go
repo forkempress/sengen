@@ -3,10 +3,11 @@ package web
 import (
 	"context"
 	"encoding/json"
+	"html"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -75,12 +76,21 @@ func (a *testApp) alertChat(tenantID int64) int64 {
 	return s.TelegramAlertChatID
 }
 
-func flashFrom(w *httptest.ResponseRecorder, key string) string {
-	loc, err := url.Parse(w.Header().Get("Location"))
-	if err != nil {
+// flashFrom follows the redirect in w and returns the message the next page
+// shows: "ok" for the green one, "err" for the red one. Messages live on the
+// session, not in the URL (SEC-16).
+func flashFrom(s *session, w *httptest.ResponseRecorder, kind string) string {
+	s.app.t.Helper()
+	loc := w.Header().Get("Location")
+	if w.Code != http.StatusSeeOther || loc == "" {
+		s.app.t.Fatalf("want a redirect, got %d", w.Code)
+	}
+	re := regexp.MustCompile(`<div class="flash flash-` + kind + `">([^<]*)</div>`)
+	m := re.FindStringSubmatch(s.get(loc).Body.String())
+	if m == nil {
 		return ""
 	}
-	return loc.Query().Get(key)
+	return html.UnescapeString(m[1])
 }
 
 func TestAlertsToMe_SendsAlertsToTheOwnersTelegram(t *testing.T) {
@@ -100,7 +110,7 @@ func TestAlertsToMe_SendsAlertsToTheOwnersTelegram(t *testing.T) {
 	if got := app.alertChat(a.tenant.ID); got != 7001 {
 		t.Errorf("alert chat = %d, want the owner's chat 7001", got)
 	}
-	if ok := flashFrom(w, "ok"); !strings.Contains(ok, "probnu poruku") {
+	if ok := flashFrom(sa, w, "ok"); !strings.Contains(ok, "probnu poruku") {
 		t.Errorf("confirmation = %q, want it to mention the probe message", ok)
 	}
 	api.mu.Lock()
@@ -135,7 +145,7 @@ func TestAlertsToMe_RequiresALinkedTelegram(t *testing.T) {
 	if got := app.alertChat(a.tenant.ID); got != 0 {
 		t.Errorf("alert chat = %d, want unchanged 0", got)
 	}
-	if err := flashFrom(w, "err"); !strings.Contains(err, "Prvo povežite") {
+	if err := flashFrom(sa, w, "err"); !strings.Contains(err, "Prvo povežite") {
 		t.Errorf("error = %q, want instructions to link Telegram first", err)
 	}
 }
@@ -148,12 +158,13 @@ func TestAlertsToMe_ProbeFailureIsReportedNotHidden(t *testing.T) {
 	a := app.addFirm("Prva Firma", "prva", "vlasnik@prva.rs", "Ana", 30)
 	app.linkUserTelegram(a, 7001)
 
-	w := app.mustLogin(a).post("/podesavanja/telegram/upozorenja-na-moj", nil)
+	sa := app.mustLogin(a)
+	w := sa.post("/podesavanja/telegram/upozorenja-na-moj", nil)
 
 	if got := app.alertChat(a.tenant.ID); got != 7001 {
 		t.Errorf("alert chat = %d, want 7001 saved despite the failed probe", got)
 	}
-	ok := flashFrom(w, "ok")
+	ok := flashFrom(sa, w, "ok")
 	if !strings.Contains(ok, "nije stigla") {
 		t.Errorf("message = %q, want it to say the probe didn't arrive", ok)
 	}

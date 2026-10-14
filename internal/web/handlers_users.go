@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/mail"
-	"net/url"
 	"strings"
 	"unicode/utf8"
 
@@ -67,10 +66,7 @@ type usersPageData struct {
 }
 
 func (s *Server) handleUsersPage(w http.ResponseWriter, r *http.Request) {
-	s.renderUsersPage(w, r, usersPageData{baseData: baseData{
-		FlashErr: r.URL.Query().Get("err"),
-		Flash:    r.URL.Query().Get("ok"),
-	}})
+	s.renderUsersPage(w, r, usersPageData{})
 }
 
 func (s *Server) renderUsersPage(w http.ResponseWriter, r *http.Request, data usersPageData) {
@@ -80,9 +76,12 @@ func (s *Server) renderUsersPage(w http.ResponseWriter, r *http.Request, data us
 		http.Error(w, "greška servera", http.StatusInternalServerError)
 		return
 	}
-	flash, flashErr := data.Flash, data.FlashErr
+	// A validation error from this request wins over a waiting flash.
+	flashErr := data.FlashErr
 	data.baseData = s.base(r, "korisnici")
-	data.Flash, data.FlashErr = flash, flashErr
+	if flashErr != "" {
+		data.FlashErr = flashErr
+	}
 	data.Users = users
 	data.RoleNames = assignableRoles
 	if data.FormRole == "" {
@@ -126,5 +125,5 @@ func (s *Server) handleUserCreate(w http.ResponseWriter, r *http.Request) {
 	s.Store.RecordAudit(r.Context(), t.ID, "user", &actor.ID, "user", u.ID, "create", nil, nil)
 
 	msg := "Dodat korisnik " + u.Name + " (" + assignableRoles[role] + "). Javite mu email i lozinku — prijavljuje se na istoj adresi."
-	http.Redirect(w, r, "/podesavanja/korisnici?ok="+url.QueryEscape(msg), http.StatusSeeOther)
+	s.redirectOk(w, r, "/podesavanja/korisnici", msg)
 }

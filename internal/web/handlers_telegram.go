@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"strconv"
 	"time"
 
@@ -57,12 +56,6 @@ func (s *Server) renderTelegramSettings(w http.ResponseWriter, r *http.Request, 
 		data.MyTelegramLinked = true
 		data.AlertsToMe = settings.TelegramAlertChatID == *u.TelegramChatID
 	}
-	if msg := r.URL.Query().Get("ok"); msg != "" {
-		data.Flash = msg
-	}
-	if msg := r.URL.Query().Get("err"); msg != "" {
-		data.FlashErr = msg
-	}
 	s.render(w, "podesavanja_telegram.html", data)
 }
 
@@ -73,7 +66,7 @@ func (s *Server) handleTelegramSettingsUpdate(w http.ResponseWriter, r *http.Req
 	if chatIDStr := r.FormValue("alert_chat_id"); chatIDStr != "" {
 		id, err := strconv.ParseInt(chatIDStr, 10, 64)
 		if err != nil {
-			http.Redirect(w, r, "/podesavanja/telegram?err=Neispravan+chat+ID.", http.StatusSeeOther)
+			s.redirectErr(w, r, "/podesavanja/telegram", "Neispravan chat ID.")
 			return
 		}
 		settings.TelegramAlertChatID = id
@@ -88,8 +81,8 @@ func (s *Server) handleTelegramSettingsUpdate(w http.ResponseWriter, r *http.Req
 	}
 
 	if th := status.ThresholdsFor(settings); th.Red >= th.Orange {
-		http.Redirect(w, r, "/podesavanja/telegram?err="+url.QueryEscape(
-			fmt.Sprintf("Crveni prag (%d) mora biti manji od narandžastog (%d).", th.Red, th.Orange)), http.StatusSeeOther)
+		s.redirectErr(w, r, "/podesavanja/telegram",
+			fmt.Sprintf("Crveni prag (%d) mora biti manji od narandžastog (%d).", th.Red, th.Orange))
 		return
 	}
 
@@ -97,7 +90,7 @@ func (s *Server) handleTelegramSettingsUpdate(w http.ResponseWriter, r *http.Req
 		http.Error(w, "greška servera", http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, "/podesavanja/telegram?ok=Podešavanja+sačuvana.", http.StatusSeeOther)
+	s.redirectOk(w, r, "/podesavanja/telegram", "Podešavanja sačuvana.")
 }
 
 func (s *Server) handleTelegramLinkSelf(w http.ResponseWriter, r *http.Request) {
@@ -141,8 +134,8 @@ func (s *Server) handleAlertsToMe(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.UserFromContext(r.Context())
 
 	if u.TelegramChatID == nil {
-		http.Redirect(w, r, "/podesavanja/telegram?err="+url.QueryEscape(
-			"Prvo povežite svoj Telegram (dugme „Generiši link za povezivanje“), pa ponovo kliknite."), http.StatusSeeOther)
+		s.redirectErr(w, r, "/podesavanja/telegram",
+			"Prvo povežite svoj Telegram (dugme „Generiši link za povezivanje“), pa ponovo kliknite.")
 		return
 	}
 
@@ -165,5 +158,5 @@ func (s *Server) handleAlertsToMe(w http.ResponseWriter, r *http.Request) {
 	} else {
 		msg += " Bot još nije podešen na serveru, pa poruke počinju da stižu kad proradi."
 	}
-	http.Redirect(w, r, "/podesavanja/telegram?ok="+url.QueryEscape(msg), http.StatusSeeOther)
+	s.redirectOk(w, r, "/podesavanja/telegram", msg)
 }
