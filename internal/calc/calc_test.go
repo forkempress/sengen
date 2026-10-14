@@ -240,3 +240,146 @@ func TestProperty_UsedDaysNeverJumpsByMoreThanOnePerDay(t *testing.T) {
 		}
 	}
 }
+
+// --- EarliestStart ---
+
+func TestEarliestStart_EmptyHistoryStartsImmediately(t *testing.T) {
+	from := d("01.02.2026")
+	got := EarliestStart(nil, 20, from)
+	if !got.Equal(from) {
+		t.Errorf("EarliestStart with no history = %s, want %s", got.Format("02.01.2006"), from.Format("02.01.2006"))
+	}
+}
+
+// With the golden fixture closed on 18.10, a 20-day trip already fits on
+// 25.10 (TestGolden_CanDoTripAndMaxTripLength), so the earliest start asked
+// from that date must be that very date.
+func TestEarliestStart_ReturnsFromWhenTripAlreadyFits(t *testing.T) {
+	stays := markoStaysClosedOn18Oct()
+	from := d("25.10.2026")
+	got := EarliestStart(stays, 20, from)
+	if !got.Equal(from) {
+		t.Errorf("EarliestStart = %s, want %s", got.Format("02.01.2006"), from.Format("02.01.2006"))
+	}
+}
+
+// A trip too long to fit today must be pushed out, and the date returned has
+// to be the *first* one that works: the day before it must still fail.
+func TestEarliestStart_IsTrulyTheEarliestFeasibleDay(t *testing.T) {
+	stays := markoStaysClosedOn18Oct()
+	from := d("19.10.2026")
+	const length = 60
+
+	got := EarliestStart(stays, length, from)
+	if got.IsZero() {
+		t.Fatalf("EarliestStart returned no date for a %d-day trip", length)
+	}
+	if got.Before(from) {
+		t.Fatalf("EarliestStart = %s, which is before `from` %s", got.Format("02.01.2006"), from.Format("02.01.2006"))
+	}
+	if ok, _, _ := CanDoTrip(stays, got, length); !ok {
+		t.Errorf("EarliestStart returned %s but CanDoTrip says the trip doesn't fit there", got.Format("02.01.2006"))
+	}
+	if got.After(from) {
+		dayBefore := addDays(got, -1)
+		if ok, _, _ := CanDoTrip(stays, dayBefore, length); ok {
+			t.Errorf("trip also fits on %s, so %s is not the earliest start",
+				dayBefore.Format("02.01.2006"), got.Format("02.01.2006"))
+		}
+	}
+}
+
+// No 91-day trip can ever satisfy the 90-day limit, regardless of history,
+// so the search has to give up rather than return a bogus date.
+func TestEarliestStart_ImpossibleTripReturnsZero(t *testing.T) {
+	got := EarliestStart(nil, MaxDays+1, d("01.02.2026"))
+	if !got.IsZero() {
+		t.Errorf("EarliestStart for a %d-day trip = %s, want zero time", MaxDays+1, got.Format("02.01.2006"))
+	}
+}
+
+// markoStaysClosedOn18Oct is the golden fixture with the open stay closed on
+// 18.10.2026 — the "ako se vrati 18.10" scenario from the spec.
+func markoStaysClosedOn18Oct() []Stay {
+	stays := markoStays()
+	out := make([]Stay, 0, len(stays))
+	for _, s := range stays {
+		if s.Exit == nil {
+			out = append(out, Stay{Entry: s.Entry, Exit: dp("18.10.2026"), Type: s.Type})
+			continue
+		}
+		out = append(out, s)
+	}
+	return out
+}
+
+// --- Overstays ---
+
+func TestOverstays_CleanHistoryHasNone(t *testing.T) {
+	if got := Overstays(markoStays(), d("13.10.2026")); len(got) != 0 {
+		t.Errorf("golden fixture reports %d overstay days, want 0", len(got))
+	}
+}
+
+func TestOverstays_EmptyHistory(t *testing.T) {
+	if got := Overstays(nil, d("13.10.2026")); got != nil {
+		t.Errorf("Overstays(nil) = %v, want nil", got)
+	}
+}
+
+// The scan must start at the earliest entry even when the slice isn't sorted,
+// otherwise overstay days before the first listed stay would be missed.
+func TestOverstays_UnsortedStaysStillScanFromEarliestEntry(t *testing.T) {
+	today := d("01.07.2026")
+	stays := []Stay{
+		{Entry: addDays(today, -40), Exit: dp(formatDate(today)), Type: TypeWork},
+		{Entry: addDays(today, -120), Exit: dp(formatDate(addDays(today, -41))), Type: TypeWork},
+	}
+
+	got := Overstays(stays, today)
+	if len(got) == 0 {
+		t.Fatal("expected overstay days for a 121-day continuous stay")
+	}
+	firstOverstay := got[0]
+	if firstOverstay.UsedDays != MaxDays+1 {
+		t.Errorf("first overstay day reports %d used days, want %d", firstOverstay.UsedDays, MaxDays+1)
+	}
+	// Day 91 of a stay that began 120 days ago: entry + 90.
+	wantDate := addDays(today, -120+MaxDays)
+	if !firstOverstay.Date.Equal(wantDate) {
+		t.Errorf("first overstay = %s, want %s", firstOverstay.Date.Format("02.01.2006"), wantDate.Format("02.01.2006"))
+	}
+}
+
+// --- Remaining / MaxContinuousUntil edge cases ---
+
+// Spec: Remaining = max(0, 90 − UsedDays). A driver already over the limit
+// must read 0, never a negative number, so the UI can't show "−5 preostalo".
+func TestRemaining_ClampsToZeroOnOverstay(t *testing.T) {
+	today := d("01.07.2026")
+	stays := []Stay{{Entry: addDays(today, -99), Exit: dp(formatDate(today)), Type: TypeWork}}
+
+	if used := UsedDays(stays, today); used != 100 {
+		t.Fatalf("setup error: UsedDays = %d, want 100", used)
+	}
+	if got := Remaining(stays, today); got != 0 {
+		t.Errorf("Remaining for an overstayed driver = %d, want 0", got)
+	}
+}
+
+// A driver who is back in Serbia has no open stay, so there is no
+// "can stay until" date — the dashboard relies on the false return to show
+// "najduža tura sada" instead.
+func TestMaxContinuousUntil_NotInSchengen(t *testing.T) {
+	got, ok := MaxContinuousUntil(markoStaysClosedOn18Oct(), d("19.10.2026"))
+	if ok {
+		t.Errorf("MaxContinuousUntil reported ok for a driver outside Schengen (got %s)", got.Format("02.01.2006"))
+	}
+	if !got.IsZero() {
+		t.Errorf("MaxContinuousUntil returned %s, want zero time", got.Format("02.01.2006"))
+	}
+
+	if _, ok := MaxContinuousUntil(nil, d("19.10.2026")); ok {
+		t.Error("MaxContinuousUntil reported ok for a driver with no stays at all")
+	}
+}
