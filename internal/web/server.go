@@ -62,6 +62,7 @@ func (s *Server) Routes() http.Handler {
 
 	protected.Handle("GET /podesavanja/telegram", auth.RequireRole("owner")(http.HandlerFunc(s.handleTelegramSettingsPage)))
 	protected.Handle("POST /podesavanja/telegram", auth.RequireRole("owner")(http.HandlerFunc(s.handleTelegramSettingsUpdate)))
+	protected.Handle("POST /podesavanja/telegram/upozorenja-na-moj", auth.RequireRole("owner")(http.HandlerFunc(s.handleAlertsToMe)))
 
 	protected.Handle("GET /podesavanja/korisnici", auth.RequireRole("owner")(http.HandlerFunc(s.handleUsersPage)))
 	protected.Handle("POST /podesavanja/korisnici", auth.RequireRole("owner")(http.HandlerFunc(s.handleUserCreate)))

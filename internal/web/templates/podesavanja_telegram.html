@@ -7,21 +7,47 @@
 <div class="flash flash-err">Telegram bot još nije podešen na serveru, pa poruke i upozorenja ne idu. Podešavanja ispod se čuvaju i važe čim bot proradi.</div>
 {{end}}
 
+<h2>Upozorenja dispečeru</h2>
+<p class="muted">Bot javlja kad vozač padne ispod praga, kad mu ističe rok, kad je preko limita, i šalje dnevni pregled u 07:00.</p>
+
+<div class="alert-target">
+  {{if .AlertsToMe}}
+    <span class="badge badge-green">✓</span> <strong>Upozorenja stižu na vaš Telegram.</strong>
+  {{else if .Settings.TelegramAlertChatID}}
+    <span class="badge badge-orange">i</span> Upozorenja stižu na chat <span class="num">{{.Settings.TelegramAlertChatID}}</span> (grupa ili nalog nekog drugog).
+  {{else}}
+    <span class="badge badge-red">!</span> <strong>Upozorenja se trenutno ne šalju nikome.</strong>
+  {{end}}
+</div>
+
+{{if .MyTelegramLinked}}
+  {{if not .AlertsToMe}}
+  <form method="post" action="/podesavanja/telegram/upozorenja-na-moj">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <button type="submit" class="btn btn-primary">Šalji upozorenja na moj Telegram</button>
+  </form>
+  {{end}}
+{{else}}
+  <p class="muted">Da bi upozorenja stizala vama, prvo povežite svoj Telegram (dole), pa se vratite ovde — pojaviće se dugme.</p>
+{{end}}
+
+<h2>Pragovi i grupa</h2>
 <form method="post" action="/podesavanja/telegram">
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
   <div class="form-grid">
-    <div><label for="t-chat">Chat ID za upozorenja dispečeru</label><input type="text" id="t-chat" name="alert_chat_id" value="{{if .Settings.TelegramAlertChatID}}{{.Settings.TelegramAlertChatID}}{{end}}" placeholder="npr. -1001234567890"></div>
     <div><label for="t-red">Prag — crveno, ispod (dana)</label><input type="number" id="t-red" name="threshold_red" min="1" value="{{if .Settings.ThresholdRedDays}}{{.Settings.ThresholdRedDays}}{{else}}15{{end}}"></div>
     <div><label for="t-orange">Prag — narandžasto, do (dana)</label><input type="number" id="t-orange" name="threshold_orange" min="1" value="{{if .Settings.ThresholdOrangeDays}}{{.Settings.ThresholdOrangeDays}}{{else}}30{{end}}"></div>
+    <div><label for="t-chat">{{if .AlertsToMe}}Chat za upozorenja — sada vaš Telegram (menjajte samo za grupu){{else}}Chat ID za upozorenja (samo za Telegram grupu){{end}}</label><input type="text" id="t-chat" name="alert_chat_id" value="{{if .Settings.TelegramAlertChatID}}{{.Settings.TelegramAlertChatID}}{{end}}" placeholder="npr. -1001234567890"></div>
   </div>
-  <p class="muted">Pragovi važe za boje na pregledu i za upozorenja.</p>
+  <p class="muted">Pragovi važe za boje na pregledu i za upozorenja. Chat ID popunjavate samo ako upozorenja treba da idu u grupu; za sebe koristite dugme iznad. Ako polje ispraznite i sačuvate, upozorenja se isključuju.</p>
   <button type="submit" class="btn btn-primary">Sačuvaj</button>
 </form>
 
 <h2>Poveži svoj Telegram</h2>
-<p class="muted">Povezan nalog koristi admin komande bota: /pregled, /vozac, /dodaj, /link, /ispravi, uvoz fajla i brzi unos teksta.</p>
+<p class="muted">Povezan nalog koristi admin komande bota: /pregled, /vozac, /dodaj, /link, /ispravi, uvoz fajla i brzi unos teksta{{if not .MyTelegramLinked}}, i može da prima upozorenja{{end}}.</p>
+{{if .MyTelegramLinked}}<p><span class="badge badge-green">✓</span> Vaš Telegram je povezan.</p>{{end}}
 <form method="post" action="/podesavanja/telegram/poveži-nalog">
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-  <button type="submit" class="btn btn-primary">Generiši link za povezivanje</button>
+  <button type="submit" class="btn{{if not .MyTelegramLinked}} btn-primary{{end}}">{{if .MyTelegramLinked}}Poveži ponovo (novi telefon){{else}}Generiši link za povezivanje{{end}}</button>
 </form>
 {{end}}

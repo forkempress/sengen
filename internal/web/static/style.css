@@ -223,6 +223,15 @@ form.filters .filters-actions { flex: 0 0 auto; display: flex; gap: 0.5rem; }
   width: 100%;
 }
 
+.alert-target {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  padding: 0.65rem 0.9rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.92rem;
+}
+
 .table-wrap { overflow-x: auto; border: 1px solid var(--card-border); border-radius: 8px; background: var(--card-bg); }
 
 table { width: 100%; border-collapse: collapse; min-width: 720px; }

@@ -134,9 +134,9 @@ func (s *Store) GetDriverByTelegramChat(ctx context.Context, chatID int64) (*Dri
 func (s *Store) GetUserByTelegramChat(ctx context.Context, chatID int64) (*User, error) {
 	var u User
 	err := s.DB.QueryRowContext(ctx,
-		`SELECT id, tenant_id, email, password_hash, role, name FROM users WHERE telegram_chat_id = ?`,
+		`SELECT id, tenant_id, email, password_hash, role, name, telegram_chat_id FROM users WHERE telegram_chat_id = ?`,
 		chatID,
-	).Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &u.Role, &u.Name)
+	).Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &u.Role, &u.Name, &u.TelegramChatID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}

@@ -2,6 +2,7 @@ package web
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -32,6 +33,11 @@ type telegramSettingsData struct {
 	Settings      store.TenantSettings
 	BotConfigured bool
 	Link          *telegramLink
+
+	// Where alerts currently go, so the owner never has to read a raw chat id
+	// to know whether they are being sent at all.
+	MyTelegramLinked bool
+	AlertsToMe       bool
 }
 
 func (s *Server) handleTelegramSettingsPage(w http.ResponseWriter, r *http.Request) {
@@ -46,6 +52,10 @@ func (s *Server) renderTelegramSettings(w http.ResponseWriter, r *http.Request, 
 		Settings:      settings,
 		BotConfigured: s.Bot.Configured(),
 		Link:          link,
+	}
+	if u := data.User; u != nil && u.TelegramChatID != nil {
+		data.MyTelegramLinked = true
+		data.AlertsToMe = settings.TelegramAlertChatID == *u.TelegramChatID
 	}
 	if msg := r.URL.Query().Get("ok"); msg != "" {
 		data.Flash = msg
@@ -121,4 +131,39 @@ func (s *Server) handleDriverTelegramLink(w http.ResponseWriter, r *http.Request
 		return
 	}
 	s.renderDriversPage(w, r, s.newTelegramLink(driver.Name, token))
+}
+
+// handleAlertsToMe points the firm's alerts at the signed-in owner's own
+// Telegram — the alternative to typing a numeric chat id, which a
+// non-technical owner has no way of finding.
+func (s *Server) handleAlertsToMe(w http.ResponseWriter, r *http.Request) {
+	t, _ := tenant.FromContext(r.Context())
+	u, _ := auth.UserFromContext(r.Context())
+
+	if u.TelegramChatID == nil {
+		http.Redirect(w, r, "/podesavanja/telegram?err="+url.QueryEscape(
+			"Prvo povežite svoj Telegram (dugme „Generiši link za povezivanje“), pa ponovo kliknite."), http.StatusSeeOther)
+		return
+	}
+
+	settings, _ := t.ParsedSettings()
+	settings.TelegramAlertChatID = *u.TelegramChatID
+	if err := s.Store.UpdateTenantSettings(r.Context(), t.ID, settings); err != nil {
+		http.Error(w, "greška servera", http.StatusInternalServerError)
+		return
+	}
+
+	msg := "Upozorenja će stizati na vaš Telegram."
+	if client := s.Bot.Client(); client != nil {
+		probe := "✅ Ovde će stizati upozorenja za firmu " + t.Name + ": vozači ispod praga, rokovi koji ističu i dnevni pregled u 07:00."
+		if err := client.SendMessage(r.Context(), *u.TelegramChatID, probe, nil); err != nil {
+			log.Printf("telegram: probe message to owner %d: %v", u.ID, err)
+			msg += " Probna poruka ipak nije stigla — proverite da niste blokirali bota, pa pokušajte ponovo."
+		} else {
+			msg += " Poslali smo vam probnu poruku."
+		}
+	} else {
+		msg += " Bot još nije podešen na serveru, pa poruke počinju da stižu kad proradi."
+	}
+	http.Redirect(w, r, "/podesavanja/telegram?ok="+url.QueryEscape(msg), http.StatusSeeOther)
 }

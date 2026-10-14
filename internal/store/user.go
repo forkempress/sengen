@@ -15,6 +15,9 @@ type User struct {
 	PasswordHash string
 	Role         string
 	Name         string
+	// TelegramChatID is set once the user has linked their Telegram account
+	// (admin commands, and optionally the firm's alerts).
+	TelegramChatID *int64
 }
 
 // GetUserByEmail finds the account across all firms: the email alone decides
@@ -23,9 +26,9 @@ func (s *Store) GetUserByEmail(ctx context.Context, email string) (*User, error)
 	email = NormalizeEmail(email)
 	var u User
 	err := s.DB.QueryRowContext(ctx,
-		`SELECT id, tenant_id, email, password_hash, role, name FROM users WHERE email = ?`,
+		`SELECT id, tenant_id, email, password_hash, role, name, telegram_chat_id FROM users WHERE email = ?`,
 		email,
-	).Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &u.Role, &u.Name)
+	).Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &u.Role, &u.Name, &u.TelegramChatID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -38,9 +41,9 @@ func (s *Store) GetUserByEmail(ctx context.Context, email string) (*User, error)
 func (s *Store) GetUser(ctx context.Context, tenantID, id int64) (*User, error) {
 	var u User
 	err := s.DB.QueryRowContext(ctx,
-		`SELECT id, tenant_id, email, password_hash, role, name FROM users WHERE tenant_id = ? AND id = ?`,
+		`SELECT id, tenant_id, email, password_hash, role, name, telegram_chat_id FROM users WHERE tenant_id = ? AND id = ?`,
 		tenantID, id,
-	).Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &u.Role, &u.Name)
+	).Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &u.Role, &u.Name, &u.TelegramChatID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -75,7 +78,7 @@ func (s *Store) CreateUser(ctx context.Context, tenantID int64, email, passwordH
 // ListUsers returns the tenant's web users, owners first, then by name.
 func (s *Store) ListUsers(ctx context.Context, tenantID int64) ([]User, error) {
 	rows, err := s.DB.QueryContext(ctx,
-		`SELECT id, tenant_id, email, password_hash, role, name FROM users
+		`SELECT id, tenant_id, email, password_hash, role, name, telegram_chat_id FROM users
 		 WHERE tenant_id = ? ORDER BY role = 'owner' DESC, name`, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("list users: %w", err)
@@ -84,7 +87,7 @@ func (s *Store) ListUsers(ctx context.Context, tenantID int64) ([]User, error) {
 	var out []User
 	for rows.Next() {
 		var u User
-		if err := rows.Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &u.Role, &u.Name); err != nil {
+		if err := rows.Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &u.Role, &u.Name, &u.TelegramChatID); err != nil {
 			return nil, fmt.Errorf("scan user: %w", err)
 		}
 		out = append(out, u)
