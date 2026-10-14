@@ -1,0 +1,4 @@
+# Fajlovi u ovoj fascikli koji nisu deo sajta i ne smeju biti javni.
+wrangler.jsonc
+.assetsignore
+.wrangler

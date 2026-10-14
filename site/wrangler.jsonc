@@ -1,0 +1,17 @@
+// Cloudflare Worker za dani90.rs — samo statični fajlovi iz ove fascikle,
+// bez koda. Build u Cloudflare-u ima Root directory = site i pokreće
+// `npx wrangler deploy`. Ime mora ostati "sengen" (tako se zove Worker).
+{
+  "$schema": "https://unpkg.com/wrangler@4.151.0/config-schema.json",
+  "name": "sengen",
+  "compatibility_date": "2026-10-12",
+  "assets": {
+    "directory": ".",
+    // /kalkulator služi kalkulator.html; nepostojeća adresa dobija 404.html
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  // Sajt živi samo na dani90.rs; kopija na workers.dev bi bila duplikat.
+  "workers_dev": false,
+  "preview_urls": false
+}
