@@ -825,3 +825,50 @@ func TestDeactivatedDriverLosesBotAccess(t *testing.T) {
 		t.Errorf("the account can't be linked again: %v", err)
 	}
 }
+
+// SEC-02: a deactivated user loses the bot at once. Deactivation unlinks the
+// chat; the lookup also skips inactive users, in case a chat is left linked.
+func TestWebhook_DeactivatedUserIsRefused(t *testing.T) {
+	fake := newFakeTelegram(t)
+	bot, a, _, _, _ := twoFirms(t)
+	ctx := context.Background()
+
+	if _, err := bot.Store.CreateUser(ctx, a.ID, "vlasnik@a.rs", "hash", "owner", "Vlasnik A"); err != nil {
+		t.Fatal(err)
+	}
+	disp, err := bot.Store.CreateUser(ctx, a.ID, "dispecer@a.rs", "hash", "dispatcher", "Dispečer A")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := bot.Store.SetUserTelegramChatID(ctx, a.ID, disp.ID, 444); err != nil {
+		t.Fatal(err)
+	}
+
+	postWebhook(t, bot, testSecret, textUpdate(444, "/pregled"))
+	if texts := fake.texts(); len(texts) != 1 || !strings.Contains(texts[0], "Ana Prva") {
+		t.Fatalf("active dispatcher: got %v, want /pregled", texts)
+	}
+
+	if _, err := bot.Store.SetUserActive(ctx, a.ID, disp.ID, false); err != nil {
+		t.Fatal(err)
+	}
+	postWebhook(t, bot, testSecret, textUpdate(444, "/pregled"))
+	if texts := fake.texts(); len(texts) != 2 || texts[1] != unknownChatMsg {
+		t.Errorf("deactivated dispatcher: got %v, want %q", texts, unknownChatMsg)
+	}
+
+	// Second lock: inactive with the chat still linked.
+	if _, err := bot.Store.SetUserActive(ctx, a.ID, disp.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := bot.Store.SetUserTelegramChatID(ctx, a.ID, disp.ID, 444); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := bot.Store.DB.ExecContext(ctx, `UPDATE users SET active = 0 WHERE id = ?`, disp.ID); err != nil {
+		t.Fatal(err)
+	}
+	postWebhook(t, bot, testSecret, textUpdate(444, "/pregled"))
+	if texts := fake.texts(); len(texts) != 3 || texts[2] != unknownChatMsg {
+		t.Errorf("inactive user with a linked chat: got %v, want %q", texts, unknownChatMsg)
+	}
+}

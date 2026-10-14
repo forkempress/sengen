@@ -84,6 +84,12 @@ func (s *Server) Routes() http.Handler {
 
 	protected.Handle("GET /podesavanja/korisnici", auth.RequireRole("owner")(http.HandlerFunc(s.handleUsersPage)))
 	protected.Handle("POST /podesavanja/korisnici", auth.RequireRole("owner")(http.HandlerFunc(s.handleUserCreate)))
+	protected.Handle("POST /podesavanja/korisnici/{id}/deaktiviraj", auth.RequireRole("owner")(http.HandlerFunc(s.handleUserDeactivate)))
+	protected.Handle("POST /podesavanja/korisnici/{id}/aktiviraj", auth.RequireRole("owner")(http.HandlerFunc(s.handleUserActivate)))
+	protected.Handle("POST /podesavanja/korisnici/{id}/uloga", auth.RequireRole("owner")(http.HandlerFunc(s.handleUserRole)))
+
+	protected.HandleFunc("GET /podesavanja/lozinka", s.handlePasswordPage)
+	protected.HandleFunc("POST /podesavanja/lozinka", s.handlePasswordChange)
 
 	protected.HandleFunc("GET /import", s.handleImportPage)
 	protected.HandleFunc("POST /import/preview", s.handleImportPreview)

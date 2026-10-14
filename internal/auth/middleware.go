@@ -58,7 +58,12 @@ func (svc *Service) RequireAuth(next http.Handler) http.Handler {
 		}
 		// GetUser is itself scoped by firm, so a session whose user has
 		// since moved or been removed is rejected rather than reattached.
+		// Deactivation deletes the user's sessions; refusing an inactive
+		// user here as well keeps that true whatever path created one.
 		user, err := svc.Store.GetUser(r.Context(), t.ID, sess.UserID)
+		if err == nil && !user.Active {
+			err = store.ErrNotFound
+		}
 		if err != nil {
 			svc.Logout(r.Context(), w, r)
 			http.Redirect(w, r, "/login", http.StatusSeeOther)

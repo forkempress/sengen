@@ -77,6 +77,8 @@ header.app-header .user-box {
   font-size: 0.85rem;
   color: #c9cfd6;
 }
+header.app-header .user-box a { color: #c9cfd6; }
+header.app-header .user-box a.active { color: var(--yellow); font-weight: 600; }
 
 header.app-header form.logout-form button {
   background: none;

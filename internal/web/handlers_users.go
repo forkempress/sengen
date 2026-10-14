@@ -1,10 +1,13 @@
 package web
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/mail"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -126,4 +129,129 @@ func (s *Server) handleUserCreate(w http.ResponseWriter, r *http.Request) {
 
 	msg := "Dodat korisnik " + u.Name + " (" + assignableRoles[role] + "). Javite mu email i lozinku — prijavljuje se na istoj adresi."
 	s.redirectOk(w, r, "/podesavanja/korisnici", msg)
+}
+
+const usersPath = "/podesavanja/korisnici"
+
+// loadUserOr404 reads the {id} path value and loads that user from the
+// signed-in firm only; another firm's user is "not found", exactly like a
+// user that doesn't exist.
+func (s *Server) loadUserOr404(w http.ResponseWriter, r *http.Request) (*store.User, bool) {
+	t, _ := tenant.FromContext(r.Context())
+	userID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		http.NotFound(w, r)
+		return nil, false
+	}
+	u, err := s.Store.GetUser(r.Context(), t.ID, userID)
+	if errors.Is(err, store.ErrNotFound) {
+		http.NotFound(w, r)
+		return nil, false
+	}
+	if err != nil {
+		http.Error(w, "greška servera", http.StatusInternalServerError)
+		return nil, false
+	}
+	return u, true
+}
+
+func (s *Server) handleUserDeactivate(w http.ResponseWriter, r *http.Request) {
+	s.setUserActive(w, r, false)
+}
+
+func (s *Server) handleUserActivate(w http.ResponseWriter, r *http.Request) {
+	s.setUserActive(w, r, true)
+}
+
+func (s *Server) setUserActive(w http.ResponseWriter, r *http.Request, active bool) {
+	t, _ := tenant.FromContext(r.Context())
+	actor, _ := auth.UserFromContext(r.Context())
+	target, ok := s.loadUserOr404(w, r)
+	if !ok {
+		return
+	}
+	if !active && target.ID == actor.ID {
+		s.redirectErr(w, r, usersPath, "Ne možete deaktivirati sopstveni nalog.")
+		return
+	}
+
+	before, err := s.Store.SetUserActive(r.Context(), t.ID, target.ID, active)
+	if s.userChangeFailed(w, r, err) {
+		return
+	}
+	action, msg := "activate", "Korisnik "+target.Name+" je ponovo aktivan. Prijavljuje se sa istom lozinkom; Telegram povezuje ponovo."
+	if !active {
+		action, msg = "deactivate", "Korisnik "+target.Name+" je deaktiviran: odjavljen je svuda i Telegram više ne prima njegove komande."
+	}
+	s.auditUser(r, t.ID, actor.ID, target.ID, action,
+		map[string]any{"active": before.Active, "telegram_linked": before.TelegramChatID != nil},
+		map[string]any{"active": active, "telegram_linked": active && before.TelegramChatID != nil})
+	s.redirectOk(w, r, usersPath, msg)
+}
+
+func (s *Server) handleUserRole(w http.ResponseWriter, r *http.Request) {
+	t, _ := tenant.FromContext(r.Context())
+	actor, _ := auth.UserFromContext(r.Context())
+	target, ok := s.loadUserOr404(w, r)
+	if !ok {
+		return
+	}
+	role := r.FormValue("role")
+	if _, known := assignableRoles[role]; !known {
+		s.redirectErr(w, r, usersPath, "Nepoznata uloga.")
+		return
+	}
+	if role == target.Role {
+		s.redirectOk(w, r, usersPath, "Uloga nije promenjena.")
+		return
+	}
+
+	before, err := s.Store.SetUserRole(r.Context(), t.ID, target.ID, role)
+	if s.userChangeFailed(w, r, err) {
+		return
+	}
+	s.auditUser(r, t.ID, actor.ID, target.ID, "role_change",
+		map[string]any{"role": before.Role}, map[string]any{"role": role})
+
+	// An owner who made himself a dispatcher can no longer open this page.
+	if target.ID == actor.ID {
+		s.redirectOk(w, r, "/pregled", "Vaša uloga je sada "+assignableRoles[role]+".")
+		return
+	}
+	s.redirectOk(w, r, usersPath, "Korisnik "+target.Name+" je sada "+assignableRoles[role]+".")
+}
+
+// userChangeFailed reports a store error to the owner and returns true if
+// there was one.
+func (s *Server) userChangeFailed(w http.ResponseWriter, r *http.Request, err error) bool {
+	if err == nil {
+		return false
+	}
+	var verr *store.ValidationError
+	switch {
+	case errors.As(err, &verr):
+		s.redirectErr(w, r, usersPath, verr.Msg)
+	case errors.Is(err, store.ErrNotFound):
+		http.NotFound(w, r)
+	default:
+		http.Error(w, "greška servera", http.StatusInternalServerError)
+	}
+	return true
+}
+
+func (s *Server) auditUser(r *http.Request, tenantID, actorID, userID int64, action string, before, after map[string]any) {
+	var beforeJSON, afterJSON *string
+	if before != nil {
+		b, _ := json.Marshal(before)
+		str := string(b)
+		beforeJSON = &str
+	}
+	if after != nil {
+		b, _ := json.Marshal(after)
+		str := string(b)
+		afterJSON = &str
+	}
+	if err := s.Store.RecordAudit(r.Context(), tenantID, "user", &actorID, "user", userID, action, beforeJSON, afterJSON); err != nil {
+		log.Printf("audit user %d %s: %v", userID, action, err)
+	}
 }

@@ -83,6 +83,7 @@ var pages = []string{
 	"podesavanja_vozaci.html",
 	"podesavanja_telegram.html",
 	"podesavanja_korisnici.html",
+	"podesavanja_lozinka.html",
 	"import.html",
 	"pomoc.html",
 }

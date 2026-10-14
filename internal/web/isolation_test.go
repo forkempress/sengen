@@ -395,3 +395,36 @@ func TestImportConfirm_MismatchedFieldsAreRejected(t *testing.T) {
 		t.Errorf("stays = %d, want %d", got, before)
 	}
 }
+
+// SEC-02: an owner manages only his own firm's users. Another firm's user
+// id is "not found", and nothing about that user changes.
+func TestIsolation_CannotManageAnotherFirmsUsers(t *testing.T) {
+	app, a, b := twoFirmApp(t)
+	sa, sb := app.mustLogin(a), app.mustLogin(b)
+	ownerB := app.ownerOf(b)
+
+	for _, tc := range []struct {
+		path string
+		form url.Values
+	}{
+		{"/deaktiviraj", nil},
+		{"/aktiviraj", nil},
+		{"/uloga", url.Values{"role": {"dispatcher"}}},
+	} {
+		if w := sa.post("/podesavanja/korisnici/"+id(ownerB.ID)+tc.path, tc.form); w.Code != http.StatusNotFound {
+			t.Errorf("POST %s on firm B's owner = %d, want 404", tc.path, w.Code)
+		}
+	}
+	if u := app.user(b.tenant.ID, ownerB.ID); !u.Active || u.Role != "owner" {
+		t.Errorf("firm B's owner changed: %+v", u)
+	}
+	if !signedIn(sb) {
+		t.Error("firm B's owner was signed out")
+	}
+	if got := app.auditActions(b.tenant.ID, ownerB.ID); len(got) != 0 {
+		t.Errorf("audit rows for firm B's owner: %q", got)
+	}
+	if body := sa.get("/podesavanja/korisnici").Body.String(); strings.Contains(body, b.email) {
+		t.Error("firm A's users page lists firm B's owner")
+	}
+}

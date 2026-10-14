@@ -1,0 +1,15 @@
+{{define "content"}}
+<h1>Promena lozinke</h1>
+<p class="muted">Posle promene bićete odjavljeni sa svih drugih uređaja, a Telegram nalog povezan sa vašim korisnikom biće otkačen.</p>
+
+<form method="post" action="/podesavanja/lozinka">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <input type="text" name="username" value="{{.User.Email}}" autocomplete="username" hidden>
+  <div class="form-grid">
+    <div><label for="p-current">Trenutna lozinka</label><input type="password" id="p-current" name="current_password" required autocomplete="current-password"></div>
+    <div><label for="p-new">Nova lozinka (najmanje 10 znakova)</label><input type="password" id="p-new" name="new_password" required minlength="10" autocomplete="new-password"></div>
+    <div><label for="p-repeat">Ponovite novu lozinku</label><input type="password" id="p-repeat" name="new_password_repeat" required minlength="10" autocomplete="new-password"></div>
+  </div>
+  <button type="submit" class="btn btn-primary">Promeni lozinku</button>
+</form>
+{{end}}

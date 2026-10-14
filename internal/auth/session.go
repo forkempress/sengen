@@ -29,20 +29,20 @@ func New(st *store.Store, insecureCookies bool) *Service {
 	return &Service{Store: st, InsecureCookies: insecureCookies}
 }
 
-// Login creates a new session for userID on tenantID and sets the session
-// cookie on the response.
-func (svc *Service) Login(ctx context.Context, w http.ResponseWriter, tenantID, userID int64) error {
+// Login creates a new session for userID on tenantID, sets the session
+// cookie on the response and returns the new session's token.
+func (svc *Service) Login(ctx context.Context, w http.ResponseWriter, tenantID, userID int64) (string, error) {
 	token, err := idgen.RandomToken(32)
 	if err != nil {
-		return err
+		return "", err
 	}
 	csrfSecret, err := idgen.RandomToken(32)
 	if err != nil {
-		return err
+		return "", err
 	}
 	expires := time.Now().Add(sessionDuration)
 	if err := svc.Store.CreateSession(ctx, token, tenantID, userID, csrfSecret, expires); err != nil {
-		return err
+		return "", err
 	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     SessionCookieName,
@@ -53,7 +53,7 @@ func (svc *Service) Login(ctx context.Context, w http.ResponseWriter, tenantID, 
 		Secure:   !svc.InsecureCookies,
 		SameSite: http.SameSiteLaxMode,
 	})
-	return nil
+	return token, nil
 }
 
 func (svc *Service) Logout(ctx context.Context, w http.ResponseWriter, r *http.Request) {

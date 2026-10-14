@@ -25,6 +25,7 @@
     </nav>
     <div class="user-box">
       <span>{{.User.Name}} ({{roleLabel .User.Role}})</span>
+      <a href="/podesavanja/lozinka" class="{{if eq .Active "lozinka"}}active{{end}}">Lozinka</a>
       <form class="logout-form" method="post" action="/logout">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <button type="submit">Odjava</button>

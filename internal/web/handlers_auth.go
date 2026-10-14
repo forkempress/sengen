@@ -46,9 +46,14 @@ func (s *Server) handleLoginSubmit(w http.ResponseWriter, r *http.Request) {
 		s.renderLoginError(w, r, email, "Pogrešan email ili lozinka.", http.StatusUnauthorized)
 		return
 	}
+	// Said only after the right password, so it reveals nothing to a guesser.
+	if !u.Active {
+		s.renderLoginError(w, r, email, "Nalog je deaktiviran. Obratite se vlasniku naloga u firmi.", http.StatusForbidden)
+		return
+	}
 
 	s.loginAccountLimiter.Reset(email)
-	if err := s.Auth.Login(r.Context(), w, u.TenantID, u.ID); err != nil {
+	if _, err := s.Auth.Login(r.Context(), w, u.TenantID, u.ID); err != nil {
 		http.Error(w, "greška servera", http.StatusInternalServerError)
 		return
 	}

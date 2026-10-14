@@ -158,20 +158,19 @@ func (s *Store) GetDriverByTelegramChat(ctx context.Context, chatID int64) (*Dri
 }
 
 // GetUserByTelegramChat finds the web user (owner/dispatcher) linked to a
-// Telegram chat, in any firm; unique system-wide like the driver link.
+// Telegram chat, in any firm; unique system-wide like the driver link. A
+// deactivated user is not found, like a deactivated driver (deactivation
+// also unlinks the chat; this is the second lock).
 func (s *Store) GetUserByTelegramChat(ctx context.Context, chatID int64) (*User, error) {
-	var u User
-	err := s.DB.QueryRowContext(ctx,
-		`SELECT id, tenant_id, email, password_hash, role, name, telegram_chat_id FROM users WHERE telegram_chat_id = ?`,
-		chatID,
-	).Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &u.Role, &u.Name, &u.TelegramChatID)
+	u, err := scanUser(s.DB.QueryRowContext(ctx,
+		`SELECT `+userColumns+` FROM users WHERE telegram_chat_id = ? AND active = 1`, chatID))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("get user by telegram chat: %w", err)
 	}
-	return &u, nil
+	return u, nil
 }
 
 // TryRecordAlert attempts to claim the dedup slot for (tenant, driver,

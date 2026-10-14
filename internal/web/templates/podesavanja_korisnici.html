@@ -20,16 +20,44 @@
 </form>
 
 <h2>Svi korisnici</h2>
+<p class="muted">Deaktiviran korisnik se ne može prijaviti, odjavljen je sa svih uređaja, a bot ne prima njegove komande. Njegovi unosi i istorija ostaju.</p>
 <div class="table-wrap">
 <table>
-  <thead><tr><th>Ime</th><th>Email</th><th>Uloga</th></tr></thead>
+  <thead><tr><th>Ime</th><th>Email</th><th>Uloga</th><th>Status</th><th></th></tr></thead>
   <tbody>
     {{$roles := .RoleNames}}
+    {{$csrf := .CSRFToken}}
+    {{$me := .User.ID}}
     {{range .Users}}
     <tr>
-      <td>{{.Name}}</td>
+      <td>{{.Name}}{{if eq .ID $me}} <span class="muted">(vi)</span>{{end}}</td>
       <td>{{.Email}}</td>
-      <td>{{index $roles .Role}}</td>
+      <td>
+        {{if .Active}}
+        <form class="inline" method="post" action="/podesavanja/korisnici/{{.ID}}/uloga">
+          <input type="hidden" name="csrf_token" value="{{$csrf}}">
+          <select name="role" aria-label="Uloga za {{.Name}}">
+            <option value="dispatcher" {{if eq .Role "dispatcher"}}selected{{end}}>dispečer</option>
+            <option value="owner" {{if eq .Role "owner"}}selected{{end}}>vlasnik</option>
+          </select>
+          <button type="submit" class="btn btn-sm">Promeni</button>
+        </form>
+        {{else}}{{index $roles .Role}}{{end}}
+      </td>
+      <td>{{if .Active}}aktivan{{else}}<span class="muted">deaktiviran</span>{{end}}</td>
+      <td>
+        {{if not .Active}}
+        <form class="inline" method="post" action="/podesavanja/korisnici/{{.ID}}/aktiviraj">
+          <input type="hidden" name="csrf_token" value="{{$csrf}}">
+          <button type="submit" class="btn btn-sm btn-primary">Aktiviraj</button>
+        </form>
+        {{else if ne .ID $me}}
+        <form class="inline" method="post" action="/podesavanja/korisnici/{{.ID}}/deaktiviraj">
+          <input type="hidden" name="csrf_token" value="{{$csrf}}">
+          <button type="submit" class="btn btn-sm">Deaktiviraj</button>
+        </form>
+        {{end}}
+      </td>
     </tr>
     {{end}}
   </tbody>
