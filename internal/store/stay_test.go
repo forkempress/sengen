@@ -15,9 +15,13 @@ import (
 // newTestStore opens a real SQLite database (migrations and all) in a temp
 // directory, so these tests exercise the same schema constraints production
 // runs on — including the partial unique index that backs "one open stay
-// per driver".
+// per driver". The clock is pinned to noon of the current Belgrade date, so
+// "tomorrow" is in the future even when the suite runs after 23:00.
 func newTestStore(t *testing.T) (*store.Store, int64, int64) {
 	t.Helper()
+	d := clock.Today()
+	noon := time.Date(d.Year(), d.Month(), d.Day(), 12, 0, 0, 0, clock.Now().Location())
+	t.Cleanup(clock.Set(func() time.Time { return noon }))
 
 	conn, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
@@ -238,4 +242,20 @@ func TestCloseOpenStay_RejectsReturnBeforeEntry(t *testing.T) {
 
 	_, err := st.CloseOpenStay(context.Background(), tenantID, driverID, day(-10))
 	assertValidationError(t, err, "return date before entry")
+}
+
+// After 23:00 Belgrade time it is already tomorrow at an EET border (BG, RO,
+// GR); a stamp with that date is not in the future. The day after is.
+func TestCreateStay_AcceptsEETDateBeforeBelgradeMidnight(t *testing.T) {
+	st, tenantID, driverID := newTestStore(t)
+	v, _ := time.ParseInLocation("2006-01-02 15:04", "2026-10-14 23:30", clock.Now().Location())
+	t.Cleanup(clock.Set(func() time.Time { return v }))
+	ctx := context.Background()
+	d := func(s string) time.Time { x, _ := time.Parse("2006-01-02", s); return x }
+
+	_, err := st.CreateStay(ctx, tenantID, driverID, d("2026-10-16"), nil, "work", "manual", "", nil)
+	assertValidationError(t, err, "entry two days ahead")
+	if _, err := st.CreateStay(ctx, tenantID, driverID, d("2026-10-15"), nil, "work", "telegram_button", "", nil); err != nil {
+		t.Errorf("entry on the EET date was refused: %v", err)
+	}
 }
