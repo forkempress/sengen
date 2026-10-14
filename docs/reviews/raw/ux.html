@@ -1,0 +1,526 @@
+<title>Dani90 UX pregled</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: jedna kolona izveštaja (max 1040px) sa lepljivim sadržajem na vrhu; wireframe-ovi kao "ekrani" u okvirima. Paleta preuzeta iz postojećeg style.css aplikacije. */
+:root {
+  --bg: #EEF0EC; --surface: #FFFFFF; --surface-2: #F6F7F4; --line: #D3D8D1; --line-strong: #8C958C;
+  --fg: #16202B; --muted: #55606A; --navy: #1D3F91; --navy-ink: #FFFFFF; --header: #16202B; --yellow: #F2B33D;
+  --ok: #1F7A47; --ok-bg: #E3F3EA; --warn: #935600; --warn-bg: #FBEFD9; --bad: #B3301A; --bad-bg: #FBE9E6; --crit: #7A1408;
+  --sans: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif; --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111820; --surface: #19222D; --surface-2: #1F2935; --line: #2F3B48; --line-strong: #5E6B78;
+  --fg: #E8ECEF; --muted: #A2ADB8; --navy: #7C9BE8; --navy-ink: #0D1626; --header: #0B1117; --yellow: #F2B33D;
+  --ok: #5CC88A; --ok-bg: #16301F; --warn: #F0B04A; --warn-bg: #33270F; --bad: #F2836E; --bad-bg: #3A1A14; --crit: #FF9E8C; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #111820; --surface: #19222D; --surface-2: #1F2935; --line: #2F3B48; --line-strong: #5E6B78;
+  --fg: #E8ECEF; --muted: #A2ADB8; --navy: #7C9BE8; --navy-ink: #0D1626; --header: #0B1117; --yellow: #F2B33D;
+  --ok: #5CC88A; --ok-bg: #16301F; --warn: #F0B04A; --warn-bg: #33270F; --bad: #F2836E; --bad-bg: #3A1A14; --crit: #FF9E8C; color-scheme: dark }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-inline: 16px; padding-block: 24px 64px; }
+h1, h2, h3 { text-wrap: balance; line-height: 1.25; }
+h1 { font-size: 1.9rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.35rem; margin: 3rem 0 1rem; padding-top: .5rem; border-top: 2px solid var(--fg); scroll-margin-top: 64px; }
+h3 { font-size: 1.05rem; margin: 1.75rem 0 .5rem; }
+p, li { max-width: 72ch; }
+a { color: var(--navy); }
+code, .mono { font-family: var(--mono); font-size: .88em; }
+.lede { color: var(--muted); margin: 0 0 1.5rem; }
+.toc { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--header); margin-inline: -16px; padding: .6rem 16px; display: flex; gap: .4rem 1.1rem; flex-wrap: wrap; font-size: .85rem; }
+.toc a { color: #E6EAEE; text-decoration: none; }
+.toc a:hover, .toc a:focus-visible { color: var(--yellow); }
+:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+.summary { background: var(--surface); border: 1px solid var(--line); border-left: 6px solid var(--yellow); padding: 1rem 1.25rem; border-radius: 6px; }
+.summary p { margin: .4rem 0; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+.grid2 > * { min-width: 0; }
+.tw { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); margin: .5rem 0 1rem; }
+table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+th, td { text-align: left; vertical-align: top; padding: .55rem .7rem; border-bottom: 1px solid var(--line); }
+th { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); background: var(--surface-2); }
+tr:last-child td { border-bottom: 0; }
+td.p { white-space: nowrap; font-family: var(--mono); font-weight: 600; }
+.p1 { color: var(--bad); } .p2 { color: var(--warn); } .p3 { color: var(--muted); }
+.pg { margin: 1.25rem 0 .25rem; font-weight: 600; }
+.pg span { font-weight: 400; color: var(--muted); font-family: var(--mono); font-size: .85rem; }
+figure { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: .5rem; }
+figure img { display: block; width: 100%; height: auto; border-radius: 3px; }
+figcaption { font-size: .8rem; color: var(--muted); padding: .4rem .2rem 0; }
+.shots { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; margin: 1rem 0; }
+.shots > * { min-width: 0; }
+@media (max-width: 700px) { .shots { grid-template-columns: 1fr; } }
+.unv { font-family: var(--mono); font-size: .75rem; background: var(--warn-bg); color: var(--warn); padding: .05rem .35rem; border-radius: 3px; }
+.tag { font-family: var(--mono); font-size: .75rem; padding: .05rem .4rem; border-radius: 3px; border: 1px solid var(--line-strong); white-space: nowrap; }
+
+/* ---------- Wireframe ekrani ---------- */
+.screen { border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; background: var(--surface); margin: .75rem 0 1.5rem; }
+.screen-bar { font-family: var(--mono); font-size: .72rem; color: var(--muted); background: var(--surface-2); border-bottom: 1px solid var(--line); padding: .35rem .7rem; }
+.wf { --wf-pad: 1.25rem; padding: var(--wf-pad); font-size: .9rem; }
+.wf .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 1rem; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--fg); font: 600 .9rem var(--sans); }
+.wf .btn-p { background: var(--navy); color: var(--navy-ink); border-color: var(--navy); }
+.wf .btn-tg { background: #2AABEE; color: #fff; border-color: #2AABEE; }
+.wf .btn-block { width: 100%; }
+.wf label { display: block; font-size: .82rem; font-weight: 500; margin: .7rem 0 .25rem; }
+.wf .in { min-height: 44px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); padding: 0 .7rem; display: flex; align-items: center; color: var(--muted); font-size: .88rem; }
+.wf .hint { font-size: .78rem; color: var(--muted); margin-top: .25rem; }
+.wf .row { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; }
+.wf .sp { justify-content: space-between; }
+.wf .logo { display: inline-flex; align-items: center; gap: .45rem; font-weight: 700; }
+.wf .logo i { font-style: normal; font-family: var(--mono); font-size: .8rem; background: var(--yellow); color: #16202B; border-radius: 4px; padding: .1rem .3rem; }
+.wf .divider { display: flex; align-items: center; gap: .6rem; color: var(--muted); font-size: .78rem; margin: 1rem 0; }
+.wf .divider::before, .wf .divider::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+.split { display: grid; grid-template-columns: 1.1fr 1fr; min-height: 380px; }
+.split > * { min-width: 0; }
+.split .dark { background: #16202B; color: #E8ECEF; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; justify-content: center; }
+.split .dark .muted { color: #A9B4BF; }
+.split .form { padding: 1.5rem; display: flex; flex-direction: column; justify-content: center; max-width: 380px; width: 100%; margin: 0 auto; }
+@media (max-width: 720px) { .split { grid-template-columns: 1fr; } .split .dark.hide-m { display: none; } }
+.mini { background: #1F2B38; border-radius: 6px; padding: .6rem; font-size: .78rem; display: grid; gap: .35rem; }
+.mini .r { display: flex; justify-content: space-between; gap: .5rem; align-items: center; }
+.st { display: inline-flex; align-items: center; gap: .3rem; font: 600 .78rem var(--sans); padding: .15rem .5rem; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.st b { font-family: var(--mono); }
+.st-ok { color: var(--ok); background: var(--ok-bg); }
+.st-warn { color: var(--warn); background: var(--warn-bg); }
+.st-bad { color: var(--bad); background: var(--bad-bg); }
+.st-crit { color: #fff; background: var(--crit); border-color: var(--crit); }
+.mini .st-ok { color: #7FD8A4; background: transparent; } .mini .st-warn { color: #F5C26B; background: transparent; } .mini .st-bad { color: #FF9E8C; background: transparent; }
+.steps { display: flex; gap: .3rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.steps span { font-size: .72rem; font-family: var(--mono); padding: .2rem .5rem; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.steps span.on { background: var(--navy); color: var(--navy-ink); border-color: var(--navy); }
+.steps span.done { color: var(--ok); border-color: var(--ok); }
+.onb { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 1rem; }
+.onb > .screen { margin: 0; }
+.qr { width: 120px; height: 120px; background:
+  conic-gradient(from 90deg at 30% 30%, var(--fg) 25%, transparent 0) 0 0/24px 24px, var(--surface-2); border: 6px solid var(--surface); outline: 1px solid var(--line); flex: none; }
+.app-h { background: #16202B; color: #E8ECEF; padding: .6rem 1rem; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; font-size: .85rem; }
+.app-h .on { color: var(--yellow); font-weight: 600; }
+.app-h .grow { flex: 1; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .6rem; margin: .75rem 0; }
+.kpi { border: 1px solid var(--line); border-radius: 6px; padding: .6rem .75rem; background: var(--surface); display: grid; gap: .1rem; }
+.kpi .n { font: 600 1.5rem var(--mono); }
+.kpi.bad { border-left: 5px solid var(--bad); } .kpi.warn { border-left: 5px solid var(--warn); } .kpi.ok { border-left: 5px solid var(--ok); } .kpi.crit { border-left: 5px solid var(--crit); }
+.kpi small { color: var(--muted); font-size: .75rem; }
+.drv { display: grid; grid-template-columns: minmax(150px, 1.4fr) minmax(120px, 1fr) minmax(150px, 1.1fr) minmax(130px, 1fr); gap: .5rem 1rem; align-items: center; padding: .65rem .75rem; border-bottom: 1px solid var(--line); }
+.drv.head { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); background: var(--surface-2); }
+.drv .big { font: 600 1.25rem var(--mono); }
+.drv small { display: block; color: var(--muted); font-size: .78rem; }
+@media (max-width: 640px) {
+  .drv { grid-template-columns: 1fr auto; }
+  .drv.head { display: none; }
+  .drv .c3, .drv .c4 { grid-column: 1 / -1; font-size: .8rem; }
+}
+.banner { background: var(--crit); color: #fff; padding: .6rem .8rem; border-radius: 6px; font-size: .88rem; }
+.banner a { color: #FFE2A6; font-weight: 600; }
+.empty { border: 2px dashed var(--line-strong); border-radius: 8px; padding: 1.25rem; display: grid; gap: .6rem; }
+.check { display: grid; gap: .35rem; font-size: .88rem; }
+.check div::before { content: "○ "; color: var(--muted); font-family: var(--mono); }
+.check div.d::before { content: "✓ "; color: var(--ok); }
+.trial { background: var(--warn-bg); color: var(--fg); border: 1px solid var(--warn); border-radius: 6px; padding: .5rem .75rem; font-size: .85rem; }
+
+/* ---------- Design system ---------- */
+.sw { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .6rem; }
+.sw div { border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--surface); font-size: .78rem; }
+.sw i { display: block; height: 44px; }
+.sw span { display: block; padding: .35rem .5rem; }
+.sw code { color: var(--muted); }
+.ds-row { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin: .5rem 0 1rem; }
+.ex-type > * { margin: .2rem 0; }
+</style>
+
+<div class="wrap">
+<h1>Dani90 UX pregled</h1>
+<p class="lede">Pregled web aplikacije (<code>app.dani90.rs</code>), Telegram bota i prodajnog sajta, plus predlog logina, samostalne registracije i mini design system-a. Stanje koda: commit <code>9c28a39</code>, 14.10.2026. App je pokrenut lokalno sa demo podacima (firma sa 10 vozača i prazna firma); screenshotovi za 1440px i 390px su napravljeni headless Chrome-om.</p>
+
+<nav class="toc" aria-label="Sadržaj">
+  <a href="#sazetak">Sažetak</a><a href="#inventar">Inventar</a><a href="#review">Review po stranici</a><a href="#login">Login</a><a href="#signup">Registracija</a><a href="#dashboard">Dashboard</a><a href="#ds">Design system</a><a href="#izmene">Lista izmena</a>
+</nav>
+
+<h2 id="sazetak">Executive summary</h2>
+<div class="summary">
+  <p><strong>Tri najveća problema:</strong> (1) na telefonu dispečer na Pregledu ne vidi preostale dane: kolona je van ekrana, vidi se samo ime i „gde je“; (2) status se prenosi samo bojom i brojem u malom kružiću, narandžasti badge ima kontrast 2,8:1, a nigde ne piše „OK / Upozorenje / Prekoračeno“; (3) „Obriši boravak“ i „Deaktiviraj“ rade bez potvrde, jer <code>hx-confirm</code> ne radi na običnim formama.</p>
+  <p><strong>Tri najbrža dobitka:</strong> tekstualna oznaka statusa uz broj i tamnije boje statusa (S); kartice umesto tabele na mobilnom Pregledu (S–M); prava potvrda brisanja, brendirane 404/500 stranice i polja za autocomplete na loginu (S).</p>
+  <p>Jezgro je dobro: sortiranje po riziku, HITNO baner, kalendar i provera ture su korisniji nego kod većine konkurenata. Problemi su uglavnom u prezentaciji i u tome što app nema nijedan ekran za nekoga ko još nema nalog.</p>
+</div>
+
+<h2 id="inventar">1. Inventar stranica i poruka</h2>
+<div class="tw"><table>
+<thead><tr><th>Ruta / mesto</th><th>Ko vidi</th><th>Šta je</th><th>Screenshot</th></tr></thead>
+<tbody>
+<tr><td><code>/login</code></td><td>svi</td><td>Forma email + lozinka, greška „Pogrešan email ili lozinka“, rate limit 5/15 min</td><td>da</td></tr>
+<tr><td><code>/</code> → <code>/pregled</code></td><td>vlasnik, dispečer</td><td>Semafor vozača: KPI kartice, filteri, tabela, HITNO baner, „stanje na dan“</td><td>da (pun, prazan, filter bez rezultata, budući dan)</td></tr>
+<tr><td><code>/vozaci/{id}</code></td><td>vlasnik, dispečer</td><td>Kartice, „Vratio se danas“, provera ture, kalendar 6 meseci, dodaj boravak, istorija sa izmenom/brisanjem</td><td>da (u Šengenu, crven, bez boravaka, rezultat ture)</td></tr>
+<tr><td><code>/podesavanja/vozaci</code></td><td>vlasnik, dispečer</td><td>Dodaj vozača, lista, Telegram link, deaktivacija</td><td>da (pun, prazan)</td></tr>
+<tr><td><code>/podesavanja/korisnici</code></td><td>vlasnik</td><td>Dodaj korisnika (početna lozinka), lista</td><td>da</td></tr>
+<tr><td><code>/podesavanja/telegram</code></td><td>vlasnik</td><td>Kome idu upozorenja, pragovi, chat ID, poveži svoj Telegram</td><td>da</td></tr>
+<tr><td><code>/import</code></td><td>vlasnik, dispečer</td><td>CSV uvoz: pregled sa greškama po redu, potvrda</td><td>da (bez fajla); pregled sa greškama <span class="unv">neprovereno</span></td></tr>
+<tr><td><code>/pomoc</code></td><td>vlasnik, dispečer</td><td>Uputstvo, legenda boja, objašnjenje kolona</td><td>da</td></tr>
+<tr><td>404 / 403 / 500</td><td>svi</td><td>Go podrazumevani tekst <code>404 page not found</code>; 500 je goli tekst „greška servera“</td><td>da (404); 500 iz koda</td></tr>
+<tr><td>Flash poruke</td><td>svi</td><td>Zelena / crvena traka na vrhu sadržaja</td><td>iz koda</td></tr>
+<tr><td>Telegram: vozač</td><td>vozač</td><td>Dugmad Izašao iz Srbije / Vratio se u Srbiju / Moji dani / Pomoć, potvrde, „Poništi“ 10 min, podsetnik posle 7 dana</td><td>iz koda (<code>telegram/driver.go</code>, <code>help.go</code>)</td></tr>
+<tr><td>Telegram: dispečer</td><td>vlasnik, dispečer</td><td><code>/pregled /vozac /planer /dodaj /link /ispravi /sablon</code>, brzi unos teksta, CSV, upozorenja i dnevni pregled u 07:00</td><td>iz koda (<code>admin.go</code>, <code>jobs.go</code>)</td></tr>
+<tr><td>Email poruke</td><td>—</td><td>Ne postoje: app ne šalje email (nema reseta lozinke ni verifikacije)</td><td>—</td></tr>
+<tr><td>Sajt <code>dani90.rs</code></td><td>javno</td><td><code>index</code>, <code>kalkulator</code>, <code>hvala</code>, <code>404</code>; CTA je „Zakažite demo“ (web3forms), nema registracije</td><td>da</td></tr>
+</tbody></table></div>
+<p>Svih 40 screenshotova (20 stranica × desktop/mobil) je u <code>docs/ux-screens/</code> u repou. Ovde su prikazani samo oni koji pokazuju problem.</p>
+
+<h2 id="review">2. Review po stranici</h2>
+
+<div class="shots">
+  <figure><img src="img/pregled-desktop.jpg" alt="Pregled na desktopu: KPI kartice, filteri i tabela vozača; kolona Izvor je odsečena desno"><figcaption>Pregled, 1440px. Tabela je šira od kontejnera od 1100px, pa je kolona „Izvor“ odsečena. Link u HITNO baneru je plav na tamnocrvenom.</figcaption></figure>
+  <figure><img src="img/pregled-mobil.jpg" alt="Pregled na telefonu: vide se samo kolone vozač i gde je"><figcaption>Pregled, 390px. Preostali dani se ne vide bez horizontalnog skrolovanja.</figcaption></figure>
+</div>
+
+<p class="pg">Pregled <span>/pregled</span></p>
+<div class="tw"><table>
+<thead><tr><th>Dobro</th><th>Problem</th><th>Sugestija</th><th>Prioritet</th></tr></thead>
+<tbody>
+<tr><td rowspan="8">Sortiranje po riziku. HITNO baner na vrhu. „Može do“ i „najduža tura“ odgovaraju na pravo pitanje dispečera. Filteri i „stanje na dan“ su korisni, a pretraga radi bez kvačica.</td><td>Na 390px vidljive su samo 2 od 7 kolona; „Preostalo“ je van ekrana.</td><td>Ispod 700px prikazati listu kartica: ime + veliki broj preostalih dana + tekstualni status, u drugom redu „U Šengenu od 07.10 · može do 24.10“. Wireframe u <a href="#dashboard">sekciji Dashboard</a>.</td><td class="p p1">P1</td></tr>
+<tr><td>Status je samo broj u obojenom kružiću; reč postoji samo za 0 („HITNO“). Daltonista ne razlikuje 18 od 38.</td><td>Badge = ikona + reč + broj: „✓ OK 38“, „! Pažnja 18“, „▲ Kritično 6“, „⛔ Preko limita −6“. Ista reč u botu i upozorenjima.</td><td class="p p1">P1</td></tr>
+<tr><td>Narandžasti badge: beo tekst na <code>#D88B12</code> = 2,8:1; zeleni 4,3:1. Oba padaju WCAG AA za mali tekst.</td><td>Svetla pozadina + taman tekst (paleta u <a href="#ds">design system-u</a>), svi parovi ≥ 4,5:1.</td><td class="p p1">P1</td></tr>
+<tr><td>Link vozača u HITNO baneru: plavo na tamnocrvenom = 1,1:1, praktično nevidljivo.</td><td>Beo ili svetložut podvučen link, plus dugme „Otvori vozača“.</td><td class="p p1">P1</td></tr>
+<tr><td>Na desktopu tabela izlazi iz kontejnera; „Izvor“ je odsečen i ima malu vrednost za dispečera.</td><td>Ukloniti „Izvor“ iz pregleda (ostaje na stranici vozača) ili proširiti kontejner na 1280px.</td><td class="p p2">P2</td></tr>
+<tr><td>KPI kartice su sive i ne vode nigde. „Ispod 15 dana: 3“ ne kaže koji su to vozači.</td><td>Kartice kao filteri (klik → <code>?ozbiljnost=crveno</code>), leva traka u boji statusa, broj HITNO kao posebna kartica.</td><td class="p p2">P2</td></tr>
+<tr><td>Terminologija: filter kaže „žuto“, badge je narandžast, Telegram stranica kaže „narandžasto“. Kolona „Iskorišćeno/90“ i „Preostalo“ su dva lica istog broja.</td><td>Imenovati statuse, ne boje: OK / Pažnja / Kritično / Preko limita. Jedan pojam za datum: „Mora da izađe do“ (u Šengenu) i „Najduža tura“ (u Srbiji).</td><td class="p p2">P2</td></tr>
+<tr><td>Prazno stanje: četiri nule, filteri i tabela sa jednim redom „Nema vozača“.</td><td>Sakriti KPI i filtere dok nema vozača; prikazati kontrolnu listu prvih koraka (vidi <a href="#dashboard">prazno stanje</a>).</td><td class="p p1">P1</td></tr>
+</tbody></table></div>
+
+<div class="shots">
+  <figure><img src="img/vozac-u-sengenu-desktop.jpg" alt="Stranica vozača na desktopu: četiri kartice, dugmad, provera ture, kalendar, istorija"><figcaption>Vozač, 1440px. Najvažniji broj (41 preostalo) je najmanji element u redu kartica.</figcaption></figure>
+  <figure><img src="img/vozac-crven-mobil.jpg" alt="Stranica vozača na telefonu, gornji deo"><figcaption>Vozač, 390px. Stranica je šira od ekrana (404px), kalendar je 6 meseci jedan ispod drugog.</figcaption></figure>
+</div>
+
+<p class="pg">Vozač <span>/vozaci/{id}</span></p>
+<div class="tw"><table>
+<thead><tr><th>Dobro</th><th>Problem</th><th>Sugestija</th><th>Prioritet</th></tr></thead>
+<tbody>
+<tr><td rowspan="7">„Vratio se danas“ kao primarno dugme. Kalendar sa projekcijom i danima oslobađanja je jedinstvena vrednost. Provera ture daje jasan odgovor „Može / Ne može“ i najraniji polazak.</td><td>„Obriši“ i „Deaktiviraj“ nemaju potvrdu: <code>hx-confirm</code> radi samo na htmx zahtevima, a forme su obične <code>method="post"</code>. Jedan pogrešan klik briše boravak bez povratka.</td><td>Dodati <code>hx-post</code> na te forme ili <code>onsubmit="return confirm(…)"</code>; bolje: brisanje sa „Poništi“ u flash poruci 10 s, kao u botu.</td><td class="p p1">P1</td></tr>
+<tr><td>„Preostalo danas“ je mali badge (13px) u kartici, dok su datumi pored 26px.</td><td>Hero blok na vrhu: veliki broj preostalih dana, status rečju, jedna rečenica („U Šengenu od 08.10. Mora da izađe najkasnije 06.12.2026.“).</td><td class="p p1">P1</td></tr>
+<tr><td>Na 390px stranica je 14px šira od ekrana; istorija skriva dugmad Izmeni/Obriši desno.</td><td>Istorija kao lista kartica na mobilnom; kalendar 2–3 meseca uz „Prikaži još“.</td><td class="p p2">P2</td></tr>
+<tr><td>Labele „Ulazak“, „Izlazak“, „Tip“, „Napomena“ nemaju <code>for</code>/<code>id</code>, pa ih čitač ekrana ne povezuje sa poljem.</td><td>Dodati <code>id</code> i <code>for</code> svuda (ista greška je u Vozači i Uvoz).</td><td class="p p2">P2</td></tr>
+<tr><td>Crveno „Obriši“ dugme u svakom redu je dominantnije od samih podataka.</td><td>Sekundarno dugme ili meni „⋯“; crveno tek u koraku potvrde.</td><td class="p p3">P3</td></tr>
+<tr><td>Redosled: provera ture je iznad kalendara i unosa, a dispečer najčešće unosi ili ispravlja boravak.</td><td>Hero → akcije (Vratio se / Dodaj boravak) → kalendar → istorija → provera ture u sklopivom bloku ili u modalu.</td><td class="p p3">P3</td></tr>
+<tr><td>Vozač bez boravaka vidi prazan kalendar i „Još nema unetih boravaka“.</td><td>Poruka: „Unesite boravke iz poslednjih 180 dana da bi brojanje bilo tačno“ + dugmad „Dodaj boravak“ i „Uvezi CSV“.</td><td class="p p2">P2</td></tr>
+</tbody></table></div>
+
+<div class="grid2">
+  <figure><img src="img/telegram-desktop.jpg" alt="Podešavanja Telegram stranica"><figcaption>Telegram i pragovi. „Chat ID“ je tehnički pojam za korisnika koji nije tech-savvy.</figcaption></figure>
+  <figure><img src="img/prazno-pregled-desktop.jpg" alt="Prazan pregled sa nulama"><figcaption>Prvi ekran nove firme: nule i jedna rečenica.</figcaption></figure>
+</div>
+
+<p class="pg">Vozači, Korisnici, Telegram, Uvoz, Pomoć, greške</p>
+<div class="tw"><table>
+<thead><tr><th>Stranica</th><th>Dobro</th><th>Problem</th><th>Sugestija</th><th>Prioritet</th></tr></thead>
+<tbody>
+<tr><td>Vozači</td><td>Kratka forma, jasna akcija „Telegram link“.</td><td>Na mobilnom kolone Status i dugmad su van ekrana. Nema kolone „Telegram povezan da/ne“, a to je najvažnija informacija ove stranice. Naslov „Podešavanja — Vozači“ a stavka menija „Vozači“.</td><td>Kolona „Telegram: ✓ povezan / ✗ nije“ sa dugmetom pored. Posle „Dodaj vozača“ odmah prikazati link i QR. Naslov samo „Vozači“.</td><td class="p p1">P1</td></tr>
+<tr><td>Korisnici</td><td>Uloge su objašnjene jednom rečenicom.</td><td>Vlasnik smišlja i prenosi lozinku drugoj osobi. Nema brisanja ni promene uloge.</td><td>Poziv emailom („Pošalji pozivnicu“), korisnik sam bira lozinku. Zavisi od slanja emaila (isto što treba registraciji).</td><td class="p p2">P2</td></tr>
+<tr><td>Telegram</td><td>Status „Upozorenja se ne šalju nikome“ je jasan i istaknut.</td><td>Stranica meša tri teme: kome idu upozorenja, pragove i povezivanje sopstvenog naloga. „Chat ID“ i „-1001234567890“ ništa ne znače vlasniku firme. Redosled tera korisnika da ide dole pa gore.</td><td>Preimenovati u „Upozorenja“. Korak 1: „Poveži svoj Telegram“ (QR + dugme). Korak 2: „Šalji upozorenja meni / u grupu“ (grupa preko <code>t.me/bot?startgroup=</code>, bez ručnog ID-a). Pragovi posebno, kao klizač sa primerom.</td><td class="p p2">P2</td></tr>
+<tr><td>Uvoz</td><td>Pregled pre upisa i „ništa se ne upisuje dok ne potvrdite“.</td><td>Nema šablona za preuzimanje. Kolone su opisane u jednom dugom pasusu. Polje za fajl je goli native input.</td><td>Dugme „Preuzmi primer CSV“, tabela sa primerom, drag-and-drop zona. Prikaz grešaka po redu <span class="unv">neprovereno</span> vizuelno.</td><td class="p p2">P2</td></tr>
+<tr><td>Pomoć</td><td>Najbolja stranica u app-u: tačna, konkretna, sa primerima i legendom.</td><td>Odvojena od mesta gde je potrebna.</td><td>Ikona „?“ pored naslova kolona na Pregledu vodi na odgovarajuće sidro u Pomoći.</td><td class="p p3">P3</td></tr>
+<tr><td>404 / 500</td><td>—</td><td>Goli tekst na engleskom, bez navigacije (vidi screenshot ispod). Na mobilnom stranica je 980px široka.</td><td>Šablon greške u layoutu: „Ova stranica ne postoji“ / „Nešto nije u redu, pokušajte ponovo“ + dugme „Na pregled“.</td><td class="p p2">P2</td></tr>
+<tr><td>Navigacija</td><td>Aktivna stavka je istaknuta.</td><td>Na 390px zaglavlje zauzima 150px u tri reda. Fokus stanja se oslanjaju na podrazumevane browser stilove; ulazna polja imaju ivicu 1,3:1 (WCAG traži 3:1 za granice kontrola).</td><td>Na mobilnom: logo + „Meni“ dugme; donja traka sa Pregled / Vozači / Pomoć. Globalno <code>:focus-visible</code> (žuti obrub kao na sajtu), ivica polja <code>#8C958C</code>.</td><td class="p p2">P2</td></tr>
+<tr><td>Stanja</td><td>Flash uspeha i greške postoje.</td><td>Nema loading stanja (dugme ne pokazuje da se šalje, pa na slabom signalu korisnik klikne dvaput). Flash nestaje tek na sledećoj stranici.</td><td>Dugme dobija <code>disabled</code> + „Čuvam…“ pri submitu; server već odbija duplikate, ali korisnik to ne vidi.</td><td class="p p3">P3</td></tr>
+</tbody></table></div>
+
+<div class="grid2">
+  <figure><img src="img/vozaci-mobil.jpg" alt="Lista vozača na telefonu bez kolone akcija"><figcaption>Vozači, 390px: dugmad za Telegram i deaktivaciju nisu vidljiva.</figcaption></figure>
+  <figure><img src="img/404-app-mobil.jpg" alt="Podrazumevana Go 404 stranica"><figcaption>404 u app-u.</figcaption></figure>
+</div>
+
+<p class="pg">Telegram bot (iz koda)</p>
+<div class="tw"><table>
+<thead><tr><th>Dobro</th><th>Problem</th><th>Sugestija</th><th>Prioritet</th></tr></thead>
+<tbody>
+<tr><td rowspan="4">Četiri velika dugmeta, „Poništi“ 10 minuta, uputstvo objašnjava BiH/Makedoniju. Potvrda posle unosa kaže do kad vozač sme da ostane.</td><td>„Izašao iz Srbije“ znači „ušao u Šengen“. Uputstvo to ispravlja, a dugme vozača navodi na pogrešan klik na Batrovcima pri ruti preko BiH.</td><td>„▶ Ušao u Šengen“ / „◀ Izašao iz Šengena“. Isti termin u webu: „ulazak / izlazak“.</td><td class="p p1">P1</td></tr>
+<tr><td>Mešanje „ti“ i „Vi“ u istom razgovoru („Već imaš…“ / „pokušajte ponovo“).</td><td>Vozaču svuda „ti“, dispečeru svuda „Vi“.</td><td class="p p3">P3</td></tr>
+<tr><td>„Da li si još u EU?“, a pravilo je Šengen. Kipar i Irska su EU a ne broje se, što app sam naglašava.</td><td>„Da li si još u Šengenu?“</td><td class="p p2">P2</td></tr>
+<tr><td>Vozač ne dobija upozorenje kad mu ostane malo dana, samo dispečer.</td><td>Poruka vozaču na pragu: „Ostalo ti je 9 dana. Moraš da izađeš najkasnije 24.10.“</td><td class="p p2">P2</td></tr>
+</tbody></table></div>
+
+<p class="pg">Prodajni sajt <span>dani90.rs</span></p>
+<p>Sajt je vizuelno najzreliji deo (brend, logo, fontovi, fokus stanja, FAQ). Za samostalnu registraciju treba: CTA „Probajte besplatno 30 dana“ pored „Zakažite demo“, cena na sajtu (sada samo pitanje u FAQ), i da login stranica app-a preuzme isti logo i žutu. Placeholder-i u footeru („kontakt — upisati pre objave“, „naziv firme i PIB“) su vidljivi na stranici <span class="tag">P1 pre objave</span>.</p>
+
+<h2 id="login">3. Login stranica</h2>
+<div class="grid2">
+  <figure><img src="img/login-desktop.jpg" alt="Trenutni login: siva pozadina i kartica sa dva polja"><figcaption>Sada: nema logoa ni imena proizvoda, nema „zaboravljena lozinka“ ni registracije. Polja nemaju <code>autocomplete="email"</code> / <code>"current-password"</code>, pa password manageri na telefonu rade lošije.</figcaption></figure>
+  <div>
+    <p><strong>Šta dodati, po redu važnosti:</strong></p>
+    <ol>
+      <li>Logo „90“ + Dani90 i jedna rečenica: „Koliko dana vaši vozači još smeju u Šengenu.“</li>
+      <li>„Zaboravili ste lozinku?“ (traži slanje emaila; danas resetovanje radi samo vlasnik preko seed komande).</li>
+      <li>„Nemate nalog? Registrujte firmu besplatno.“</li>
+      <li>Prijava preko Telegrama (Telegram Login Widget): dispečeri već imaju povezan Telegram, pa jedan tap zamenjuje lozinku. Widget traži domen podešen kod BotFather-a (<code>/setdomain</code>).</li>
+      <li>Trust red: „Podaci se čuvaju u EU · Ne delimo podatke · Kontakt: …“. „Koristi nas X firmi“ tek kad X bude ≥ 20.</li>
+      <li>Greška pored polja, ne samo na vrhu; dugme „Prikaži lozinku“.</li>
+    </ol>
+  </div>
+</div>
+
+<h3>Varijanta A: minimalna</h3>
+<div class="screen"><div class="screen-bar">app.dani90.rs/login · A</div>
+<div class="wf" style="max-width:380px;margin:0 auto;padding-block:2rem">
+  <div class="logo"><i>90</i>Dani90</div>
+  <p style="margin:.4rem 0 1rem;color:var(--muted);font-size:.85rem">Koliko dana vaši vozači još smeju u Šengenu.</p>
+  <label>Email</label><div class="in">ime@firma.rs</div>
+  <div class="row sp"><label>Lozinka</label><a href="#login" style="font-size:.8rem">Zaboravili ste lozinku?</a></div><div class="in">••••••••••</div>
+  <div style="margin-top:1rem"><span class="btn btn-p btn-block">Prijavi se</span></div>
+  <p style="font-size:.85rem;text-align:center;margin-top:1rem">Nemate nalog? <a href="#signup">Registrujte firmu besplatno</a></p>
+</div></div>
+
+<h3>Varijanta B: srednja (preporuka)</h3>
+<div class="screen"><div class="screen-bar">app.dani90.rs/login · B · na telefonu se leva strana sakriva</div>
+<div class="wf split" style="padding:0">
+  <div class="dark hide-m">
+    <div class="logo"><i>90</i>Dani90</div>
+    <div style="font-size:1.35rem;font-weight:600;line-height:1.3">Znajte tačno koliko dana vaš vozač još sme u Šengenu.</div>
+    <div class="mini" aria-hidden="true">
+      <div class="r"><span>Marko J. · BG 1234-AB</span><span class="st st-bad">▲ Kritično <b>6</b></span></div>
+      <div class="r"><span>Nikola P. · BG 2271-KM</span><span class="st st-warn">! Pažnja <b>22</b></span></div>
+      <div class="r"><span>Dejan K. · ČA 774-RS</span><span class="st st-ok">✓ OK <b>41</b></span></div>
+    </div>
+    <div class="muted" style="font-size:.8rem">Vozač javlja granicu jednim dugmetom u Telegramu. Podaci se čuvaju u EU.</div>
+  </div>
+  <div class="form">
+    <div style="font-size:1.2rem;font-weight:600;margin-bottom:.5rem">Prijava</div>
+    <span class="btn btn-tg btn-block">Prijavi se preko Telegrama</span>
+    <div class="divider">ili emailom</div>
+    <label style="margin-top:0">Email</label><div class="in">ime@firma.rs</div>
+    <div class="row sp"><label>Lozinka</label><a href="#login" style="font-size:.8rem">Zaboravili ste lozinku?</a></div><div class="in">••••••••••</div>
+    <div style="margin-top:1rem"><span class="btn btn-p btn-block">Prijavi se</span></div>
+    <p style="font-size:.85rem;margin-top:1rem">Nemate nalog? <a href="#signup">Registrujte firmu besplatno</a> · 30 dana bez kartice</p>
+  </div>
+</div></div>
+
+<h3>Varijanta C: bogata</h3>
+<p>Kao B, plus: na levoj strani kratka animacija dugmeta „Ušao u Šengen“ u telefonu, citat klijenta, logotipi firmi, i ispod forme link „Pogledajte demo bez prijave“ (read-only demo firma). Ima smisla tek sa 20+ klijenata i kad demo firma bude stabilna; do tada je B bolji odnos uloženog i dobijenog.</p>
+<p><strong>Preporuka: B.</strong> Mini-pregled sa tri vozača je istovremeno brend i objašnjenje proizvoda, a Telegram dugme skida najveći problem netehničkih korisnika: zaboravljene lozinke. Ako slanje emaila još ne postoji, pustiti prvo A bez „Zaboravili ste lozinku?“ (link „Javite nam se“ do tada).</p>
+
+<h2 id="signup">4. Samostalna registracija</h2>
+
+<h3>Tok</h3>
+<div class="tw"><table>
+<thead><tr><th>Korak</th><th>Ekran</th><th>Polja / akcija</th><th>Cilj vremena</th></tr></thead>
+<tbody>
+<tr><td class="mono">0</td><td>Sajt: CTA „Probajte 30 dana besplatno“</td><td>vodi na <code>app.dani90.rs/registracija</code></td><td class="mono">0:00</td></tr>
+<tr><td class="mono">1</td><td>Registracija</td><td>Ime firme, email, lozinka (min. 10), čekboks uslova; Turnstile nevidljiv</td><td class="mono">0:30</td></tr>
+<tr><td class="mono">2</td><td>„Proverite email“</td><td>Kod od 6 cifara u istom tabu (bolje od linka na telefonu sa drugim browserom) + link kao rezerva</td><td class="mono">1:00</td></tr>
+<tr><td class="mono">3</td><td>Wizard 1/4 — Firma</td><td>Vaše ime, broj vozača (okvirno, za cenu); sve ostalo kasnije</td><td class="mono">1:15</td></tr>
+<tr><td class="mono">4</td><td>Wizard 2/4 — Prvi vozač</td><td>Ime, registracija (opciono). Dugme „Dodaću više kasnije“</td><td class="mono">1:35</td></tr>
+<tr><td class="mono">5</td><td>Wizard 3/4 — Telegram</td><td>QR + „Pošalji link vozaču“ (Viber/SMS) + „Preskoči za sada“. Ekran sam prelazi dalje kad vozač tapne</td><td class="mono">2:10</td></tr>
+<tr><td class="mono">6</td><td>Wizard 4/4 — Poslednji ulazak</td><td>„Kad je vozač poslednji put ušao u Šengen?“ + „Još je tamo / Vratio se dana…“; „Imam CSV“ kao alternativa</td><td class="mono">2:40</td></tr>
+<tr><td class="mono">7</td><td>Rezultat (aha momenat)</td><td>Veliki broj preostalih dana, status rečju, „mora da izađe do“; dugme „Na pregled“</td><td class="mono">&lt; 3:00</td></tr>
+</tbody></table></div>
+<p>Telegram korak se može preskočiti, a unos ulaska ne: bez jednog boravka nema broja, a broj je ceo „aha“. Ako vozač nije pri ruci, dispečer unosi datum sam.</p>
+
+<h3>Wireframe-ovi</h3>
+<div class="onb">
+  <div class="screen"><div class="screen-bar">/registracija</div><div class="wf">
+    <div class="logo"><i>90</i>Dani90</div>
+    <div style="font-weight:600;font-size:1.1rem;margin:.6rem 0 .2rem">Registrujte firmu</div>
+    <div class="hint">30 dana besplatno, bez kartice. Posle 30 dana odlučujete.</div>
+    <label>Ime firme</label><div class="in">npr. Prevoz Jovanović</div>
+    <label>Email</label><div class="in">ime@firma.rs</div>
+    <label>Lozinka</label><div class="in">najmanje 10 znakova</div>
+    <div class="hint" style="margin-top:.6rem">☐ Prihvatam <a href="#signup">uslove</a> i <a href="#signup">politiku privatnosti</a></div>
+    <div style="margin-top:.8rem"><span class="btn btn-p btn-block">Napravi nalog</span></div>
+    <div class="hint" style="text-align:center;margin-top:.5rem">Već imate nalog? <a href="#login">Prijava</a></div>
+  </div></div>
+
+  <div class="screen"><div class="screen-bar">/registracija/potvrda</div><div class="wf">
+    <div style="font-weight:600;font-size:1.1rem">Proverite email</div>
+    <p style="font-size:.85rem;margin:.4rem 0">Poslali smo kod na <strong>ime@firma.rs</strong>. Upišite ga ovde.</p>
+    <div class="row" style="gap:.35rem">
+      <div class="in mono" style="width:44px;justify-content:center">4</div><div class="in mono" style="width:44px;justify-content:center">8</div><div class="in mono" style="width:44px;justify-content:center">1</div><div class="in mono" style="width:44px;justify-content:center"></div><div class="in mono" style="width:44px;justify-content:center"></div><div class="in mono" style="width:44px;justify-content:center"></div>
+    </div>
+    <div style="margin-top:1rem"><span class="btn btn-p btn-block">Potvrdi</span></div>
+    <div class="hint" style="margin-top:.6rem">Nije stiglo? Pogledajte „Promocije“ ili spam. <a href="#signup">Pošalji ponovo</a> (za 60 s) · <a href="#signup">Pogrešan email?</a></div>
+  </div></div>
+
+  <div class="screen"><div class="screen-bar">/pocetak/vozac</div><div class="wf">
+    <div class="steps"><span class="done">✓ Firma</span><span class="on">2 Vozač</span><span>3 Telegram</span><span>4 Ulazak</span></div>
+    <div style="font-weight:600;font-size:1.1rem">Dodajte prvog vozača</div>
+    <label>Ime i prezime</label><div class="in">Marko Jovanović</div>
+    <label>Registracija vozila <span style="color:var(--muted);font-weight:400">(nije obavezno)</span></label><div class="in">BG 1234-AB</div>
+    <div class="row sp" style="margin-top:1rem"><a href="#signup" style="font-size:.85rem">Imam spisak u Excelu</a><span class="btn btn-p">Dalje</span></div>
+  </div></div>
+
+  <div class="screen"><div class="screen-bar">/pocetak/telegram</div><div class="wf">
+    <div class="steps"><span class="done">✓ Firma</span><span class="done">✓ Vozač</span><span class="on">3 Telegram</span><span>4 Ulazak</span></div>
+    <div style="font-weight:600;font-size:1.1rem">Povežite Marka sa botom</div>
+    <div class="row" style="align-items:flex-start;margin:.6rem 0">
+      <div class="qr" aria-label="QR kod"></div>
+      <div style="flex:1;min-width:140px;font-size:.84rem">Ako je Marko pored vas: neka skenira kod telefonom.<br><br>Ako nije: pošaljite mu link, on samo tapne.</div>
+    </div>
+    <div class="in mono" style="font-size:.75rem">t.me/dani90bot?start=k7Qx…</div>
+    <div class="row" style="margin-top:.6rem"><span class="btn">Kopiraj link</span><span class="btn">Viber</span><span class="btn">SMS</span></div>
+    <div class="hint" style="margin-top:.6rem">⏳ Čekamo da Marko tapne… Ekran ide dalje sam.</div>
+    <div style="text-align:right;margin-top:.5rem"><a href="#signup" style="font-size:.85rem">Preskoči, povezaću kasnije</a></div>
+  </div></div>
+
+  <div class="screen"><div class="screen-bar">/pocetak/ulazak</div><div class="wf">
+    <div class="steps"><span class="done">✓ Firma</span><span class="done">✓ Vozač</span><span class="done">✓ Telegram</span><span class="on">4 Ulazak</span></div>
+    <div style="font-weight:600;font-size:1.1rem">Kad je Marko poslednji put ušao u Šengen?</div>
+    <label>Datum ulaska</label><div class="in">05.10.2026</div>
+    <label>Gde je sada?</label>
+    <div class="row"><span class="btn btn-p">Još je u Šengenu</span><span class="btn">Vratio se…</span></div>
+    <div class="hint" style="margin-top:.6rem">Za tačan broj unesite sve ulaske iz poslednjih 180 dana. Za početak je dovoljan jedan.</div>
+    <div style="margin-top:1rem"><span class="btn btn-p btn-block">Izračunaj</span></div>
+  </div></div>
+
+  <div class="screen"><div class="screen-bar">/pocetak/rezultat</div><div class="wf">
+    <div class="hint">Marko Jovanović · BG 1234-AB</div>
+    <div class="row" style="align-items:baseline;gap:.6rem;margin:.3rem 0">
+      <span style="font:600 3rem var(--mono);line-height:1">6</span><span>dana preostalo</span>
+    </div>
+    <span class="st st-bad">▲ Kritično</span>
+    <p style="font-size:.9rem;margin:.6rem 0">U Šengenu je od 05.10.2026. Mora da izađe <strong>najkasnije 24.10.2026.</strong></p>
+    <p class="hint">Bot će vam javiti 3 dana pre roka. Prvi dani mu se vraćaju 15.10.2026.</p>
+    <div class="row" style="margin-top:.8rem"><span class="btn btn-p">Na pregled</span><span class="btn">Dodaj još vozača</span></div>
+  </div></div>
+</div>
+
+<h3>Model besplatnog korišćenja</h3>
+<div class="tw"><table>
+<thead><tr><th>Model</th><th>Prednosti</th><th>Mane za ovu ciljnu grupu</th></tr></thead>
+<tbody>
+<tr><td><strong>Trial 14 dana</strong></td><td>Brza odluka, kratak ciklus prodaje.</td><td>Vozač koji je sada u Srbiji ne pređe granicu za 14 dana; firma ne vidi ni jedno upozorenje. Unos istorije oduzme pola triala.</td></tr>
+<tr><td><strong>Trial 30 dana, svi vozači, bez kartice</strong></td><td>Pokriva bar jednu turu i jedno upozorenje. Firma unese sve vozače, pa je trošak napuštanja veći. Prirodno se uklapa u mesečni ciklus fakturisanja.</td><td>Više neaktivnih naloga; zato treba podsetnik 3. i 10. dana ako nema unosa.</td></tr>
+<tr><td><strong>Besplatno do 2 vozača</strong></td><td>Firma sa 1–2 kombija nikad ne mora da plati, pa preporučuje dalje.</td><td>Mnoge ciljne firme imaju 2–5 vozača; deo bi ostao zauvek besplatan. Firma deli flotu na dva naloga.</td></tr>
+<tr><td><strong>Freemium (pregled besplatno, upozorenja plaćeno)</strong></td><td>Jasna vrednost plaćenog dela.</td><td>Upozorenje je ono što sprečava deportaciju. Skrivati ga iza naplate izgleda loše kad se nešto desi.</td></tr>
+</tbody></table></div>
+<p><strong>Preporuka:</strong> trial 30 dana bez kartice, bez ograničenja broja vozača. Uz €2/vozač mesečno, ograničenja po funkcijama ne vrede komplikacije u objašnjavanju.</p>
+
+<h3>Kraj triala</h3>
+<div class="tw"><table>
+<thead><tr><th>Kada</th><th>Šta korisnik vidi</th></tr></thead>
+<tbody>
+<tr><td class="mono">dan 1–20</td><td>Diskretna traka u zaglavlju: „Probni period: još 24 dana“.</td></tr>
+<tr><td class="mono">dan 23</td><td>Email + Telegram vlasniku: „Probni period ističe 14.11. Za 8 vozača mesečno je €16. Pogledajte predračun.“ Traka postaje žuta.</td></tr>
+<tr><td class="mono">dan 28, 30</td><td>Isto, uz dugme „Pošalji mi predračun“.</td></tr>
+<tr><td class="mono">dan 31–44</td><td>Read-only za web: Pregled i stranice vozača rade, forme su zaključane uz poruku „Probni period je istekao. <u>Pošaljite predračun</u>“. Bot <strong>i dalje prima dugmad vozača</strong> (da istorija ne dobije rupu), ali upozorenja dispečeru staju.</td></tr>
+<tr><td class="mono">dan 45+</td><td>Nalog se pauzira; podaci se čuvaju 12 meseci, pa brišu uz najavu. Izvoz CSV ostaje dostupan.</td></tr>
+</tbody></table></div>
+<div class="trial" style="margin:.5rem 0 1rem">Primer trake: <strong>Probni period ističe za 3 dana.</strong> 8 vozača × €2 = €16 mesečno. <a href="#signup">Pošalji predračun</a></div>
+<p><strong>Plaćanje:</strong> srpske firme plaćaju preko računa. Stranica <code>/pretplata</code>: broj aktivnih vozača, iznos, dugme „Pošalji predračun“ (PDF na email, sa pozivom na broj), status „Čeka uplatu / Plaćeno do 14.12.2026.“. Uplatu označavate ručno u admin delu. Da li fakture idu preko SEF-a (e-fakture) zavisi od vašeg PDV statusa i toga da li je kupac obveznik: <span class="unv">neprovereno</span>, proveriti sa knjigovođom.</p>
+
+<h3>Zaštita od zloupotrebe</h3>
+<ul>
+  <li><strong>Cloudflare Turnstile</strong> na registraciji i posle 3 neuspela logina. Nevidljiv režim; app je ionako iza Cloudflare tunela.</li>
+  <li><strong>Rate limit:</strong> registracija 3/sat po IP, slanje koda 5/sat po emailu. Postojeći limiter je u memoriji i resetuje se na restart; za registraciju čuvati u SQLite.</li>
+  <li><strong>Verifikacija emaila</strong> pre wizarda: dok nije potvrđena, nema slanja Telegram linkova (bot ne sme biti kanal za spam).</li>
+  <li>Odbijanje disposable domena, limit od 10 vozača dok traje trial bez kontakta, i obaveštenje vama na Telegram za svaku novu registraciju.</li>
+  <li>Preduslov: app sada ne šalje email. Treba transakcioni servis (Postmark, Resend, Amazon SES) sa SPF/DKIM za <code>dani90.rs</code>.</li>
+</ul>
+
+<h2 id="dashboard">Dashboard firme</h2>
+<div class="screen"><div class="screen-bar">/pregled · desktop i telefon (red se lomi u karticu ispod 640px)</div>
+<div class="app-h"><span class="logo"><i style="font-style:normal;font-family:var(--mono);font-size:.75rem;background:var(--yellow);color:#16202B;border-radius:3px;padding:.05rem .25rem">90</i> Dani90</span><span class="on">Pregled</span><span>Vozači</span><span>Upozorenja</span><span>Pomoć</span><span class="grow"></span><span>Petar ▾</span></div>
+<div class="wf" style="--wf-pad:1rem">
+  <div class="banner">⛔ <strong>Miloš Đorđević</strong> je 6 dana preko limita i još je u Šengenu. <a href="#dashboard">Otvori vozača</a></div>
+  <div class="kpis">
+    <div class="kpi crit"><small>Preko limita</small><span class="n">1</span></div>
+    <div class="kpi bad"><small>Kritično (&lt; 15)</small><span class="n">2</span></div>
+    <div class="kpi warn"><small>Pažnja (15–30)</small><span class="n">2</span></div>
+    <div class="kpi ok"><small>OK (&gt; 30)</small><span class="n">5</span></div>
+  </div>
+  <div class="row" style="margin-bottom:.6rem"><div class="in" style="flex:1;min-width:160px">🔍 Ime ili registracija</div><span class="btn">Stanje na dan: danas ▾</span></div>
+  <div style="border:1px solid var(--line);border-radius:6px;overflow:hidden">
+    <div class="drv head"><span>Vozač</span><span>Preostalo</span><span>Gde je</span><span>Rok / tura</span></div>
+    <div class="drv"><span><strong>Miloš Đorđević</strong><small>BG 9930-ZX</small></span><span><span class="st st-crit">⛔ Preko <b>−6</b></span></span><span class="c3">U Šengenu od 07.10.</span><span class="c4">Rok je bio 08.10.</span></div>
+    <div class="drv"><span><strong>Marko Jovanović</strong><small>BG 1234-AB</small></span><span><span class="st st-bad">▲ Kritično <b>6</b></span></span><span class="c3">U Šengenu od 05.10.</span><span class="c4">Mora da izađe do 24.10.</span></div>
+    <div class="drv"><span><strong>Nikola Petrović</strong><small>BG 2271-KM</small></span><span><span class="st st-warn">! Pažnja <b>22</b></span></span><span class="c3">U Šengenu od 10.10.</span><span class="c4">Mora da izađe do 20.11.</span></div>
+    <div class="drv"><span><strong>Stefan Nikolić</strong><small>NS 0412-TR</small></span><span><span class="st st-ok">✓ OK <b>48</b></span></span><span class="c3">U Srbiji</span><span class="c4">Najduža tura: 60 dana</span></div>
+  </div>
+</div></div>
+
+<h3>Prazno stanje posle registracije</h3>
+<div class="screen"><div class="screen-bar">/pregled · nova firma, wizard preskočen</div><div class="wf">
+  <div class="empty">
+    <div style="font-weight:600;font-size:1.05rem">Još 3 koraka do prvog pregleda</div>
+    <div class="check">
+      <div class="d">Firma je registrovana</div>
+      <div>Dodajte vozače — ručno ili iz Excel/CSV fajla</div>
+      <div>Unesite ulaske iz poslednjih 180 dana</div>
+      <div>Povežite vozače sa Telegram botom</div>
+    </div>
+    <div class="row"><span class="btn btn-p">Dodaj vozača</span><span class="btn">Uvezi CSV</span><a href="#dashboard" style="font-size:.85rem">Pogledaj kako izgleda sa primerom</a></div>
+  </div>
+</div></div>
+<p>Isti princip za ostala prazna stanja: Vozači bez vozača (forma + „Uvezi spisak“), vozač bez boravaka (vidi tabelu iznad), Upozorenja bez povezanog Telegrama (jedno dugme „Poveži moj Telegram“, bez forme za pragove).</p>
+
+<h2 id="ds">5. Mini design system</h2>
+<p>Zadržati postojeći smer (IBM Plex, teget, žuta, topla siva pozadina), jer ga već dele sajt i app. Menjaju se boje statusa i par komponenti.</p>
+
+<h3>Paleta</h3>
+<div class="sw">
+  <div><i style="background:#16202B"></i><span>Header / tekst<br><code>#16202B</code></span></div>
+  <div><i style="background:#1D3F91"></i><span>Primarna (teget)<br><code>#1D3F91</code></span></div>
+  <div><i style="background:#F2B33D"></i><span>Brend akcenat (žuta)<br><code>#F2B33D</code> samo na tamnom</span></div>
+  <div><i style="background:#EEF0EC"></i><span>Pozadina<br><code>#EEF0EC</code></span></div>
+  <div><i style="background:#8C958C"></i><span>Ivica polja<br><code>#8C958C</code> (3,0:1)</span></div>
+  <div><i style="background:#55606A"></i><span>Sekundarni tekst<br><code>#55606A</code></span></div>
+</div>
+<h3>Statusi (boja + ikona + reč)</h3>
+<div class="tw"><table>
+<thead><tr><th>Status</th><th>Pravilo</th><th>Badge</th><th>Tekst / pozadina</th></tr></thead>
+<tbody>
+<tr><td>OK</td><td>&gt; 30 dana</td><td><span class="st st-ok">✓ OK <b>48</b></span></td><td><code>#1F7A47</code> na <code>#E3F3EA</code> · 4,7:1</td></tr>
+<tr><td>Pažnja</td><td>15–30</td><td><span class="st st-warn">! Pažnja <b>22</b></span></td><td><code>#935600</code> na <code>#FBEFD9</code> · 5,2:1</td></tr>
+<tr><td>Kritično</td><td>1–14</td><td><span class="st st-bad">▲ Kritično <b>6</b></span></td><td><code>#B3301A</code> na <code>#FBE9E6</code> · 5,3:1</td></tr>
+<tr><td>Preko limita / 0</td><td>≤ 0</td><td><span class="st st-crit">⛔ Preko <b>−6</b></span></td><td>beo na <code>#7A1408</code> · 10,9:1</td></tr>
+</tbody></table></div>
+<p>Pragovi ostaju podesivi; menja se samo naziv (status, ne boja) u filterima, botu i upozorenjima.</p>
+
+<h3>Tipografija</h3>
+<div class="ex-type">
+  <div style="font:600 1.5rem var(--sans)">H1 · IBM Plex Sans 600 · 24px</div>
+  <div style="font:600 1.125rem var(--sans)">H2 · Plex Sans 600 · 18px</div>
+  <div style="font:400 1rem var(--sans)">Tekst · Plex Sans 400 · 16px (sada 14–15px; na telefonu 16px sprečava zumiranje iOS-a u poljima)</div>
+  <div style="font:400 .8125rem var(--sans);color:var(--muted)">Pomoćni · 13px, nikad ispod</div>
+  <div style="font:600 2.5rem var(--mono)">41 <span style="font:400 1rem var(--sans)">· Plex Mono za brojeve i datume, tabular-nums</span></div>
+</div>
+
+<h3>Komponente</h3>
+<div class="wf" style="padding:0">
+  <div class="ds-row"><span class="btn btn-p">Primarno</span><span class="btn">Sekundarno</span><span class="btn" style="color:var(--bad);border-color:var(--bad)">Obriši</span><span class="btn btn-tg">Telegram</span><span class="hint">Sva dugmad min. 44px visine; jedno primarno po ekranu.</span></div>
+  <div class="ds-row" style="max-width:420px;display:block"><label style="margin-top:0">Labela iznad polja <span style="color:var(--muted);font-weight:400">(nije obavezno)</span></label><div class="in">Placeholder samo kao primer, ne umesto labele</div><div class="hint" style="color:var(--bad)">Greška ispod polja, rečenicom: „Izlazak ne može biti pre ulaska.“</div></div>
+  <div class="ds-row"><div class="kpi bad" style="min-width:170px"><small>Kartica sa statusom</small><span class="n">2</span></div><div class="kpi" style="min-width:170px"><small>Neutralna kartica</small><span class="n">10</span></div><span class="hint">Radius 6px, ivica 1px, bez senke. Statusna traka levo samo kad kartica nosi status.</span></div>
+</div>
+
+<h2 id="izmene">6. Lista izmena po odnosu uticaj/napor</h2>
+<div class="tw"><table>
+<thead><tr><th>#</th><th>Izmena</th><th>Uticaj</th><th>Napor</th><th>Gde</th></tr></thead>
+<tbody>
+<tr><td class="mono">1</td><td>Potvrda za „Obriši boravak“ i „Deaktiviraj“ (sada ih nema)</td><td class="p1">visok</td><td><span class="tag">S</span></td><td><code>vozac_detalj.html</code>, <code>podesavanja_vozaci.html</code></td></tr>
+<tr><td class="mono">2</td><td>Status rečju + ikonom u badge-u; nove boje statusa (kontrast)</td><td class="p1">visok</td><td><span class="tag">S</span></td><td><code>status.go Badge()</code>, <code>style.css</code></td></tr>
+<tr><td class="mono">3</td><td>Čitljiv link u HITNO baneru</td><td class="p1">visok</td><td><span class="tag">S</span></td><td><code>style.css .urgent-banner a</code></td></tr>
+<tr><td class="mono">4</td><td>Dugmad bota „Ušao u Šengen / Izašao iz Šengena“; „još u Šengenu“ umesto „EU“</td><td class="p1">visok</td><td><span class="tag">S</span></td><td><code>telegram/keyboards.go</code>, <code>jobs.go</code></td></tr>
+<tr><td class="mono">5</td><td>Login: logo, rečenica, <code>autocomplete</code>, link za kontakt</td><td class="p2">srednji</td><td><span class="tag">S</span></td><td><code>login.html</code></td></tr>
+<tr><td class="mono">6</td><td>Brendirane 404 / 500 stranice</td><td class="p2">srednji</td><td><span class="tag">S</span></td><td><code>render.go</code>, novi <code>greska.html</code></td></tr>
+<tr><td class="mono">7</td><td><code>for</code>/<code>id</code> na svim labelama, <code>:focus-visible</code>, tamnija ivica polja</td><td class="p2">srednji</td><td><span class="tag">S</span></td><td>šabloni, <code>style.css</code></td></tr>
+<tr><td class="mono">8</td><td>Pregled na mobilnom kao kartice</td><td class="p1">visok</td><td><span class="tag">M</span></td><td><code>pregled.html</code>, CSS</td></tr>
+<tr><td class="mono">9</td><td>Hero sa preostalim danima na stranici vozača; mobilna istorija</td><td class="p1">visok</td><td><span class="tag">M</span></td><td><code>vozac_detalj.html</code></td></tr>
+<tr><td class="mono">10</td><td>Prazna stanja sa kontrolnom listom (Pregled, Vozači, vozač bez boravaka)</td><td class="p1">visok</td><td><span class="tag">M</span></td><td>šabloni</td></tr>
+<tr><td class="mono">11</td><td>Kolona „Telegram povezan“ u Vozačima; QR posle dodavanja</td><td class="p2">srednji</td><td><span class="tag">M</span></td><td><code>podesavanja_vozaci.html</code></td></tr>
+<tr><td class="mono">12</td><td>KPI kartice kao filteri; jedinstveni nazivi statusa u filteru</td><td class="p2">srednji</td><td><span class="tag">S</span></td><td><code>pregled.html</code></td></tr>
+<tr><td class="mono">13</td><td>Mobilna navigacija (meni ili donja traka)</td><td class="p2">srednji</td><td><span class="tag">M</span></td><td><code>layout.html</code></td></tr>
+<tr><td class="mono">14</td><td>Stranica „Upozorenja“ preuređena; grupa bez ručnog chat ID-a</td><td class="p2">srednji</td><td><span class="tag">M</span></td><td><code>podesavanja_telegram.html</code>, bot</td></tr>
+<tr><td class="mono">15</td><td>Šablon CSV za preuzimanje, drag-and-drop</td><td class="p3">nizak</td><td><span class="tag">S</span></td><td><code>import.html</code></td></tr>
+<tr><td class="mono">16</td><td>Slanje emaila (preduslov za reset lozinke, pozivnice i registraciju)</td><td class="p1">visok</td><td><span class="tag">M</span></td><td>novi paket <code>internal/mail</code></td></tr>
+<tr><td class="mono">17</td><td>Login varijanta B sa prijavom preko Telegrama</td><td class="p2">srednji</td><td><span class="tag">M</span></td><td><code>login.html</code>, <code>handlers_auth.go</code></td></tr>
+<tr><td class="mono">18</td><td>Samostalna registracija + wizard + Turnstile</td><td class="p1">visok</td><td><span class="tag">L</span></td><td>nove rute, migracija (trial polja na tenant)</td></tr>
+<tr><td class="mono">19</td><td>Trial, read-only režim, predračun, stranica Pretplata</td><td class="p1">visok</td><td><span class="tag">L</span></td><td>tenant, middleware, jobs</td></tr>
+<tr><td class="mono">20</td><td>Upozorenje vozaču na pragu</td><td class="p2">srednji</td><td><span class="tag">S</span></td><td><code>jobs.go</code></td></tr>
+</tbody></table></div>
+
+<h3>Neprovereno</h3>
+<ul>
+  <li>Prikaz CSV pregleda sa greškama i rezultat uvoza (screenshot samo praznog uvoza).</li>
+  <li>Stvarni izgled poruka u Telegram klijentu (pregledano samo iz koda; bot token nije podešen lokalno).</li>
+  <li>500 stranica (iz koda: goli tekst „greška servera“).</li>
+  <li>Tastaturna navigacija i čitač ekrana nisu testirani ručno; nalazi o labelama i fokusu su iz koda i CSS-a.</li>
+  <li>Ponašanje na pravom telefonu sa slabim signalom; emulirano samo 390px u Chrome-u.</li>
+  <li>Poreske i SEF obaveze za fakturisanje.</li>
+</ul>
+</div>
