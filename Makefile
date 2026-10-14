@@ -1,4 +1,4 @@
-.PHONY: run seed demo test build deploy
+.PHONY: run seed demo test vuln build deploy
 
 run:
 	@set -a; [ -f .env ] && . ./.env; set +a; \
@@ -19,6 +19,10 @@ demo:
 
 test:
 	go test ./... -v
+
+# Proverava poznate ranjivosti u Go-u i modulima do kojih kod stvarno dolazi.
+vuln:
+	go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 
 build:
 	go build -o bin/shengen ./cmd/server
