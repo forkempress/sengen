@@ -95,6 +95,11 @@ func (s *Server) handleImportConfirm(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/import?err=Nema+redova+za+uvoz.", http.StatusSeeOther)
 		return
 	}
+	n := len(driverIDs)
+	if len(entries) != n || len(exits) != n || len(types) != n || len(notes) != n {
+		http.Redirect(w, r, "/import?err=Neispravan+zahtev,+učitajte+fajl+ponovo.", http.StatusSeeOther)
+		return
+	}
 
 	err := s.Store.WithTx(r.Context(), func(txStore *store.Store) error {
 		for i := range driverIDs {

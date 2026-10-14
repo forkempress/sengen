@@ -173,6 +173,14 @@ func formatExitForMessage(exit *time.Time) string {
 }
 
 func (s *Store) CreateStay(ctx context.Context, tenantID, driverID int64, entry time.Time, exit *time.Time, typ, source, note string, createdBy *int64) (*Stay, error) {
+	// The driver id may come from a form; never attach a stay to another
+	// firm's driver.
+	if _, err := s.GetDriver(ctx, tenantID, driverID); err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return nil, &ValidationError{Msg: "nepoznat vozač"}
+		}
+		return nil, err
+	}
 	if err := s.validateStay(ctx, tenantID, driverID, 0, entry, exit); err != nil {
 		return nil, err
 	}

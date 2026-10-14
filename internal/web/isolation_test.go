@@ -329,3 +329,69 @@ func TestLogin_UnknownEmailTakesAsLongAsWrongPassword(t *testing.T) {
 		t.Errorf("unknown email answered in %v, wrong password in %v — the gap reveals which emails exist", unknown, wrongPass)
 	}
 }
+
+// CSV import confirmation carries driver ids in hidden form fields. Firm A
+// rewriting one to firm B's driver must not plant a stay on B's driver — an
+// open one would block B from recording anything for that driver.
+func TestIsolation_ImportConfirmCannotWriteToAnotherFirmsDriver(t *testing.T) {
+	app, a, b := twoFirmApp(t)
+	sa := app.mustLogin(a)
+	ctx := context.Background()
+	before := app.stayCount(b.tenant.ID, b.driver.ID)
+	entry := clock.Today().AddDate(0, 0, -2).Format("2006-01-02")
+
+	sa.post("/import/potvrdi", url.Values{
+		"row_driver_id": {id(b.driver.ID)},
+		"row_entry":     {entry},
+		"row_exit":      {""},
+		"row_type":      {"work"},
+		"row_note":      {""},
+	})
+
+	var planted int
+	if err := app.st.DB.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM stays WHERE driver_id = ? AND tenant_id <> ?`, b.driver.ID, b.tenant.ID,
+	).Scan(&planted); err != nil {
+		t.Fatal(err)
+	}
+	if planted != 0 {
+		t.Errorf("firm A planted %d stay(s) on firm B's driver", planted)
+	}
+	if got := app.stayCount(b.tenant.ID, b.driver.ID); got != before {
+		t.Errorf("firm B's driver has %d stays, want %d", got, before)
+	}
+	// Firm B can still open a stay for its own driver.
+	if _, err := app.st.CreateStay(ctx, b.tenant.ID, b.driver.ID, clock.Today(), nil, "work", "manual", "", nil); err != nil {
+		t.Errorf("firm B cannot open a stay for its own driver: %v", err)
+	}
+}
+
+// Even a row that slips past the handler cannot tie a stay to another firm's
+// driver: the database refuses it.
+func TestIsolation_DatabaseRefusesStayForAnotherFirmsDriver(t *testing.T) {
+	app, a, b := twoFirmApp(t)
+	_, err := app.st.DB.ExecContext(context.Background(),
+		`INSERT INTO stays (tenant_id, driver_id, entry_date, type, source) VALUES (?, ?, ?, 'work', 'import')`,
+		a.tenant.ID, b.driver.ID, clock.Today().Format("2006-01-02"))
+	if err == nil {
+		t.Error("database accepted a stay whose driver belongs to another firm")
+	}
+}
+
+// Hidden fields of different lengths must be rejected, not panic.
+func TestImportConfirm_MismatchedFieldsAreRejected(t *testing.T) {
+	app, a, _ := twoFirmApp(t)
+	sa := app.mustLogin(a)
+	before := app.stayCount(a.tenant.ID, a.driver.ID)
+
+	w := sa.post("/import/potvrdi", url.Values{
+		"row_driver_id": {id(a.driver.ID), id(a.driver.ID)},
+		"row_entry":     {clock.Today().AddDate(0, 0, -2).Format("2006-01-02")},
+	})
+	if w.Code != http.StatusSeeOther || !strings.Contains(w.Header().Get("Location"), "err=") {
+		t.Errorf("POST /import/potvrdi with mismatched fields = %d %q, want a redirect with an error", w.Code, w.Header().Get("Location"))
+	}
+	if got := app.stayCount(a.tenant.ID, a.driver.ID); got != before {
+		t.Errorf("stays = %d, want %d", got, before)
+	}
+}
