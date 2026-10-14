@@ -36,13 +36,17 @@ računara, a Cloudflare obezbeđuje domen i TLS.
 Dodaj `dani90.rs` u Cloudflare i kod registrara postavi Cloudflare-ove
 nameservere. Sačekaj da zona postane aktivna.
 
+Aplikacija ide na poddomen `app.dani90.rs`, a glavni domen ostaje slobodan
+za kasniji prodajni sajt. Tako se adresa aplikacije (i Telegram webhook) ne
+menja kad taj sajt dođe.
+
 **2. Instaliraj i poveži cloudflared**
 
 ```bash
 brew install cloudflared
 cloudflared tunnel login
 cloudflared tunnel create dani90
-cloudflared tunnel route dns dani90 dani90.rs
+cloudflared tunnel route dns dani90 app.dani90.rs
 ```
 
 `login` otvara browser i traži da izabereš zonu. `create` ispisuje UUID tunela
@@ -68,12 +72,12 @@ DEV_INSECURE_COOKIES=false
 preko HTTPS-a, pa sesijski kolačić treba da nosi `Secure` zastavicu.
 
 ```bash
-make seed ARGS="-tenant-name 'Moja Firma' -host dani90.rs -email ja@firma.rs -password lozinka -name 'Ime Prezime'"
+make seed ARGS="-tenant-name 'Moja Firma' -host app.dani90.rs -email ja@firma.rs -password lozinka -name 'Ime Prezime'"
 make run
 ```
 
 Host u `seed` komandi **mora tačno odgovarati** domenu preko kog se pristupa
-(`dani90.rs`), jer se firma prepoznaje po `Host` zaglavlju.
+(`app.dani90.rs`), jer se firma prepoznaje po `Host` zaglavlju.
 
 **5. Pokreni tunel (u drugom terminalu)**
 
@@ -81,7 +85,7 @@ Host u `seed` komandi **mora tačno odgovarati** domenu preko kog se pristupa
 cloudflared tunnel run dani90
 ```
 
-Prijavi se na `https://dani90.rs/login`.
+Prijavi se na `https://app.dani90.rs/login`.
 
 **6. Telegram bot**
 
@@ -89,7 +93,7 @@ Prijavi se na `https://dani90.rs/login`.
 2. U aplikaciji: **Podešavanja → Telegram** → nalepi token → **Sačuvaj**
    (webhook secret se generiše sam).
 3. Klikni **Postavi webhook** — aplikacija prijavljuje
-   `https://dani90.rs/telegram/webhook` Telegramu.
+   `https://app.dani90.rs/telegram/webhook` Telegramu.
 4. **Generiši link za povezivanje** da povežeš svoj Telegram kao administratora.
 5. Za vozača: **Vozači → Telegram link**, pa vozač pošalje botu dobijenu
    `/start` komandu.
