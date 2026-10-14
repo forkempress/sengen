@@ -31,6 +31,15 @@ func driverButton(text string) (btn string, legacy bool) {
 	return text, false
 }
 
+// isDriverButton reports whether btn is one of the keyboard's buttons.
+func isDriverButton(btn string) bool {
+	switch btn {
+	case BtnEnteredSchengen, BtnExitedSchengen, BtnMyDays, BtnHelp:
+		return true
+	}
+	return false
+}
+
 func DriverKeyboard() ReplyKeyboardMarkup {
 	return ReplyKeyboardMarkup{
 		ResizeKeyboard: true,

@@ -19,6 +19,13 @@ func (b *Bot) handleDriverMessage(ctx context.Context, client *Client, t *store.
 		return
 	}
 	btn, legacy := driverButton(text)
+	if p, ok := b.getPending(chatID); ok && p.Kind == "return_entry" {
+		if !isDriverButton(btn) {
+			b.handleReturnEntryText(ctx, client, t, chatID, driver, p.Data.(time.Time), text)
+			return
+		}
+		b.clearPending(chatID) // another button: the question is dropped
+	}
 	if legacy {
 		// The confirmation that follows may carry an inline "Poništi"
 		// button instead of a keyboard, so the new keyboard goes out first.
@@ -164,10 +171,8 @@ func (b *Bot) replyExited(ctx context.Context, client *Client, t *store.Tenant, 
 
 func (b *Bot) driverReturned(ctx context.Context, client *Client, t *store.Tenant, chatID int64, driver *store.Driver) {
 	if clock.NearMidnight() {
-		if _, err := b.Store.OpenStayForDriver(ctx, t.ID, driver.ID); errors.Is(err, store.ErrNotFound) {
-			client.SendMessage(ctx, chatID, "Nemaš evidentiran ulazak u Šengen.", DriverKeyboard())
-			return
-		}
+		// Asked also without an open stay: the exit date is needed either
+		// way, and driverReturnedOn then asks for the entry date.
 		b.askCrossingDate(ctx, client, chatID, "return", "Kog datuma si izašao iz Šengena (datum na pečatu)?")
 		return
 	}
@@ -179,7 +184,7 @@ func (b *Bot) driverReturned(ctx context.Context, client *Client, t *store.Tenan
 func (b *Bot) driverReturnedOn(ctx context.Context, client *Client, t *store.Tenant, chatID int64, driver *store.Driver, date time.Time) {
 	closed, err := b.Store.CloseOpenStay(ctx, t.ID, driver.ID, date)
 	if errors.Is(err, store.ErrNotFound) {
-		client.SendMessage(ctx, chatID, "Nemaš evidentiran ulazak u Šengen.", DriverKeyboard())
+		b.askReturnEntry(ctx, client, t, chatID, driver, date)
 		return
 	}
 	var verr *store.ValidationError
@@ -287,6 +292,11 @@ func (b *Bot) handleDriverCallback(ctx context.Context, client *Client, t *store
 		return
 	}
 
+	if strings.HasPrefix(data, "retentry:") {
+		b.handleReturnEntryCallback(ctx, client, t, chatID, driver, cq.ID, data)
+		return
+	}
+
 	switch data {
 	case "reopen_confirm":
 		b.handleReopenConfirm(ctx, client, t, chatID, driver, cq.ID)
@@ -296,8 +306,18 @@ func (b *Bot) handleDriverCallback(ctx context.Context, client *Client, t *store
 	case "reminder_still_in":
 		client.AnswerCallbackQuery(ctx, cq.ID, "U redu, podsetićemo ponovo.")
 	case "reminder_returned":
+		// The reminder may be answered after the exit was already
+		// recorded; that is not an exit without an entry.
+		if _, err := b.Store.OpenStayForDriver(ctx, t.ID, driver.ID); errors.Is(err, store.ErrNotFound) {
+			client.AnswerCallbackQuery(ctx, cq.ID, "Izlazak je već evidentiran.")
+			return
+		}
 		client.AnswerCallbackQuery(ctx, cq.ID, "")
 		b.driverReturned(ctx, client, t, chatID, driver)
+	case "retentry_cancel":
+		b.clearPending(chatID)
+		client.AnswerCallbackQuery(ctx, cq.ID, "Otkazano.")
+		client.SendMessage(ctx, chatID, "Ništa nije upisano. Javi dispečeru kad si bio u Šengenu.", DriverKeyboard())
 	default:
 		client.AnswerCallbackQuery(ctx, cq.ID, "")
 	}

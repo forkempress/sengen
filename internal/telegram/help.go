@@ -20,6 +20,7 @@ Važno:
 • Računaju se i privatna putovanja u Šengen — koristi ista dugmad.
 • Dugme upisuje današnji datum. Između 23:00 i 01:30 bot pita koji datum je na pečatu (na granici sa Bugarskom, Rumunijom i Grčkom tamo je sat više).
 • Ako si zaboravio da pritisneš na granici, pritisni čim se setiš i javi dispečeru tačan datum da ga ispravi.
+• Ako pritisneš „` + BtnExitedSchengen + `“ a ulazak nije evidentiran, bot će pitati kog datuma si ušao u Šengen.
 • Pogrešno pritisnuto? Dugme „Poništi" ispod potvrde važi 10 minuta.
 • Ako dugo ne javiš izlazak, bot će te pitati da li si još u Šengenu.
 
