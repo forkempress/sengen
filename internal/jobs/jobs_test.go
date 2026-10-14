@@ -144,3 +144,99 @@ func TestOpenStayReminder_AsksAboutSchengen(t *testing.T) {
 		t.Errorf("reminder = %q, want it to ask about Schengen", reminder)
 	}
 }
+
+// driverWarnings returns what the driver got apart from the week-old
+// reminder.
+func driverWarnings(f *fakeTelegram) []string {
+	var out []string
+	for _, text := range f.to(driverChat) {
+		if !strings.Contains(text, "još u Šengenu?") {
+			out = append(out, text)
+		}
+	}
+	return out
+}
+
+// PO-13: the driver hears about his own deadline on the threshold, not
+// only the dispatcher.
+func TestDriverWarning_OnRedThresholdOncePerTrip(t *testing.T) {
+	fake := newFakeTelegram(t)
+	r, st, tn, d := newJobsFixture(t)
+	today := clock.Today()
+	stay(t, st, tn, d, today.AddDate(0, 0, -80), nil) // 81 days used, 9 left
+
+	r.tick(context.Background())
+	r.tick(context.Background())
+
+	got := driverWarnings(fake)
+	want := "Ostalo ti je 9 dana u Šengenu. Moraš da izađeš najkasnije " + today.AddDate(0, 0, 9).Format("02.01.2006") + "."
+	if len(got) != 1 || !strings.Contains(got[0], want) {
+		t.Fatalf("driver got %q, want once %q", got, want)
+	}
+
+	// The next day is the same trip: no repeat until the last 3 days.
+	tomorrow := time.Date(today.Year(), today.Month(), today.Day()+1, 12, 0, 0, 0, clock.Now().Location())
+	t.Cleanup(clock.Set(func() time.Time { return tomorrow }))
+	r.tick(context.Background())
+	if got := driverWarnings(fake); len(got) != 1 {
+		t.Errorf("driver got %q after the next day, want no repeat", got)
+	}
+}
+
+func TestDriverWarning_OrangeUsesFirmThreshold(t *testing.T) {
+	fake := newFakeTelegram(t)
+	r, st, tn, d := newJobsFixture(t)
+	stay(t, st, tn, d, clock.Today().AddDate(0, 0, -65), nil) // 24 left
+
+	r.tick(context.Background())
+	if got := driverWarnings(fake); len(got) != 1 || !strings.Contains(got[0], "Ostalo ti je 24 dana") || strings.HasPrefix(got[0], "⚠️") {
+		t.Errorf("driver got %q, want the orange warning", got)
+	}
+
+	// A firm with a lower orange limit does not warn at 24 days.
+	fake2 := newFakeTelegram(t)
+	r2, st2, tn2, d2 := newJobsFixture(t)
+	settings, _ := tn2.ParsedSettings()
+	settings.ThresholdOrangeDays = 20
+	st2.UpdateTenantSettings(context.Background(), tn2.ID, settings)
+	stay(t, st2, tn2, d2, clock.Today().AddDate(0, 0, -65), nil)
+	r2.tick(context.Background())
+	if got := driverWarnings(fake2); len(got) != 0 {
+		t.Errorf("driver got %q with an orange limit of 20, want nothing", got)
+	}
+}
+
+func TestDriverWarning_LastDaysRepeatDaily(t *testing.T) {
+	fake := newFakeTelegram(t)
+	r, st, tn, d := newJobsFixture(t)
+	today := clock.Today()
+	stay(t, st, tn, d, today.AddDate(0, 0, -87), nil) // 2 left
+
+	r.tick(context.Background())
+	if got := driverWarnings(fake); len(got) != 1 || !strings.Contains(got[0], "Ostalo ti je 2 dana") {
+		t.Fatalf("driver got %q, want the 2-day warning", got)
+	}
+	tomorrow := time.Date(today.Year(), today.Month(), today.Day()+1, 12, 0, 0, 0, clock.Now().Location())
+	t.Cleanup(clock.Set(func() time.Time { return tomorrow }))
+	r.tick(context.Background())
+	if got := driverWarnings(fake); len(got) != 2 || !strings.Contains(got[1], "Ostalo ti je 1 dan ") {
+		t.Errorf("driver got %q, want a second warning with 1 dan", got)
+	}
+}
+
+// Nothing for a driver at home, even when the dispatcher is alerted.
+func TestDriverWarning_OnlyInSchengen(t *testing.T) {
+	fake := newFakeTelegram(t)
+	r, st, tn, d := newJobsFixture(t)
+	today := clock.Today()
+	exit := today.AddDate(0, 0, -1)
+	stay(t, st, tn, d, today.AddDate(0, 0, -85), &exit) // 85 used, at home
+
+	r.tick(context.Background())
+	if got := driverWarnings(fake); len(got) != 0 {
+		t.Errorf("driver at home got %q", got)
+	}
+	if got := fake.to(alertChat); len(got) == 0 {
+		t.Error("the dispatcher got no threshold alert; the fixture is wrong")
+	}
+}
