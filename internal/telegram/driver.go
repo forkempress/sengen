@@ -18,17 +18,31 @@ func (b *Bot) handleDriverMessage(ctx context.Context, client *Client, t *store.
 		client.SendMessage(ctx, chatID, driverHelpText, DriverKeyboard())
 		return
 	}
-	switch text {
-	case BtnExitedSerbia:
+	btn, legacy := driverButton(text)
+	if legacy {
+		// The confirmation that follows may carry an inline "Poništi"
+		// button instead of a keyboard, so the new keyboard goes out first.
+		client.SendMessage(ctx, chatID, keyboardRenamedMsg, DriverKeyboard())
+	}
+	switch btn {
+	case BtnEnteredSchengen:
 		b.driverExited(ctx, client, t, chatID, driver)
-	case BtnReturnedSerbia:
+	case BtnExitedSchengen:
 		b.driverReturned(ctx, client, t, chatID, driver)
 	case BtnMyDays:
 		b.driverMyDays(ctx, client, t, chatID, driver)
 	default:
-		client.SendMessage(ctx, chatID, "Koristite dugmad ispod. Za uputstvo pritisnite „"+BtnHelp+"“.", DriverKeyboard())
+		client.SendMessage(ctx, chatID, "Koristi dugmad ispod. Za uputstvo pritisni „"+BtnHelp+"“.", DriverKeyboard())
 	}
 }
+
+// keyboardRenamedMsg goes to a driver who pressed a button from the old
+// keyboard, together with the new one.
+const keyboardRenamedMsg = "Dugmad su preimenovana: „" + legacyBtnExitedSerbia + "“ je sada „" + BtnEnteredSchengen +
+	"“, a „" + legacyBtnReturnedSerbia + "“ je sada „" + BtnExitedSchengen + "“. Pritiskaj ih na granici Šengena, ne Srbije."
+
+// driverErrorMsg is the reply when recording a button press fails.
+const driverErrorMsg = "Greška pri evidentiranju. Pokušaj ponovo ili se javi dispečeru."
 
 func (b *Bot) driverExited(ctx context.Context, client *Client, t *store.Tenant, chatID int64, driver *store.Driver) {
 	open, err := b.Store.OpenStayForDriver(ctx, t.ID, driver.ID)
@@ -37,7 +51,7 @@ func (b *Bot) driverExited(ctx context.Context, client *Client, t *store.Tenant,
 		// creating a second one (the DB would reject it anyway).
 		b.setPending(chatID, "reopen_confirm", nil)
 		client.SendMessage(ctx, chatID,
-			fmt.Sprintf("Već imaš evidentiran izlazak iz Srbije od %s. Ako je taj datum greška, da pomerimo izlazak na danas?", open.Entry.Format("02.01.2006")),
+			fmt.Sprintf("Već imaš evidentiran ulazak u Šengen od %s. Ako je taj datum greška, da pomerimo ulazak na danas?", open.Entry.Format("02.01.2006")),
 			InlineKeyboard(InlineRow(InlineButton("Da, ispravi", "reopen_confirm"), InlineButton("Otkaži", "reopen_cancel"))))
 		return
 	}
@@ -53,7 +67,7 @@ func (b *Bot) driverExited(ctx context.Context, client *Client, t *store.Tenant,
 func (b *Bot) driverExitedOn(ctx context.Context, client *Client, t *store.Tenant, chatID int64, driver *store.Driver, date time.Time) {
 	stays, err := b.Store.ListStaysByDriver(ctx, t.ID, driver.ID)
 	if err != nil {
-		client.SendMessage(ctx, chatID, "Greška pri evidentiranju, pokušajte ponovo ili se javite dispečeru.", nil)
+		client.SendMessage(ctx, chatID, driverErrorMsg, DriverKeyboard())
 		return
 	}
 	// Back into Schengen on the same date he left it: that date is already a
@@ -62,7 +76,7 @@ func (b *Bot) driverExitedOn(ctx context.Context, client *Client, t *store.Tenan
 	if n := len(stays); n > 0 && stays[n-1].Exit != nil && stays[n-1].Exit.Equal(date) {
 		last := stays[n-1]
 		if err := b.Store.UpdateStay(ctx, t.ID, last.ID, last.Entry, nil, last.Type, last.Note); err != nil {
-			client.SendMessage(ctx, chatID, "Greška pri evidentiranju, pokušajte ponovo ili se javite dispečeru.", nil)
+			client.SendMessage(ctx, chatID, driverErrorMsg, DriverKeyboard())
 			return
 		}
 		b.Store.RecordAudit(ctx, t.ID, "telegram_driver", &driver.ID, "stay", last.ID, "reopen", nil, nil)
@@ -74,12 +88,12 @@ func (b *Bot) driverExitedOn(ctx context.Context, client *Client, t *store.Tenan
 
 	st, err := b.Store.CreateStay(ctx, t.ID, driver.ID, date, nil, "work", "telegram_button", "", nil)
 	if err != nil {
-		client.SendMessage(ctx, chatID, "Greška pri evidentiranju, pokušajte ponovo ili se javite dispečeru.", nil)
+		client.SendMessage(ctx, chatID, driverErrorMsg, DriverKeyboard())
 		return
 	}
 	b.Store.RecordAudit(ctx, t.ID, "telegram_driver", &driver.ID, "stay", st.ID, "create", nil, nil)
 	b.replyExited(ctx, client, t, chatID, driver, date,
-		fmt.Sprintf("Zabeleženo: izlazak iz Srbije %s.", date.Format("02.01.2006")),
+		fmt.Sprintf("Zabeleženo: ulazak u Šengen %s.", date.Format("02.01.2006")),
 		undoCallback(st.ID, "create"))
 }
 
@@ -122,7 +136,7 @@ func (b *Bot) handleCrossingDate(ctx context.Context, client *Client, t *store.T
 	switch parts[1] {
 	case "exit":
 		if _, err := b.Store.OpenStayForDriver(ctx, t.ID, driver.ID); err == nil {
-			client.SendMessage(ctx, chatID, "Izlazak je već evidentiran.", DriverKeyboard())
+			client.SendMessage(ctx, chatID, "Ulazak u Šengen je već evidentiran.", DriverKeyboard())
 			return
 		}
 		b.driverExitedOn(ctx, client, t, chatID, driver, date)
@@ -151,7 +165,7 @@ func (b *Bot) replyExited(ctx context.Context, client *Client, t *store.Tenant, 
 func (b *Bot) driverReturned(ctx context.Context, client *Client, t *store.Tenant, chatID int64, driver *store.Driver) {
 	if clock.NearMidnight() {
 		if _, err := b.Store.OpenStayForDriver(ctx, t.ID, driver.ID); errors.Is(err, store.ErrNotFound) {
-			client.SendMessage(ctx, chatID, "Nemaš evidentiran izlazak iz Srbije trenutno.", nil)
+			client.SendMessage(ctx, chatID, "Nemaš evidentiran ulazak u Šengen.", DriverKeyboard())
 			return
 		}
 		b.askCrossingDate(ctx, client, chatID, "return", "Kog datuma si izašao iz Šengena (datum na pečatu)?")
@@ -165,49 +179,66 @@ func (b *Bot) driverReturned(ctx context.Context, client *Client, t *store.Tenan
 func (b *Bot) driverReturnedOn(ctx context.Context, client *Client, t *store.Tenant, chatID int64, driver *store.Driver, date time.Time) {
 	closed, err := b.Store.CloseOpenStay(ctx, t.ID, driver.ID, date)
 	if errors.Is(err, store.ErrNotFound) {
-		client.SendMessage(ctx, chatID, "Nemaš evidentiran izlazak iz Srbije trenutno.", nil)
+		client.SendMessage(ctx, chatID, "Nemaš evidentiran ulazak u Šengen.", DriverKeyboard())
 		return
 	}
 	var verr *store.ValidationError
 	if errors.As(err, &verr) {
-		client.SendMessage(ctx, chatID, "Nije zabeleženo: "+verr.Msg+".", nil)
+		client.SendMessage(ctx, chatID, "Nije zabeleženo: "+verr.Msg+". Javi se dispečeru.", DriverKeyboard())
 		return
 	}
 	if err != nil {
-		client.SendMessage(ctx, chatID, "Greška pri evidentiranju, pokušajte ponovo ili se javite dispečeru.", nil)
+		client.SendMessage(ctx, chatID, driverErrorMsg, DriverKeyboard())
 		return
 	}
 	b.Store.RecordAudit(ctx, t.ID, "telegram_driver", &driver.ID, "stay", closed.ID, "close", nil, nil)
 
 	stays, _ := b.Store.ListStaysByDriver(ctx, t.ID, driver.ID)
 	ds := status.Compute(*driver, stays, date)
-	msg := fmt.Sprintf("Zabeleženo: povratak u Srbiju %s. Iskorišćeno %d/90, preostalo %d dana.", date.Format("02.01.2006"), ds.UsedDays, ds.Remaining)
+	msg := fmt.Sprintf("Zabeleženo: izlazak iz Šengena %s. Iskorišćeno %d/90, preostalo %d dana.", date.Format("02.01.2006"), ds.UsedDays, ds.Remaining)
 	client.SendMessage(ctx, chatID, msg, InlineKeyboard(InlineRow(InlineButton("Poništi", undoCallback(closed.ID, "close")))))
 }
 
 func (b *Bot) driverMyDays(ctx context.Context, client *Client, t *store.Tenant, chatID int64, driver *store.Driver) {
 	stays, err := b.Store.ListStaysByDriver(ctx, t.ID, driver.ID)
 	if err != nil {
-		client.SendMessage(ctx, chatID, "Greška, pokušajte ponovo.", nil)
+		client.SendMessage(ctx, chatID, "Greška. Pokušaj ponovo za minut.", DriverKeyboard())
 		return
 	}
 	ds := status.Compute(*driver, stays, clock.Today())
 	client.SendMessage(ctx, chatID, formatMyDays(ds), DriverKeyboard())
 }
 
+// formatMyDays is the driver's "Moji dani" reply, addressed to him.
 func formatMyDays(ds status.DriverStatus) string {
+	return formatDays(ds, true)
+}
+
+// formatDriverDays is the same summary for the dispatcher's /vozac,
+// talking about the driver.
+func formatDriverDays(ds status.DriverStatus) string {
+	return formatDays(ds, false)
+}
+
+func formatDays(ds status.DriverStatus, toDriver bool) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "Iskorišćeno: %d/90\nPreostalo danas: %d\n", ds.UsedDays, ds.Remaining)
 	if ds.InSchengen {
-		fmt.Fprintf(&b, "Trenutno: van Srbije od %s\n", ds.CurrentSince.Format("02.01.2006"))
-		if ds.OverBy > 0 {
+		fmt.Fprintf(&b, "Trenutno: u Šengenu od %s\n", ds.CurrentSince.Format("02.01.2006"))
+		switch {
+		case ds.OverBy > 0 && toDriver:
 			fmt.Fprintf(&b, "⛔ PREKORAČENO za %d dana — rok je bio %s. Odmah napusti Šengen i javi se dispečeru.\n",
 				ds.OverBy, ds.MaxContinuousUntil.Format("02.01.2006"))
-		} else if ds.MaxContinuousUntil != nil {
+		case ds.OverBy > 0:
+			fmt.Fprintf(&b, "⛔ PREKORAČENO za %d dana — rok je bio %s. Mora odmah da napusti Šengen.\n",
+				ds.OverBy, ds.MaxContinuousUntil.Format("02.01.2006"))
+		case ds.MaxContinuousUntil != nil && toDriver:
+			fmt.Fprintf(&b, "Možeš da ostaneš do: %s\n", ds.MaxContinuousUntil.Format("02.01.2006"))
+		case ds.MaxContinuousUntil != nil:
 			fmt.Fprintf(&b, "Može da ostane do: %s\n", ds.MaxContinuousUntil.Format("02.01.2006"))
 		}
 	} else {
-		fmt.Fprintf(&b, "Trenutno: u Srbiji\nNajduža tura sada: %d dana\n", ds.MaxTripLengthToday)
+		fmt.Fprintf(&b, "Trenutno: van Šengena\nNajduža tura sada: %d dana\n", ds.MaxTripLengthToday)
 	}
 	if ds.NextFreeUp != nil {
 		fmt.Fprintf(&b, "Sledeće oslobađanje: %s (+%d)\n", ds.NextFreeUp.Date.Format("02.01.2006"), ds.NextFreeUp.DaysFreed)
@@ -326,7 +357,7 @@ func (b *Bot) handleReopenConfirm(ctx context.Context, client *Client, t *store.
 		var verr *store.ValidationError
 		if errors.As(err, &verr) {
 			client.AnswerCallbackQuery(ctx, callbackID, "Nije ispravljeno.")
-			client.SendMessage(ctx, chatID, "Nije ispravljeno: "+verr.Msg+". Javite se dispečeru.", nil)
+			client.SendMessage(ctx, chatID, "Nije ispravljeno: "+verr.Msg+". Javi se dispečeru.", DriverKeyboard())
 			return
 		}
 		client.AnswerCallbackQuery(ctx, callbackID, "Greška.")
@@ -334,6 +365,6 @@ func (b *Bot) handleReopenConfirm(ctx context.Context, client *Client, t *store.
 	}
 	client.AnswerCallbackQuery(ctx, callbackID, "Ispravljeno.")
 	client.SendMessage(ctx, chatID,
-		fmt.Sprintf("Ispravljeno: izlazak iz Srbije je sada %s (bio je %s).", today.Format("02.01.2006"), open.Entry.Format("02.01.2006")),
+		fmt.Sprintf("Ispravljeno: ulazak u Šengen je sada %s (bio je %s).", today.Format("02.01.2006"), open.Entry.Format("02.01.2006")),
 		InlineKeyboard(InlineRow(InlineButton("Poništi", undoCallback(open.ID, entryUndoKind(open.Entry))))))
 }

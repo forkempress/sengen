@@ -395,7 +395,7 @@ func TestStartLink(t *testing.T) {
 
 // --- overstay messaging ---
 
-// A driver who has used all 90 days and presses "Izašao iz Srbije" must be
+// A driver who has used all 90 days and presses "Ušao u Šengen" must be
 // told he may not stay — never handed a date that reads like permission.
 func TestDriverExited_WithNoDaysLeftWarnsInsteadOfGivingADate(t *testing.T) {
 	fake := newFakeTelegram(t)
@@ -430,15 +430,17 @@ func TestDriverExited_WithNoDaysLeftWarnsInsteadOfGivingADate(t *testing.T) {
 func TestFormatMyDays_OverLimit(t *testing.T) {
 	deadline := clock.Today().AddDate(0, 0, -3)
 	since := clock.Today().AddDate(0, 0, -95)
-	text := formatMyDays(status.DriverStatus{
+	ds := status.DriverStatus{
 		UsedDays: 93, Remaining: 0, OverBy: 3, InSchengen: true,
 		CurrentSince: &since, MaxContinuousUntil: &deadline,
-	})
-	if strings.Contains(text, "Može da ostane do") {
-		t.Errorf("over-limit summary offers a 'may stay until' date:\n%s", text)
 	}
-	if !strings.Contains(text, "PREKORAČENO za 3 dana") {
-		t.Errorf("over-limit summary does not state the overstay:\n%s", text)
+	for _, text := range []string{formatMyDays(ds), formatDriverDays(ds)} {
+		if strings.Contains(text, "ostaneš do") || strings.Contains(text, "ostane do") {
+			t.Errorf("over-limit summary offers a 'may stay until' date:\n%s", text)
+		}
+		if !strings.Contains(text, "PREKORAČENO za 3 dana") {
+			t.Errorf("over-limit summary does not state the overstay:\n%s", text)
+		}
 	}
 }
 
@@ -537,8 +539,8 @@ func TestStart_DriverWelcomeIncludesHelp(t *testing.T) {
 }
 
 // A driver who leaves Schengen and comes back on the same calendar date
-// (Neum corridor, a quick turnaround at the border) presses "Vratio se" and
-// then "Izašao" again on the same day. The second press must be recorded,
+// (Neum corridor, a quick turnaround at the border) presses "Izašao iz Šengena" and
+// then "Ušao u Šengen" again on the same day. The second press must be recorded,
 // not rejected as an overlap with the stay that just closed today.
 func TestDriverExited_AgainOnTheDayHeReturned(t *testing.T) {
 	fake := newFakeTelegram(t)
@@ -765,7 +767,7 @@ func TestWebhook_ButtonsInGroupAreIgnored(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	postWebhook(t, bot, testSecret, groupUpdate(-100500, 777, BtnExitedSerbia))
+	postWebhook(t, bot, testSecret, groupUpdate(-100500, 777, BtnEnteredSchengen))
 
 	if _, err := bot.Store.OpenStayForDriver(ctx, tn.ID, driver.ID); err == nil {
 		t.Error("a group member recorded an exit for the driver")
@@ -811,7 +813,7 @@ func TestDeactivatedDriverLosesBotAccess(t *testing.T) {
 	if err := bot.Store.SetDriverActive(ctx, tn.ID, driver.ID, false); err != nil {
 		t.Fatal(err)
 	}
-	postWebhook(t, bot, testSecret, textUpdate(555, BtnExitedSerbia))
+	postWebhook(t, bot, testSecret, textUpdate(555, BtnEnteredSchengen))
 
 	if _, err := bot.Store.OpenStayForDriver(ctx, tn.ID, driver.ID); err == nil {
 		t.Error("deactivated driver recorded an exit")

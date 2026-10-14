@@ -215,10 +215,10 @@ func (r *Runner) checkOpenStayReminders(ctx context.Context, client *telegram.Cl
 			continue
 		}
 		client.SendMessage(ctx, *driver.TelegramChatID,
-			fmt.Sprintf("Da li si još u EU? Imaš otvoren izlazak iz Srbije od %s.", st.Entry.Format("02.01.2006")),
+			fmt.Sprintf("Da li si još u Šengenu? Ulazak je evidentiran %s, a izlazak još nije.", st.Entry.Format("02.01.2006")),
 			telegram.InlineKeyboard(telegram.InlineRow(
-				telegram.InlineButton("Da, još sam u EU", "reminder_still_in"),
-				telegram.InlineButton("Vratio sam se", "reminder_returned"),
+				telegram.InlineButton("Da, još sam u Šengenu", "reminder_still_in"),
+				telegram.InlineButton("Izašao sam iz Šengena", "reminder_returned"),
 			)))
 	}
 }

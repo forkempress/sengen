@@ -119,7 +119,7 @@ func (b *Bot) cmdVozac(ctx context.Context, client *Client, t *store.Tenant, cha
 		return
 	}
 	ds := status.Compute(*driver, stays, clock.Today())
-	client.SendMessage(ctx, chatID, driver.Name+" — "+driver.VehicleLabel+"\n"+formatMyDays(ds), nil)
+	client.SendMessage(ctx, chatID, driver.Name+" — "+driver.VehicleLabel+"\n"+formatDriverDays(ds), nil)
 }
 
 func (b *Bot) cmdPlaner(ctx context.Context, client *Client, t *store.Tenant, chatID int64, args string) {
@@ -250,11 +250,11 @@ func (b *Bot) cmdIspravi(ctx context.Context, client *Client, t *store.Tenant, c
 func auditActionLabel(action string) string {
 	switch action {
 	case "create":
-		return "Dodat izlazak"
+		return "Dodat ulazak u Šengen"
 	case "close":
-		return "Dodat povratak"
+		return "Dodat izlazak iz Šengena"
 	case "reopen":
-		return "Poništen povratak"
+		return "Ponovo otvoren boravak"
 	case "delete":
 		return "Obrisan unos"
 	case "update":

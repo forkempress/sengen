@@ -5,13 +5,13 @@ package telegram
 // exactly when to press, what to do after forgetting, and why transit
 // countries matter.
 //
-// It deliberately talks about the Schengen border rather than "leaving
-// Serbia": on routes through BiH, Montenegro, North Macedonia or Albania the
+// It talks about the Schengen border, like the buttons, rather than
+// "leaving Serbia": on routes through BiH, Montenegro, North Macedonia or Albania the
 // two are not the same, and days spent there do not count.
 const driverHelpText = `Kako se koristi:
 
-▶ ` + BtnExitedSerbia + ` — pritisni kad uđeš u Šengen.
-◀ ` + BtnReturnedSerbia + ` — pritisni kad izađeš iz Šengena.
+` + BtnEnteredSchengen + ` — pritisni kad uđeš u Šengen.
+` + BtnExitedSchengen + ` — pritisni kad izađeš iz Šengena.
 ` + BtnMyDays + ` — koliko dana si iskoristio i do kada smeš da ostaneš.
 
 Važno:
@@ -21,7 +21,7 @@ Važno:
 • Dugme upisuje današnji datum. Između 23:00 i 01:30 bot pita koji datum je na pečatu (na granici sa Bugarskom, Rumunijom i Grčkom tamo je sat više).
 • Ako si zaboravio da pritisneš na granici, pritisni čim se setiš i javi dispečeru tačan datum da ga ispravi.
 • Pogrešno pritisnuto? Dugme „Poništi" ispod potvrde važi 10 minuta.
-• Ako dugo ne javiš povratak, bot će te pitati da li si još u EU.
+• Ako dugo ne javiš izlazak, bot će te pitati da li si još u Šengenu.
 
 Evidencija služi za internu kontrolu. Zvanično stanje vodi EES sistem na granici.`
 

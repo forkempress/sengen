@@ -24,13 +24,13 @@ func (b *Bot) performUndo(ctx context.Context, tenantID, stayID int64, kind, act
 			return "", err
 		}
 		b.Store.RecordAudit(ctx, tenantID, actorType, actorID, "stay", st.ID, "delete", nil, nil)
-		return "Poništen je izlazak iz Srbije.", nil
+		return "Poništen je ulazak u Šengen.", nil
 	case "close":
 		if err := b.Store.UpdateStay(ctx, tenantID, st.ID, st.Entry, nil, st.Type, st.Note); err != nil {
 			return "", err
 		}
 		b.Store.RecordAudit(ctx, tenantID, actorType, actorID, "stay", st.ID, "reopen", nil, nil)
-		return "Poništen je povratak u Srbiju — unos je ponovo otvoren.", nil
+		return "Poništen je izlazak iz Šengena — boravak je ponovo otvoren.", nil
 	case "reopen":
 		// Only offered right after a same-day re-entry, so the stay closes
 		// again on today's date.
@@ -54,6 +54,6 @@ func (b *Bot) performUndo(ctx context.Context, tenantID, stayID int64, kind, act
 			return "", err
 		}
 		b.Store.RecordAudit(ctx, tenantID, actorType, actorID, "stay", st.ID, "update", nil, nil)
-		return "Poništena je ispravka — izlazak je ponovo od " + entry.Format("02.01.2006") + ".", nil
+		return "Poništena je ispravka — ulazak u Šengen je ponovo od " + entry.Format("02.01.2006") + ".", nil
 	}
 }
