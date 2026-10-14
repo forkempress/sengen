@@ -8,6 +8,12 @@ import (
 )
 
 func (b *Bot) handleAdminCallback(ctx context.Context, client *Client, t *store.Tenant, settings store.TenantSettings, chatID int64, user *store.User, cq *CallbackQuery) {
+	// Buttons are as privileged as commands: an inline keyboard from an older
+	// message must not let a demoted account keep writing.
+	if !IsAdminRole(user.Role) {
+		client.AnswerCallbackQuery(ctx, cq.ID, noAdminAccessMsg)
+		return
+	}
 	data := cq.Data
 
 	if stayID, kind, ok := parseUndoCallback(data); ok {

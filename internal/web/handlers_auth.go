@@ -29,7 +29,7 @@ func (s *Server) handleLoginSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	limitKey := r.RemoteAddr + "|" + email
+	limitKey := auth.ClientIP(r) + "|" + email
 	if !s.loginLimiter.Allow(limitKey) {
 		s.renderLoginError(w, r, email, "Previše pokušaja prijave. Pokušajte ponovo za nekoliko minuta.")
 		return

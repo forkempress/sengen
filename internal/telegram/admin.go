@@ -19,6 +19,12 @@ import (
 func bytesReader(data []byte) *bytes.Reader { return bytes.NewReader(data) }
 
 func (b *Bot) handleAdminMessage(ctx context.Context, client *Client, t *store.Tenant, settings store.TenantSettings, chatID int64, user *store.User, msg *Message) {
+	// Every admin entry point re-checks the role: being linked to a Telegram
+	// chat proves identity, not authority.
+	if !IsAdminRole(user.Role) {
+		client.SendMessage(ctx, chatID, noAdminAccessMsg, nil)
+		return
+	}
 	if msg.Document != nil {
 		b.handleAdminDocument(ctx, client, t, chatID, user, msg.Document)
 		return
