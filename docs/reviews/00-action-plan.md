@@ -123,12 +123,13 @@ Ukupno: P0 ≈ 52h, P1 ≈ 84h, P2 ≈ 69h. Pravnik i knjigovođa rade paralelno
 
 | Sprint | Itemi | Sati | Cilj |
 |---|---|---|---|
-| 1 | AI-01, AI-02, AI-03, AI-04, AI-05 | 10 | Zatvoriti P0 u podacima i izolaciji |
-| 2 | AI-07, AI-08, AI-09, AI-10, AI-11 | 10 | Security ojačavanje |
+| 1 ✅ | AI-01, AI-02, AI-03, AI-04, AI-05 | 10 | Zatvoriti P0 u podacima i izolaciji (spojeno u main) |
+| 2 ✅ | AI-07, AI-08, AI-09, AI-10, AI-11 | 10 | Security ojačavanje (spojeno u main) |
+| 2a ✅ | AI-57, AI-58 | 1 | Ručno 14.10: `TRUSTED_PROXY=cloudflare` u `.env`; kopija baza u `../shengen-backup-2026-10-14-pre-0014/` (integrity ok) |
 | 3 | AI-06, AI-12, AI-20 | 9 | Korisnici, sitni propusti, potvrda brisanja; poslati `legal-drafts/` pravniku |
-| 4 | AI-13, AI-14 | 10 | VPS + backup (gasi se laptop) |
+| 4 | AI-13, AI-14, AI-59 | 12 | VPS + backup + runbook (gasi se laptop) |
 | 5 | AI-15, AI-16 | 10 | Objaviti pravna dokumenta posle pregleda pravnika → **svi P0 osim AI-17 gotovi** |
-| 6 | AI-18, AI-19, AI-21, AI-22, AI-23 | 10 | Monitoring, domen, bot tekstovi, unos |
+| 6 | AI-18, AI-19, AI-21, AI-22, AI-23, AI-60 | 12 | Monitoring, domen, bot tekstovi, unos, ponovno slanje upozorenja |
 | 7 | AI-24, AI-25, AI-26, AI-27, AI-28 | 10 | Validacija, importer, testovi, status rečju |
 | 8 | AI-29, AI-30, AI-31, AI-36, AI-37 | 10 | Obaveštenje vozaču, disclaimer, audit, support |
 | 9 | AI-33, AI-35 | 10 | Prava lica, fakturisanje (knjigovođa potvrdio polja) |
