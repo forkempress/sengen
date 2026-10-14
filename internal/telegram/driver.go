@@ -37,7 +37,7 @@ func (b *Bot) driverExited(ctx context.Context, client *Client, t *store.Tenant,
 		// creating a second one (the DB would reject it anyway).
 		b.setPending(chatID, "reopen_confirm", nil)
 		client.SendMessage(ctx, chatID,
-			fmt.Sprintf("Već imaš evidentiran izlazak iz Srbije od %s. Da li greška — zatvoriti taj unos i otvoriti novi od danas?", open.Entry.Format("02.01.2006")),
+			fmt.Sprintf("Već imaš evidentiran izlazak iz Srbije od %s. Ako je taj datum greška, da pomerimo izlazak na danas?", open.Entry.Format("02.01.2006")),
 			InlineKeyboard(InlineRow(InlineButton("Da, ispravi", "reopen_confirm"), InlineButton("Otkaži", "reopen_cancel"))))
 		return
 	}
@@ -149,6 +149,12 @@ func undoCallback(stayID int64, kind string) string {
 	return fmt.Sprintf("undo:%d:%s", stayID, kind)
 }
 
+// entryUndoKind is the undo kind for "Da, ispravi": it carries the entry
+// date to restore, since the stay itself no longer remembers it.
+func entryUndoKind(oldEntry time.Time) string {
+	return "entry-" + oldEntry.Format("2006-01-02")
+}
+
 func parseUndoCallback(data string) (stayID int64, kind string, ok bool) {
 	parts := strings.Split(data, ":")
 	if len(parts) != 3 || parts[0] != "undo" {
@@ -198,7 +204,7 @@ func (b *Bot) handleUndo(ctx context.Context, client *Client, t *store.Tenant, c
 	switch kind {
 	case "create":
 		elapsed = time.Since(st.CreatedAt)
-	case "close", "reopen":
+	default: // close, reopen, entry-…: the stay was changed, not created
 		elapsed = time.Since(st.UpdatedAt)
 	}
 	if elapsed > undoWindow {
@@ -227,17 +233,28 @@ func (b *Bot) handleReopenConfirm(ctx context.Context, client *Client, t *store.
 		client.AnswerCallbackQuery(ctx, callbackID, "Nema otvorenog unosa.")
 		return
 	}
+	// The earlier entry date was wrong: move it to today. Never close the
+	// old stay and open a new one — the new one would touch the old one on
+	// today's date and be refused, leaving the driver with no open stay.
 	today := clock.Today()
-	if err := b.Store.UpdateStay(ctx, t.ID, open.ID, open.Entry, &today, open.Type, open.Note); err != nil {
-		client.AnswerCallbackQuery(ctx, callbackID, "Greška.")
-		return
-	}
-	st, err := b.Store.CreateStay(ctx, t.ID, driver.ID, today, nil, "work", "telegram_button", "", nil)
+	err = b.Store.WithTx(ctx, func(tx *store.Store) error {
+		if err := tx.UpdateStay(ctx, t.ID, open.ID, today, nil, open.Type, open.Note); err != nil {
+			return err
+		}
+		return tx.RecordAudit(ctx, t.ID, "telegram_driver", &driver.ID, "stay", open.ID, "update", nil, nil)
+	})
 	if err != nil {
+		var verr *store.ValidationError
+		if errors.As(err, &verr) {
+			client.AnswerCallbackQuery(ctx, callbackID, "Nije ispravljeno.")
+			client.SendMessage(ctx, chatID, "Nije ispravljeno: "+verr.Msg+". Javite se dispečeru.", nil)
+			return
+		}
 		client.AnswerCallbackQuery(ctx, callbackID, "Greška.")
 		return
 	}
-	b.Store.RecordAudit(ctx, t.ID, "telegram_driver", &driver.ID, "stay", st.ID, "create", nil, nil)
 	client.AnswerCallbackQuery(ctx, callbackID, "Ispravljeno.")
-	client.SendMessage(ctx, chatID, "Ispravljeno: prethodni izlazak je zatvoren danas, novi je otvoren od danas.", InlineKeyboard(InlineRow(InlineButton("Poništi", undoCallback(st.ID, "create")))))
+	client.SendMessage(ctx, chatID,
+		fmt.Sprintf("Ispravljeno: izlazak iz Srbije je sada %s (bio je %s).", today.Format("02.01.2006"), open.Entry.Format("02.01.2006")),
+		InlineKeyboard(InlineRow(InlineButton("Poništi", undoCallback(open.ID, entryUndoKind(open.Entry))))))
 }

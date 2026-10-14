@@ -550,3 +550,47 @@ func TestDriverExited_AgainOnTheDayHeReturned(t *testing.T) {
 		t.Errorf("UsedDays = %d, want 6 (today counted once)", got)
 	}
 }
+
+// QA-01: a second "Izašao" answered with "Da, ispravi" means the earlier
+// entry date was a mistake. The driver must stay in Schengen, now from
+// today, and "Poništi" must bring the old entry date back.
+func TestReopenConfirm_DriverStaysInSchengen(t *testing.T) {
+	fake := newFakeTelegram(t)
+	bot, tn := newTestBot(t)
+	ctx := context.Background()
+
+	driver, err := bot.Store.CreateDriver(ctx, tn.ID, "Marko", "")
+	if err != nil {
+		t.Fatalf("create driver: %v", err)
+	}
+	today := clock.Today()
+	oldEntry := today.AddDate(0, 0, -5)
+	st, err := bot.Store.CreateStay(ctx, tn.ID, driver.ID, oldEntry, nil, "work", "telegram_button", "", nil)
+	if err != nil {
+		t.Fatalf("seed open stay: %v", err)
+	}
+
+	bot.driverExited(ctx, fake.client(), tn, 555, driver)
+	bot.handleReopenConfirm(ctx, fake.client(), tn, 555, driver, "cb")
+
+	open, err := bot.Store.OpenStayForDriver(ctx, tn.ID, driver.ID)
+	if err != nil {
+		t.Fatalf("no open stay after 'Da, ispravi': %v (replies %q)", err, fake.texts())
+	}
+	if !open.Entry.Equal(today) {
+		t.Errorf("open stay entry = %s, want today %s", open.Entry.Format("02.01.2006"), today.Format("02.01.2006"))
+	}
+	stays, _ := bot.Store.ListStaysByDriver(ctx, tn.ID, driver.ID)
+	if len(stays) != 1 {
+		t.Errorf("driver has %d stays, want 1 (the corrected one)", len(stays))
+	}
+	if !status.Compute(*driver, stays, today).InSchengen {
+		t.Error("InSchengen = false after 'Da, ispravi'")
+	}
+
+	bot.handleUndo(ctx, fake.client(), tn, 555, driver, "cb2", st.ID, entryUndoKind(oldEntry))
+	open, err = bot.Store.OpenStayForDriver(ctx, tn.ID, driver.ID)
+	if err != nil || !open.Entry.Equal(oldEntry) {
+		t.Errorf("after Poništi open stay = %+v, %v; want entry %s", open, err, oldEntry.Format("02.01.2006"))
+	}
+}

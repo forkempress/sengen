@@ -3,6 +3,8 @@ package telegram
 import (
 	"context"
 	"errors"
+	"strings"
+	"time"
 
 	"shengen/internal/clock"
 )
@@ -39,6 +41,19 @@ func (b *Bot) performUndo(ctx context.Context, tenantID, stayID int64, kind, act
 		b.Store.RecordAudit(ctx, tenantID, actorType, actorID, "stay", st.ID, "close", nil, nil)
 		return "Poništen je ponovni ulazak — boravak je zatvoren danas.", nil
 	default:
-		return "", errors.New("nepoznata akcija")
+		// "entry-YYYY-MM-DD": put back the entry date "Da, ispravi" moved.
+		old, ok := strings.CutPrefix(kind, "entry-")
+		if !ok {
+			return "", errors.New("nepoznata akcija")
+		}
+		entry, err := time.Parse("2006-01-02", old)
+		if err != nil {
+			return "", errors.New("nepoznata akcija")
+		}
+		if err := b.Store.UpdateStay(ctx, tenantID, st.ID, entry, st.Exit, st.Type, st.Note); err != nil {
+			return "", err
+		}
+		b.Store.RecordAudit(ctx, tenantID, actorType, actorID, "stay", st.ID, "update", nil, nil)
+		return "Poništena je ispravka — izlazak je ponovo od " + entry.Format("02.01.2006") + ".", nil
 	}
 }
