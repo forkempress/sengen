@@ -68,3 +68,15 @@ window.addEventListener('pageshow', function () {
     if (b.dataset.label) b.textContent = b.dataset.label;
   });
 });
+
+// „Prikaži lozinku“ na prijavi.
+document.addEventListener('click', function (e) {
+  var btn = e.target.closest && e.target.closest('[data-toggle-password]');
+  if (!btn) return;
+  var input = document.getElementById(btn.getAttribute('data-toggle-password'));
+  if (!input) return;
+  var show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  btn.textContent = show ? 'Sakrij' : 'Prikaži';
+  btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+});

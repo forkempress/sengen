@@ -380,14 +380,33 @@ h2 { font-size: 1.125rem; font-weight: 600; margin: 1.75rem 0 0.75rem; }
 .muted { color: var(--text-muted); font-size: 0.875rem; }
 
 .login-wrap {
-  max-width: 360px;
-  margin: 4rem auto;
+  max-width: 400px;
+  margin: 3rem auto;
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: 10px;
   padding: 2rem;
 }
-.login-wrap h1 { text-align: center; }
+.login-brand { display: flex; align-items: center; justify-content: center; gap: 0.6rem; }
+.logo-lg { width: 2.75rem; height: 2.75rem; font-size: 1.3rem; border-radius: 8px; }
+.login-name { font-size: 1.6rem; font-weight: 700; }
+.login-lead { text-align: center; color: var(--text-muted); margin: 0.5rem 0 1.5rem; }
+.login-wrap h1 { font-size: 1.25rem; margin-bottom: 0.75rem; }
+.field { margin-bottom: 1rem; }
+.field label { display: block; font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.25rem; }
+.field input {
+  width: 100%; min-height: 44px; padding: 0.45rem 0.6rem;
+  border: 1px solid var(--field-border); border-radius: 5px;
+  font: inherit; font-size: 1rem; background: #fff;
+}
+.field input[aria-invalid="true"] { border-color: var(--status-red); border-width: 2px; }
+.password-row { display: flex; gap: 0.5rem; }
+.password-row input { flex: 1; min-width: 0; }
+.password-toggle { min-height: 44px; }
+.field-error { color: var(--status-red); font-size: 0.875rem; margin: 0.35rem 0 0; font-weight: 600; }
+.btn-block { width: 100%; }
+.login-help { margin: 1.25rem 0 0; text-align: center; }
+@media (max-width: 700px) { .login-wrap { margin: 1.5rem 0; padding: 1.25rem; } }
 
 .months-grid {
   display: grid;

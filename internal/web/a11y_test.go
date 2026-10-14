@@ -85,3 +85,24 @@ func templateFS_files(t *testing.T) map[string]bool {
 	}
 	return out
 }
+
+// UX-25: password managers need the autocomplete hints, and the error sits
+// next to the fields it is about (once, not also as a banner on top).
+func TestLogin_AutocompleteAndErrorByTheField(t *testing.T) {
+	app, _, _ := twoFirmApp(t)
+	page := app.request(http.MethodGet, "/login", nil, nil).Body.String()
+	for _, want := range []string{`autocomplete="email"`, `autocomplete="current-password"`, "Javite nam se", "Prikaži", "Koliko dana vaši vozači još smeju u Šengenu."} {
+		if !strings.Contains(page, want) {
+			t.Errorf("login page is missing %q", want)
+		}
+	}
+
+	_, w := app.login("nema@nikoga.rs", "pogresna-lozinka")
+	body := w.Body.String()
+	if !strings.Contains(body, `id="login-err"`) || !strings.Contains(body, `aria-describedby="login-err"`) {
+		t.Error("login error is not tied to the fields")
+	}
+	if n := strings.Count(body, "Pogrešan email ili lozinka."); n != 1 {
+		t.Errorf("error shown %d times, want once", n)
+	}
+}

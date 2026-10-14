@@ -12,6 +12,8 @@ import (
 type loginPageData struct {
 	baseData
 	Email string
+	// Err is shown next to the fields it is about, not only at the top.
+	Err string
 }
 
 func (s *Server) handleLoginPage(w http.ResponseWriter, r *http.Request) {
@@ -61,8 +63,7 @@ func (s *Server) handleLoginSubmit(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) renderLoginError(w http.ResponseWriter, r *http.Request, email, msg string, status int) {
-	data := loginPageData{baseData: s.base(r, "login"), Email: email}
-	data.FlashErr = msg
+	data := loginPageData{baseData: s.base(r, "login"), Email: email, Err: msg}
 	w.WriteHeader(status)
 	s.render(w, "login.html", data)
 }

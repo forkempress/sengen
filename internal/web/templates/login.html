@@ -1,19 +1,28 @@
 {{define "content"}}
 <div class="login-wrap">
+  <div class="login-brand">
+    <span class="logo logo-lg" aria-hidden="true">90</span>
+    <span class="login-name">Dani90</span>
+  </div>
+  <p class="login-lead">Koliko dana vaši vozači još smeju u Šengenu.</p>
+
   <h1>Prijava</h1>
-  {{if .FlashErr}}<div class="flash flash-err">{{.FlashErr}}</div>{{end}}
-  <form method="post" action="/login">
-    <div class="form-grid" style="grid-template-columns: 1fr;">
-      <div>
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" required autofocus value="{{.Email}}">
-      </div>
-      <div>
-        <label for="password">Lozinka</label>
-        <input type="password" id="password" name="password" required>
-      </div>
+  <form method="post" action="/login" novalidate>
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required autofocus autocomplete="email" inputmode="email"
+             placeholder="ime@firma.rs" value="{{.Email}}"{{if .Err}} aria-invalid="true" aria-describedby="login-err"{{end}}>
     </div>
-    <button type="submit" class="btn btn-primary" style="width:100%;">Prijavi se</button>
+    <div class="field">
+      <label for="password">Lozinka</label>
+      <div class="password-row">
+        <input type="password" id="password" name="password" required autocomplete="current-password"{{if .Err}} aria-invalid="true" aria-describedby="login-err"{{end}}>
+        <button type="button" class="btn btn-sm password-toggle" data-toggle-password="password" aria-controls="password" aria-pressed="false">Prikaži</button>
+      </div>
+      {{if .Err}}<p class="field-error" id="login-err" role="alert">{{.Err}}</p>{{end}}
+    </div>
+    <button type="submit" class="btn btn-primary btn-block" data-busy="Prijavljujem…">Prijavi se</button>
   </form>
+  <p class="login-help muted">Zaboravili ste lozinku? Vlasnik naloga u vašoj firmi može da vam postavi novu. Vlasnici: <a href="https://dani90.rs/#demo">Javite nam se</a>.</p>
 </div>
 {{end}}
