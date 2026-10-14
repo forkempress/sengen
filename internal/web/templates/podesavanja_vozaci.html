@@ -1,35 +1,40 @@
 {{define "content"}}
-<h1>Podešavanja — Vozači</h1>
+<h1>Vozači</h1>
 
 {{with .Link}}{{template "telegramLink" .}}{{end}}
 
+<section class="panel">
 <h2>Dodaj vozača</h2>
 <form method="post" action="/podesavanja/vozaci">
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
   <div class="form-grid">
-    <div><label>Ime i prezime</label><input type="text" name="name" required maxlength="120"></div>
-    <div><label>Vozilo</label><input type="text" name="vehicle_label" maxlength="60" placeholder="npr. BG-123-AB"></div>
+    <div><label for="d-name">Ime i prezime</label><input type="text" id="d-name" name="name" required maxlength="120" autocomplete="off"></div>
+    <div><label for="d-vehicle">Vozilo</label><input type="text" id="d-vehicle" name="vehicle_label" maxlength="60" placeholder="npr. BG-123-AB" autocomplete="off"></div>
   </div>
   <button type="submit" class="btn btn-primary">Dodaj vozača</button>
+  <span class="muted">Posle dodavanja odmah dobijate link i QR kod za Telegram.</span>
 </form>
+</section>
 
 <h2>Svi vozači</h2>
+{{if .ActiveCount}}<p class="muted">Sa Telegram botom povezano: <span class="num">{{.Linked}}</span> od <span class="num">{{.ActiveCount}}</span> aktivnih vozača.</p>{{end}}
 <div class="table-wrap">
-<table>
-  <thead><tr><th>Ime</th><th>Vozilo</th><th>Status</th><th></th></tr></thead>
+<table class="stack">
+  <thead><tr><th>Ime</th><th>Vozilo</th><th>Telegram</th><th>Status</th><th><span class="sr-only">Akcije</span></th></tr></thead>
   <tbody>
     {{$csrf := .CSRFToken}}
     {{range .Drivers}}
     <tr>
       <td><a href="/vozaci/{{.ID}}">{{.Name}}</a></td>
-      <td>{{.VehicleLabel}}</td>
-      <td>{{if .Active}}aktivan{{else}}<span class="muted">deaktiviran</span>{{end}}</td>
-      <td>
+      <td data-label="Vozilo">{{.VehicleLabel}}</td>
+      <td data-label="Telegram">{{if .TelegramChatID}}<span class="tg tg-on"><span aria-hidden="true">✓</span> povezan</span>{{else}}<span class="tg tg-off"><span aria-hidden="true">✗</span> nije</span>{{end}}</td>
+      <td data-label="Status">{{if .Active}}aktivan{{else}}<span class="muted">deaktiviran</span>{{end}}</td>
+      <td><div class="row-actions">
+        {{if .Active}}
         <form class="inline" method="post" action="/podesavanja/vozaci/{{.ID}}/telegram-link">
           <input type="hidden" name="csrf_token" value="{{$csrf}}">
-          <button type="submit" class="btn btn-sm">{{if .TelegramChatID}}Ponovo poveži Telegram{{else}}Telegram link{{end}}</button>
+          <button type="submit" class="btn btn-sm">{{if .TelegramChatID}}Ponovo poveži Telegram{{else}}Telegram link i QR{{end}}</button>
         </form>
-        {{if .Active}}
         <form class="inline" method="post" action="/podesavanja/vozaci/{{.ID}}/deaktiviraj" data-confirm="Deaktivirati vozača {{.Name}}? Nestaje sa pregleda i bot više ne prima njegove poruke.">
           <input type="hidden" name="csrf_token" value="{{$csrf}}">
           <button type="submit" class="btn btn-sm">Deaktiviraj</button>
@@ -40,10 +45,10 @@
           <button type="submit" class="btn btn-sm btn-primary">Aktiviraj</button>
         </form>
         {{end}}
-      </td>
+      </div></td>
     </tr>
     {{else}}
-    <tr><td colspan="4" class="muted">Nema unetih vozača.</td></tr>
+    <tr><td colspan="5" class="muted">Još nema vozača. Dodajte prvog formom iznad — ime je dovoljno.</td></tr>
     {{end}}
   </tbody>
 </table>

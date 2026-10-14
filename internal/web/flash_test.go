@@ -3,6 +3,7 @@ package web
 import (
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -34,14 +35,15 @@ func TestFlash_ShownOnceAfterRedirect(t *testing.T) {
 	app, a, _ := twoFirmApp(t)
 	sa := app.mustLogin(a)
 
-	w := sa.post("/podesavanja/vozaci", url.Values{"name": {"Novi Vozač"}})
-	if loc := w.Header().Get("Location"); loc != "/podesavanja/vozaci" {
-		t.Fatalf("redirect = %q, want /podesavanja/vozaci with no message in the URL", loc)
+	page := "/vozaci/" + strconv.FormatInt(a.driver.ID, 10)
+	w := sa.post(page+"/boravci", stayForm())
+	if loc := w.Header().Get("Location"); loc != page {
+		t.Fatalf("redirect = %q, want %s with no message in the URL", loc, page)
 	}
-	if body := sa.get("/podesavanja/vozaci").Body.String(); !strings.Contains(body, "Vozač dodat.") {
+	if body := sa.get(page).Body.String(); !strings.Contains(body, "Boravak dodat.") {
 		t.Fatal("first page after the form does not show the message")
 	}
-	if body := sa.get("/podesavanja/vozaci").Body.String(); strings.Contains(body, "Vozač dodat.") {
+	if body := sa.get(page).Body.String(); strings.Contains(body, "Boravak dodat.") {
 		t.Error("message shown again on the second page")
 	}
 }
@@ -53,11 +55,34 @@ func TestFlash_StaysWithItsSession(t *testing.T) {
 	s1 := app.mustLogin(a)
 	s2 := app.mustLogin(a)
 
-	s1.post("/podesavanja/vozaci", url.Values{"name": {"Novi Vozač"}})
-	if body := s2.get("/podesavanja/vozaci").Body.String(); strings.Contains(body, "Vozač dodat.") {
+	page := "/vozaci/" + strconv.FormatInt(a.driver.ID, 10)
+	s1.post(page+"/boravci", stayForm())
+	if body := s2.get(page).Body.String(); strings.Contains(body, "Boravak dodat.") {
 		t.Error("another session sees the message")
 	}
-	if body := s1.get("/podesavanja/vozaci").Body.String(); !strings.Contains(body, "Vozač dodat.") {
+	if body := s1.get(page).Body.String(); !strings.Contains(body, "Boravak dodat.") {
 		t.Error("own session does not see the message")
+	}
+}
+
+func stayForm() url.Values {
+	return url.Values{"entry_date": {"2026-01-05"}, "exit_date": {"2026-01-10"}, "type": {"work"}}
+}
+
+// Adding a driver answers with the page itself: the one-time link and its
+// QR code are shown at once, and the token never goes into a URL.
+func TestDriverCreate_ShowsLinkAndQRAtOnce(t *testing.T) {
+	app, a, _ := twoFirmApp(t)
+	sa := app.mustLogin(a)
+
+	w := sa.post("/podesavanja/vozaci", url.Values{"name": {"Novi Vozač"}})
+	if w.Code != http.StatusOK || w.Header().Get("Location") != "" {
+		t.Fatalf("create = %d %q, want 200 with the page", w.Code, w.Header().Get("Location"))
+	}
+	body := w.Body.String()
+	for _, want := range []string{"Vozač dodat.", "Link za povezivanje — Novi Vozač", "/start "} {
+		if !strings.Contains(body, want) {
+			t.Errorf("page after adding a driver is missing %q", want)
+		}
 	}
 }

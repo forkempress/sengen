@@ -114,16 +114,25 @@ func (s *Server) handleDriverTelegramLink(w http.ResponseWriter, r *http.Request
 	if !ok {
 		return
 	}
-	token, err := idgen.RandomToken(24)
+	link, err := s.issueDriverLink(r, tenantID, driver)
 	if err != nil {
 		http.Error(w, "greška servera", http.StatusInternalServerError)
 		return
 	}
-	if err := s.Store.CreateDriverLinkToken(r.Context(), token, tenantID, driver.ID, 48*time.Hour); err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
-		return
+	s.renderDriversPage(w, r, link)
+}
+
+// issueDriverLink creates a one-time link that connects the driver's
+// Telegram to the bot.
+func (s *Server) issueDriverLink(r *http.Request, tenantID int64, driver *store.Driver) (*telegramLink, error) {
+	token, err := idgen.RandomToken(24)
+	if err != nil {
+		return nil, err
 	}
-	s.renderDriversPage(w, r, s.newTelegramLink(driver.Name, token))
+	if err := s.Store.CreateDriverLinkToken(r.Context(), token, tenantID, driver.ID, 48*time.Hour); err != nil {
+		return nil, err
+	}
+	return s.newTelegramLink(driver.Name, token), nil
 }
 
 // handleAlertsToMe points the firm's alerts at the signed-in owner's own

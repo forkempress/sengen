@@ -55,8 +55,13 @@
   <strong>Link za povezivanje — {{.For}}</strong>
   <span class="muted">Važi 48 sati i može se iskoristiti samo jednom.</span>
   {{if .URL}}
-    <input type="text" readonly value="{{.URL}}" data-select-on-click aria-label="Link za povezivanje">
-    <span class="muted">Pošaljite link (Viber, SMS, Telegram) — dovoljno je da se tapne. <a href="{{.URL}}" target="_blank" rel="noopener">Otvori</a></span>
+  <div class="link-box-body">
+    <div class="link-box-qr">{{qrSVG .URL}}<span class="muted">Skenirajte kamerom telefona</span></div>
+    <div class="link-box-text">
+      <input type="text" readonly value="{{.URL}}" data-select-on-click aria-label="Link za povezivanje">
+      <span class="muted">Ako je osoba pored vas, neka skenira QR kod. Inače pošaljite link (Viber, SMS, Telegram) — dovoljno je da se tapne. <a href="{{.URL}}" target="_blank" rel="noopener">Otvori</a></span>
+    </div>
+  </div>
   {{else}}
     <input type="text" readonly value="{{.Command}}" data-select-on-click aria-label="Komanda za povezivanje">
     <span class="muted">U Telegram botu treba poslati ovu komandu.</span>

@@ -531,3 +531,12 @@ td.wrap { white-space: normal; }
 .checklist li.done { color: var(--text-muted); }
 .checklist li.done .check { background: var(--status-green-bg); border-color: var(--status-green); color: var(--status-green); }
 .empty-state p { margin: 0.25rem 0 1rem; }
+
+/* Vozači: stanje Telegram veze i QR (UX-08). */
+.tg { font-weight: 600; white-space: nowrap; }
+.tg-on { color: var(--status-green); }
+.tg-off { color: var(--status-red); }
+.link-box-body { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
+.link-box-qr { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
+.link-box-text { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 0.35rem; }
+svg.qr { width: 180px; height: 180px; border: 1px solid var(--card-border); }

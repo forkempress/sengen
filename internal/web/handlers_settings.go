@@ -15,6 +15,8 @@ type settingsDriversData struct {
 	baseData
 	Drivers []store.Driver
 	Link    *telegramLink // set right after generating a driver's link
+	// Linked counts active drivers connected to the bot.
+	Linked, ActiveCount int
 }
 
 func (s *Server) handleSettingsDriversPage(w http.ResponseWriter, r *http.Request) {
@@ -22,6 +24,12 @@ func (s *Server) handleSettingsDriversPage(w http.ResponseWriter, r *http.Reques
 }
 
 func (s *Server) renderDriversPage(w http.ResponseWriter, r *http.Request, link *telegramLink) {
+	s.renderDriversPageFlash(w, r, link, "")
+}
+
+// renderDriversPageFlash renders the page with a success message of its
+// own, for actions that answer with the page instead of a redirect.
+func (s *Server) renderDriversPageFlash(w http.ResponseWriter, r *http.Request, link *telegramLink, ok string) {
 	t, _ := tenant.FromContext(r.Context())
 	drivers, err := s.Store.ListDrivers(r.Context(), t.ID, false)
 	if err != nil {
@@ -29,6 +37,17 @@ func (s *Server) renderDriversPage(w http.ResponseWriter, r *http.Request, link 
 		return
 	}
 	data := settingsDriversData{baseData: s.base(r, "vozaci"), Drivers: drivers, Link: link}
+	if ok != "" {
+		data.Flash = ok
+	}
+	for _, d := range drivers {
+		if d.Active {
+			data.ActiveCount++
+			if d.TelegramChatID != nil {
+				data.Linked++
+			}
+		}
+	}
 	s.render(w, "podesavanja_vozaci.html", data)
 }
 
@@ -45,11 +64,19 @@ func (s *Server) handleSettingsDriverCreate(w http.ResponseWriter, r *http.Reque
 		s.redirectErr(w, r, "/podesavanja/vozaci", msg)
 		return
 	}
-	if _, err := s.Store.CreateDriver(r.Context(), t.ID, name, vehicle); err != nil {
+	driver, err := s.Store.CreateDriver(r.Context(), t.ID, name, vehicle)
+	if err != nil {
 		http.Error(w, "greška servera", http.StatusInternalServerError)
 		return
 	}
-	s.redirectOk(w, r, "/podesavanja/vozaci", "Vozač dodat.")
+	// The link (and QR) come right away, so the dispatcher can connect the
+	// driver while he is still in the office (UX-08).
+	link, err := s.issueDriverLink(r, t.ID, driver)
+	if err != nil {
+		http.Error(w, "greška servera", http.StatusInternalServerError)
+		return
+	}
+	s.renderDriversPageFlash(w, r, link, "Vozač dodat. Povežite ga sa Telegram botom linkom ili QR kodom ispod.")
 }
 
 func (s *Server) setDriverActive(w http.ResponseWriter, r *http.Request, active bool) {
