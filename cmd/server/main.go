@@ -62,17 +62,23 @@ func main() {
 	mux.Handle("/", webServer.Routes())
 
 	srv := &http.Server{Addr: ":" + cfg.Port, Handler: mux}
+	shutdownDone := make(chan struct{})
 	go func() {
+		defer close(shutdownDone)
 		<-ctx.Done()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		srv.Shutdown(shutdownCtx)
+		// Updates already answered with 200 will not be redelivered, so
+		// give the ones still being handled a moment to finish.
+		bot.Wait(shutdownCtx)
 	}()
 
 	log.Printf("listening on :%s", cfg.Port)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
+	<-shutdownDone
 }
 
 // registerWebhook points the shared bot at this server. setWebhook is

@@ -27,6 +27,8 @@ type Bot struct {
 
 	mu      sync.Mutex
 	pending map[int64]pendingAction // chat_id -> in-progress multi-step flow (import preview, quick-entry draft, reopen confirm)
+
+	queue *updateQueue
 }
 
 type Config struct {
@@ -42,6 +44,7 @@ func New(st *store.Store, cfg Config) *Bot {
 		username:      strings.TrimPrefix(strings.TrimSpace(cfg.Username), "@"),
 		pending:       make(map[int64]pendingAction),
 	}
+	b.queue = newUpdateQueue(func(ctx context.Context, upd Update) { b.dispatch(ctx, b.client, upd) })
 	if cfg.Token != "" {
 		b.client = NewClient(cfg.Token)
 	}
@@ -121,11 +124,26 @@ func (b *Bot) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Telegram expects a fast 200 regardless of outcome (retries otherwise);
-	// errors are logged, not surfaced to the HTTP response.
-	b.dispatch(r.Context(), b.client, upd)
+	// Telegram redelivers an update it thinks failed; handle each one once.
+	// If the check itself fails, handling twice beats dropping the update.
+	fresh, err := b.Store.MarkTelegramUpdate(r.Context(), upd.UpdateID)
+	if err != nil {
+		log.Printf("telegram: dedup update %d: %v", upd.UpdateID, err)
+		fresh = true
+	}
+
+	// Telegram expects a fast 200 regardless of outcome and retries a slow
+	// one, so the update is handled after the reply, not inside it. Errors
+	// are logged, not surfaced to the HTTP response.
+	if fresh {
+		b.queue.enqueue(upd)
+	}
 	w.WriteHeader(http.StatusOK)
 }
+
+// Wait blocks until every update accepted so far has been handled, or ctx
+// ends. The server calls it on shutdown; tests call it before asserting.
+func (b *Bot) Wait(ctx context.Context) error { return b.queue.wait(ctx) }
 
 func (b *Bot) dispatch(ctx context.Context, client *Client, upd Update) {
 	defer func() {

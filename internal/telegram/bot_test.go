@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -165,11 +166,20 @@ func postWebhook(t *testing.T, bot *Bot, headerSecret, body string) *httptest.Re
 	}
 	w := httptest.NewRecorder()
 	bot.HandleWebhook(w, r)
+	if err := bot.Wait(context.Background()); err != nil {
+		t.Fatal(err)
+	}
 	return w
 }
 
+// nextUpdateID gives each test update its own update_id, as Telegram does;
+// a repeated id is a redelivery and is skipped.
+var lastUpdateID atomic.Int64
+
+func nextUpdateID() int64 { return lastUpdateID.Add(1) }
+
 func textUpdate(chatID int64, text string) string {
-	b, _ := json.Marshal(Update{UpdateID: 1, Message: &Message{MessageID: 1, From: &TgUser{ID: chatID}, Chat: Chat{ID: chatID, Type: "private"}, Text: text}})
+	b, _ := json.Marshal(Update{UpdateID: nextUpdateID(), Message: &Message{MessageID: 1, From: &TgUser{ID: chatID}, Chat: Chat{ID: chatID, Type: "private"}, Text: text}})
 	return string(b)
 }
 
@@ -710,12 +720,12 @@ func TestDriverExited_DaytimeRecordsToday(t *testing.T) {
 // --- Telegram identity (SEC-09, SEC-12) ---
 
 func groupUpdate(chatID, fromID int64, text string) string {
-	b, _ := json.Marshal(Update{UpdateID: 1, Message: &Message{MessageID: 1, From: &TgUser{ID: fromID}, Chat: Chat{ID: chatID, Type: "group"}, Text: text}})
+	b, _ := json.Marshal(Update{UpdateID: nextUpdateID(), Message: &Message{MessageID: 1, From: &TgUser{ID: fromID}, Chat: Chat{ID: chatID, Type: "group"}, Text: text}})
 	return string(b)
 }
 
 func callbackUpdate(chatID, fromID int64, data string) string {
-	b, _ := json.Marshal(Update{UpdateID: 1, CallbackQuery: &CallbackQuery{
+	b, _ := json.Marshal(Update{UpdateID: nextUpdateID(), CallbackQuery: &CallbackQuery{
 		ID: "cb", From: TgUser{ID: fromID}, Data: data,
 		Message: &Message{MessageID: 1, Chat: Chat{ID: chatID, Type: "private"}},
 	}})

@@ -86,3 +86,23 @@ func TestCreateLinkToken_VoidsEarlierTokens(t *testing.T) {
 		t.Error("earlier user token still works after a new one was issued")
 	}
 }
+
+func TestMarkTelegramUpdate_OnlyFirstDeliveryIsFresh(t *testing.T) {
+	st, _, _ := newTestStore(t)
+	ctx := context.Background()
+	first, err := st.MarkTelegramUpdate(ctx, 1001)
+	if err != nil || !first {
+		t.Fatalf("first delivery: fresh=%v err=%v, want fresh", first, err)
+	}
+	again, err := st.MarkTelegramUpdate(ctx, 1001)
+	if err != nil || again {
+		t.Errorf("redelivery: fresh=%v err=%v, want not fresh", again, err)
+	}
+	n, err := st.DeleteTelegramUpdatesBefore(ctx, time.Now().Add(time.Minute))
+	if err != nil || n != 1 {
+		t.Errorf("cleanup deleted %d rows (err %v), want 1", n, err)
+	}
+	if fresh, _ := st.MarkTelegramUpdate(ctx, 1001); !fresh {
+		t.Error("after cleanup the id is forgotten")
+	}
+}
