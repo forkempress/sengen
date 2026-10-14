@@ -57,6 +57,10 @@ func (s *Server) handleDriverDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	today := clock.Today()
 	driverStatus := status.Compute(*driver, stays, today)
+	if t, ok := tenant.FromContext(r.Context()); ok {
+		settings, _ := t.ParsedSettings()
+		driverStatus.ApplyThresholds(status.ThresholdsFor(settings))
+	}
 	months := buildMonthGrids(stays, today, 3, 2)
 
 	reversed := make([]store.Stay, len(stays))

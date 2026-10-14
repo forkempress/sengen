@@ -5,7 +5,10 @@
   <div class="card"><div class="label">Iskorišćeno</div><div class="value">{{.Status.UsedDays}}/90</div></div>
   <div class="card"><div class="label">Preostalo danas</div><div class="value"><span class="badge {{.Status.BadgeClass}}">{{.Status.BadgeLabel}}</span></div></div>
   <div class="card">
-    {{if .Status.InSchengen}}
+    {{if .Status.OverBy}}
+      <div class="label">Preko limita</div><div class="value over">−{{.Status.OverBy}} d</div>
+      {{if .Status.InSchengen}}<div class="muted">rok je bio {{fmtDate (deref .Status.MaxContinuousUntil)}}</div>{{end}}
+    {{else if .Status.InSchengen}}
       <div class="label">Može da ostane do</div><div class="value">{{fmtDate (deref .Status.MaxContinuousUntil)}}</div>
     {{else}}
       <div class="label">Najduža tura sada</div><div class="value">{{.Status.MaxTripLengthToday}}d</div>

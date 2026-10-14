@@ -8,12 +8,45 @@
 </div>
 {{end}}
 
+{{if .DateError}}<div class="flash flash-err">{{.DateError}}</div>{{end}}
+{{if not .IsToday}}
+<div class="notice">
+  <strong>Stanje na dan {{fmtDate .AsOf}}</strong>{{if .IsFuture}} (u budućnosti){{end}} — sve kolone su izračunate kao da je taj dan danas.
+  {{if .IsFuture}}Vozači koji su sada u Šengenu računaju se kao da tamo ostaju do tog dana; planirane ture se ne uzimaju u obzir.{{end}}
+  <a href="/pregled">Nazad na danas</a>
+</div>
+{{end}}
+
 <div class="cards-row">
   <div class="card"><div class="label">Ukupno vozača</div><div class="value">{{.TotalDrivers}}</div></div>
   <div class="card"><div class="label">U Šengenu</div><div class="value">{{.InSchengenNow}}</div></div>
-  <div class="card"><div class="label">Ispod 15 dana</div><div class="value">{{.Under15Count}}</div></div>
-  <div class="card"><div class="label">Slobodni 30+ dana</div><div class="value">{{.Free30PlusCount}}</div></div>
+  <div class="card"><div class="label">Ispod {{.Thresholds.Red}} dana</div><div class="value">{{.BelowRedCount}}</div></div>
+  <div class="card"><div class="label">Slobodni {{.Thresholds.Orange}}+ dana</div><div class="value">{{.AboveOrangeCount}}</div></div>
 </div>
+
+<form class="filters" method="get" action="/pregled">
+  <div>
+    <label for="f-q">Pretraga</label>
+    <input type="search" id="f-q" name="q" value="{{.Query}}" placeholder="ime ili vozilo">
+  </div>
+  <div>
+    <label for="f-sev">Ozbiljnost</label>
+    <select id="f-sev" name="ozbiljnost">
+      <option value="">sve</option>
+      <option value="crveno" {{if eq .Severity "crveno"}}selected{{end}}>crveno (ispod {{.Thresholds.Red}})</option>
+      <option value="zuto" {{if eq .Severity "zuto"}}selected{{end}}>žuto ({{.Thresholds.Red}}–{{.Thresholds.Orange}})</option>
+      <option value="zeleno" {{if eq .Severity "zeleno"}}selected{{end}}>zeleno (preko {{.Thresholds.Orange}})</option>
+    </select>
+  </div>
+  <div>
+    <label for="f-day">Stanje na dan</label>
+    <input type="date" id="f-day" name="na_dan" value="{{fmtDateInput .AsOf}}">
+  </div>
+  <div class="filters-actions">
+    <button type="submit" class="btn btn-primary">Primeni</button>
+    {{if or .FiltersActive (not .IsToday)}}<a href="/pregled" class="btn">Poništi</a>{{end}}
+  </div>
+</form>
 
 <div class="table-wrap">
 <table>
@@ -22,7 +55,7 @@
       <th>Vozač / vozilo</th>
       <th>Gde je / od kada</th>
       <th>Iskorišćeno/90</th>
-      <th>Preostalo danas</th>
+      <th>Preostalo {{if .IsToday}}danas{{else}}na dan {{fmtDate .AsOf}}{{end}}</th>
       <th>Može do / najduža tura</th>
       <th>Sledeće oslobađanje</th>
       <th>Izvor</th>
@@ -41,7 +74,8 @@
       </td>
       <td><span class="badge {{.BadgeClass}}">{{.BadgeLabel}}</span></td>
       <td class="num">
-        {{if .InSchengen}}{{fmtDate (deref .MaxContinuousUntil)}}{{else}}{{.MaxTripLengthToday}} dana{{end}}
+        {{if .OverBy}}<span class="over">−{{.OverBy}} preko limita</span>{{if .InSchengen}}<br><span class="muted">rok je bio {{fmtDate (deref .MaxContinuousUntil)}}</span>{{end}}
+        {{else if .InSchengen}}{{fmtDate (deref .MaxContinuousUntil)}}{{else}}{{.MaxTripLengthToday}} dana{{end}}
       </td>
       <td class="num">
         {{if .NextFreeUp}}{{fmtDate .NextFreeUp.Date}} (+{{.NextFreeUp.DaysFreed}}){{else}}—{{end}}
@@ -49,7 +83,10 @@
       <td class="muted">{{sourceLabel .LastStaySource}}</td>
     </tr>
     {{else}}
-    <tr><td colspan="7" class="muted">Nema vozača. Dodajte ih u <a href="/podesavanja/vozaci">podešavanjima</a>.</td></tr>
+    <tr><td colspan="7" class="muted">
+      {{if .FiltersActive}}Nijedan vozač ne odgovara filteru. <a href="/pregled">Poništi filtere</a>.
+      {{else}}Nema vozača. Dodajte ih u <a href="/podesavanja/vozaci">podešavanjima</a>.{{end}}
+    </td></tr>
     {{end}}
   </tbody>
 </table>

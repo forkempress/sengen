@@ -9,6 +9,7 @@ import (
 
 	"shengen/internal/auth"
 	"shengen/internal/idgen"
+	"shengen/internal/status"
 	"shengen/internal/store"
 	"shengen/internal/telegram"
 	"shengen/internal/tenant"
@@ -69,6 +70,12 @@ func (s *Server) handleTelegramSettingsUpdate(w http.ResponseWriter, r *http.Req
 	}
 	if orange, err := strconv.Atoi(r.FormValue("threshold_orange")); err == nil && orange > 0 {
 		settings.ThresholdOrangeDays = orange
+	}
+
+	if th := status.ThresholdsFor(settings); th.Red >= th.Orange {
+		http.Redirect(w, r, "/podesavanja/telegram?err="+url.QueryEscape(
+			fmt.Sprintf("Crveni prag (%d) mora biti manji od narandžastog (%d).", th.Red, th.Orange)), http.StatusSeeOther)
+		return
 	}
 
 	if err := s.Store.UpdateTenantSettings(r.Context(), t.ID, settings); err != nil {

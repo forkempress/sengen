@@ -11,7 +11,9 @@ import (
 	"sync"
 	"testing"
 
+	"shengen/internal/clock"
 	"shengen/internal/db"
+	"shengen/internal/status"
 	"shengen/internal/store"
 	"shengen/internal/tenant"
 )
@@ -219,4 +221,53 @@ func TestHandleWebhook_SecretValidation(t *testing.T) {
 			t.Errorf("status = %d, want 404", got)
 		}
 	})
+}
+
+// --- overstay messaging ---
+
+// A driver who has used all 90 days and presses "Izašao iz Srbije" must be
+// told he may not stay — never handed a date that reads like permission.
+func TestDriverExited_WithNoDaysLeftWarnsInsteadOfGivingADate(t *testing.T) {
+	fake := newFakeTelegram(t)
+	bot, tn := newWebhookTestBot(t, "")
+	ctx := context.Background()
+
+	driver, err := bot.Store.CreateDriver(ctx, tn.ID, "Marko", "")
+	if err != nil {
+		t.Fatalf("create driver: %v", err)
+	}
+	today := clock.Today()
+	first, last := today.AddDate(0, 0, -90), today.AddDate(0, 0, -1) // 90 days used
+	if _, err := bot.Store.CreateStay(ctx, tn.ID, driver.ID, first, &last, "work", "manual", "", nil); err != nil {
+		t.Fatalf("seed 90-day stay: %v", err)
+	}
+
+	bot.driverExited(ctx, fake.client(), tn, 555, driver)
+
+	texts := fake.texts()
+	if len(texts) != 1 {
+		t.Fatalf("expected one reply, got %d: %v", len(texts), texts)
+	}
+	reply := texts[0]
+	if strings.Contains(reply, "Možeš ostati najduže do") {
+		t.Errorf("driver over the limit was told he may stay until a date: %q", reply)
+	}
+	if !strings.Contains(reply, "preko limita") {
+		t.Errorf("reply does not warn about the limit: %q", reply)
+	}
+}
+
+func TestFormatMyDays_OverLimit(t *testing.T) {
+	deadline := clock.Today().AddDate(0, 0, -3)
+	since := clock.Today().AddDate(0, 0, -95)
+	text := formatMyDays(status.DriverStatus{
+		UsedDays: 93, Remaining: 0, OverBy: 3, InSchengen: true,
+		CurrentSince: &since, MaxContinuousUntil: &deadline,
+	})
+	if strings.Contains(text, "Može da ostane do") {
+		t.Errorf("over-limit summary offers a 'may stay until' date:\n%s", text)
+	}
+	if !strings.Contains(text, "PREKORAČENO za 3 dana") {
+		t.Errorf("over-limit summary does not state the overstay:\n%s", text)
+	}
 }

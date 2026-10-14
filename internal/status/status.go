@@ -29,6 +29,11 @@ type DriverStatus struct {
 	LastStayEntry  *time.Time
 	LastStayExit   *time.Time
 
+	// OverBy is how many days past the 90-day limit the driver is (0 when
+	// within it). When it is non-zero, MaxContinuousUntil holds the deadline
+	// that has already passed, so it must not be shown as "može do".
+	OverBy int
+
 	BadgeClass string
 	BadgeLabel string
 }
@@ -47,6 +52,10 @@ func Compute(d store.Driver, stays []store.Stay, today time.Time) DriverStatus {
 		Driver:    d,
 		UsedDays:  calc.UsedDays(cstays, today),
 		Remaining: calc.Remaining(cstays, today),
+	}
+
+	if status.UsedDays > calc.MaxDays {
+		status.OverBy = status.UsedDays - calc.MaxDays
 	}
 
 	if until, ok := calc.MaxContinuousUntil(cstays, today); ok {
@@ -77,17 +86,80 @@ func Compute(d store.Driver, stays []store.Stay, today time.Time) DriverStatus {
 	return status
 }
 
-func BadgeFor(remaining int) (class, label string) {
+// Thresholds are the remaining-days cut-offs for the traffic-light badge.
+// A driver with fewer than Red days left is red, up to and including Orange
+// days is orange, and anything above is green. Zero days left is always
+// "urgent", regardless of configuration.
+type Thresholds struct {
+	Red    int
+	Orange int
+}
+
+var DefaultThresholds = Thresholds{Red: 15, Orange: 30}
+
+// ThresholdsFor returns the tenant's configured cut-offs, falling back to
+// the defaults for any value left unset.
+func ThresholdsFor(s store.TenantSettings) Thresholds {
+	t := DefaultThresholds
+	if s.ThresholdRedDays > 0 {
+		t.Red = s.ThresholdRedDays
+	}
+	if s.ThresholdOrangeDays > 0 {
+		t.Orange = s.ThresholdOrangeDays
+	}
+	return t
+}
+
+func (t Thresholds) Badge(remaining int) (class, label string) {
 	switch {
 	case remaining <= 0:
 		return "badge-urgent", "HITNO"
-	case remaining < 15:
+	case remaining < t.Red:
 		return "badge-red", fmt.Sprintf("%d", remaining)
-	case remaining <= 30:
+	case remaining <= t.Orange:
 		return "badge-orange", fmt.Sprintf("%d", remaining)
 	default:
 		return "badge-green", fmt.Sprintf("%d", remaining)
 	}
+}
+
+// BadgeFor uses the default thresholds. Callers that know the tenant should
+// call ApplyThresholds on the computed status instead.
+func BadgeFor(remaining int) (class, label string) {
+	return DefaultThresholds.Badge(remaining)
+}
+
+// ApplyThresholds recomputes the badge using a tenant's own cut-offs.
+func (ds *DriverStatus) ApplyThresholds(t Thresholds) {
+	ds.BadgeClass, ds.BadgeLabel = t.Badge(ds.Remaining)
+}
+
+// AsOf returns the stays as they stood on `day`, so that Compute(…, day) can
+// answer "how would this driver look on that date".
+//
+// For a day in the past, stays that began later are dropped, and a stay that
+// was still running on `day` (it ended afterwards, or is still open) is
+// reported as open — which is how Compute understands "in Schengen right
+// now". For today or a future day the stays are returned unchanged: an open
+// stay then simply keeps running up to that day, which is the safe
+// assumption (it never hides days a driver might still accumulate).
+//
+// The input slice and its elements are not modified.
+func AsOf(stays []store.Stay, day, today time.Time) []store.Stay {
+	if !day.Before(today) {
+		return stays
+	}
+	out := make([]store.Stay, 0, len(stays))
+	for _, st := range stays {
+		if st.Entry.After(day) {
+			continue
+		}
+		if st.Exit != nil && st.Exit.After(day) {
+			st.Exit = nil // st is a copy; the caller's stay keeps its exit date
+		}
+		out = append(out, st)
+	}
+	return out
 }
 
 // ComputeAll groups stays by driver and returns one DriverStatus per driver,

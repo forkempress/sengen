@@ -121,7 +121,10 @@ func (r *Runner) checkDispatcherAlerts(ctx context.Context, client *telegram.Cli
 				fmt.Sprintf("%s: preostalo %d dana (ispod %d).", ds.Driver.Name, ds.Remaining, orangeThreshold))
 		}
 
-		if ds.InSchengen && ds.MaxContinuousUntil != nil {
+		if ds.InSchengen && ds.OverBy > 0 {
+			r.sendAlert(ctx, client, t, settings, ds.Driver.ID, "overstay", dateStr,
+				fmt.Sprintf("⛔ %s je u Šengenu %d dana preko limita (rok je bio %s).", ds.Driver.Name, ds.OverBy, ds.MaxContinuousUntil.Format("02.01.2006")))
+		} else if ds.InSchengen && ds.MaxContinuousUntil != nil {
 			daysLeft := int(ds.MaxContinuousUntil.Sub(clock.Today()).Hours() / 24)
 			if daysLeft <= 3 {
 				r.sendAlert(ctx, client, t, settings, ds.Driver.ID, "expiring", dateStr,

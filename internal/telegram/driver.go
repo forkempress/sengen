@@ -49,7 +49,12 @@ func (b *Bot) driverExited(ctx context.Context, client *Client, t *store.Tenant,
 	stays, _ := b.Store.ListStaysByDriver(ctx, t.ID, driver.ID)
 	ds := status.Compute(*driver, stays, today)
 	msg := fmt.Sprintf("Zabeleženo: izlazak iz Srbije %s.", today.Format("02.01.2006"))
-	if ds.MaxContinuousUntil != nil {
+	switch {
+	case ds.OverBy > 0:
+		// Entering with the allowance already used up: never phrase this
+		// as a date he may stay until.
+		msg += fmt.Sprintf(" ⛔ PAŽNJA: već si %d dana preko limita od 90 — ne smeš da ostaneš u Šengenu. Odmah se javi dispečeru.", ds.OverBy)
+	case ds.MaxContinuousUntil != nil:
 		msg += fmt.Sprintf(" Možeš ostati najduže do %s.", ds.MaxContinuousUntil.Format("02.01.2006"))
 	}
 	client.SendMessage(ctx, chatID, msg, InlineKeyboard(InlineRow(InlineButton("Poništi", undoCallback(st.ID, "create")))))
@@ -89,7 +94,10 @@ func formatMyDays(ds status.DriverStatus) string {
 	fmt.Fprintf(&b, "Iskorišćeno: %d/90\nPreostalo danas: %d\n", ds.UsedDays, ds.Remaining)
 	if ds.InSchengen {
 		fmt.Fprintf(&b, "Trenutno: van Srbije od %s\n", ds.CurrentSince.Format("02.01.2006"))
-		if ds.MaxContinuousUntil != nil {
+		if ds.OverBy > 0 {
+			fmt.Fprintf(&b, "⛔ PREKORAČENO za %d dana — rok je bio %s. Odmah napusti Šengen i javi se dispečeru.\n",
+				ds.OverBy, ds.MaxContinuousUntil.Format("02.01.2006"))
+		} else if ds.MaxContinuousUntil != nil {
 			fmt.Fprintf(&b, "Može da ostane do: %s\n", ds.MaxContinuousUntil.Format("02.01.2006"))
 		}
 	} else {

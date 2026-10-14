@@ -14,8 +14,8 @@
   <div class="form-grid">
     <div><label>Bot token (od @BotFather)</label><input type="text" name="bot_token" value="{{.Settings.TelegramBotToken}}" placeholder="123456:ABC-..."></div>
     <div><label>Chat ID za upozorenja dispečeru</label><input type="text" name="alert_chat_id" value="{{if .Settings.TelegramAlertChatID}}{{.Settings.TelegramAlertChatID}}{{end}}" placeholder="npr. -1001234567890"></div>
-    <div><label>Prag — crveno (dana)</label><input type="number" name="threshold_red" value="{{if .Settings.ThresholdRedDays}}{{.Settings.ThresholdRedDays}}{{else}}15{{end}}"></div>
-    <div><label>Prag — narandžasto (dana)</label><input type="number" name="threshold_orange" value="{{if .Settings.ThresholdOrangeDays}}{{.Settings.ThresholdOrangeDays}}{{else}}30{{end}}"></div>
+    <div><label>Prag — crveno, ispod (dana) — pregled i upozorenja</label><input type="number" name="threshold_red" value="{{if .Settings.ThresholdRedDays}}{{.Settings.ThresholdRedDays}}{{else}}15{{end}}"></div>
+    <div><label>Prag — narandžasto, do (dana) — pregled i upozorenja</label><input type="number" name="threshold_orange" value="{{if .Settings.ThresholdOrangeDays}}{{.Settings.ThresholdOrangeDays}}{{else}}30{{end}}"></div>
   </div>
   <button type="submit" class="btn btn-primary">Sačuvaj</button>
 </form>
