@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"shengen/internal/auth"
@@ -38,6 +39,16 @@ type Config struct {
 	TelegramBotToken      string
 	TelegramWebhookSecret string // compared against X-Telegram-Bot-Api-Secret-Token
 	TelegramBotUsername   string // optional; enables one-tap t.me links
+
+	// AdminTelegramIDs are the Telegram user ids of the service operators
+	// (ADMIN_TELEGRAM_IDS, comma-separated). Only they get the superadmin
+	// bot commands and push notifications; empty turns both off.
+	AdminTelegramIDs []int64
+
+	// BackupHeartbeatFile is touched by the backup job after every
+	// successful backup (BACKUP_HEARTBEAT_FILE). When set, a file older than
+	// a day and a bit — or missing — is reported to the superadmins.
+	BackupHeartbeatFile string
 }
 
 // Telegram only accepts A-Z, a-z, 0-9, "_" and "-" in a webhook secret, 1–256
@@ -57,7 +68,14 @@ func Load() (Config, error) {
 		TelegramBotToken:      strings.TrimSpace(os.Getenv("TELEGRAM_BOT_TOKEN")),
 		TelegramWebhookSecret: strings.TrimSpace(os.Getenv("TELEGRAM_WEBHOOK_SECRET")),
 		TelegramBotUsername:   strings.TrimPrefix(strings.TrimSpace(os.Getenv("TELEGRAM_BOT_USERNAME")), "@"),
+		BackupHeartbeatFile:   strings.TrimSpace(os.Getenv("BACKUP_HEARTBEAT_FILE")),
 	}
+
+	ids, err := parseTelegramIDs(os.Getenv("ADMIN_TELEGRAM_IDS"))
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.AdminTelegramIDs = ids
 
 	proxy, err := auth.ParseTrustedProxy(os.Getenv("TRUSTED_PROXY"))
 	if err != nil {
@@ -77,6 +95,25 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("PUBLIC_BASE_URL mora počinjati sa https:// (Telegram ne prihvata http webhook)")
 	}
 	return cfg, nil
+}
+
+// parseTelegramIDs reads a comma-separated list of Telegram user ids. A typo
+// is an error rather than a skipped entry: a silently dropped id would leave
+// an operator wondering why the bot ignores them.
+func parseTelegramIDs(raw string) ([]int64, error) {
+	var ids []int64
+	for _, part := range strings.Split(raw, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		id, err := strconv.ParseInt(part, 10, 64)
+		if err != nil || id <= 0 {
+			return nil, fmt.Errorf("ADMIN_TELEGRAM_IDS: %q nije Telegram ID korisnika (pozitivan broj)", part)
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
 }
 
 func getenv(key, fallback string) string {

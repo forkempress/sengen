@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"shengen/internal/health"
 	"shengen/internal/store"
 )
 
@@ -29,6 +30,20 @@ type Bot struct {
 	pending map[int64]pendingAction // chat_id -> in-progress multi-step flow (import preview, quick-entry draft, reopen confirm)
 
 	queue *updateQueue
+
+	// SuperAdmin, when set, gets the first look at every private message and
+	// handles the operators' commands. Set it before the server starts.
+	SuperAdmin SuperAdminHandler
+}
+
+// SuperAdminHandler handles the service operators' commands (implemented by
+// internal/superadmin). HandleMessage reports whether it handled the
+// message; when it returns false the message goes through the normal
+// driver/admin handling, exactly as if no superadmin feature existed — so a
+// non-operator sending an operator command gets the same reply as for any
+// unknown command.
+type SuperAdminHandler interface {
+	HandleMessage(ctx context.Context, client *Client, chatID, fromID int64, text string) bool
 }
 
 type Config struct {
@@ -149,6 +164,7 @@ func (b *Bot) dispatch(ctx context.Context, client *Client, upd Update) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			log.Printf("telegram: panic handling update %d: %v", upd.UpdateID, rec)
+			health.ReportError(health.KindTelegramPanic)
 		}
 	}()
 
@@ -199,6 +215,11 @@ func (b *Bot) handleMessage(ctx context.Context, client *Client, msg *Message) {
 		if strings.HasPrefix(text, "/start") {
 			client.SendMessage(ctx, chatID, privateOnlyMsg, nil)
 		}
+		return
+	}
+
+	// fromAccountOwner above guarantees a private chat written in by fromID.
+	if b.SuperAdmin != nil && b.SuperAdmin.HandleMessage(ctx, client, chatID, fromID, text) {
 		return
 	}
 

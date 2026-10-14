@@ -109,6 +109,22 @@ func (c *Client) SetWebhook(ctx context.Context, url, secretToken string) error 
 	return c.call(ctx, "setWebhook", payload, nil)
 }
 
+// WebhookInfo is the part of getWebhookInfo the health check reads.
+type WebhookInfo struct {
+	URL                string `json:"url"`
+	PendingUpdateCount int    `json:"pending_update_count"`
+	LastErrorDate      int64  `json:"last_error_date,omitempty"` // Unix time
+	LastErrorMessage   string `json:"last_error_message,omitempty"`
+}
+
+// GetWebhookInfo reports whether Telegram is delivering updates: how many
+// are waiting and the last delivery error, if any.
+func (c *Client) GetWebhookInfo(ctx context.Context) (WebhookInfo, error) {
+	var info WebhookInfo
+	err := c.call(ctx, "getWebhookInfo", map[string]any{}, &info)
+	return info, err
+}
+
 func (c *Client) AnswerCallbackQuery(ctx context.Context, callbackID, text string) error {
 	payload := map[string]any{"callback_query_id": callbackID, "text": text}
 	return c.call(ctx, "answerCallbackQuery", payload, nil)

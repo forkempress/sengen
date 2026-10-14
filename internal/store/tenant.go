@@ -67,7 +67,7 @@ func (s *Store) ListAllTenants(ctx context.Context) ([]Tenant, error) {
 
 func (s *Store) CreateTenant(ctx context.Context, name, slug string) (*Tenant, error) {
 	res, err := s.DB.ExecContext(ctx,
-		`INSERT INTO tenants (name, slug, settings) VALUES (?, ?, '{}')`, name, slug)
+		`INSERT INTO tenants (name, slug, settings, trial_until) VALUES (?, ?, '{}', date('now', '+30 days'))`, name, slug)
 	if isUniqueConstraintErr(err) {
 		return nil, &ValidationError{Msg: fmt.Sprintf("firma sa oznakom %q već postoji", slug)}
 	}

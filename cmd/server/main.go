@@ -17,6 +17,7 @@ import (
 	"shengen/internal/db"
 	"shengen/internal/jobs"
 	"shengen/internal/store"
+	"shengen/internal/superadmin"
 	"shengen/internal/telegram"
 	"shengen/internal/web"
 )
@@ -43,11 +44,20 @@ func main() {
 		WebhookSecret: cfg.TelegramWebhookSecret,
 		Username:      cfg.TelegramBotUsername,
 	})
+	admins := superadmin.New(st, cfg.AdminTelegramIDs, cfg.BackupHeartbeatFile)
+	if len(cfg.AdminTelegramIDs) > 0 {
+		bot.SuperAdmin = admins
+		log.Printf("superadmin: %d operatora", len(cfg.AdminTelegramIDs))
+	}
 	webServer := web.New(st, authSvc, bot)
 	webServer.TrustedProxy = cfg.TrustedProxy
 	log.Printf("trusted proxy: %s", cfg.TrustedProxy)
 
-	go jobs.New(st, bot.Client()).Start(ctx)
+	runner := jobs.New(st, bot.Client())
+	if len(cfg.AdminTelegramIDs) > 0 && bot.Client() != nil {
+		runner.SuperAdmin = admins.Notifier(bot.Client())
+	}
+	go runner.Start(ctx)
 	go registerWebhook(ctx, cfg, bot)
 
 	mux := http.NewServeMux()

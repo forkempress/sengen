@@ -7,7 +7,7 @@ import (
 
 func setEnv(t *testing.T, kv map[string]string) {
 	t.Helper()
-	for _, k := range []string{"PUBLIC_BASE_URL", "TELEGRAM_BOT_TOKEN", "TELEGRAM_WEBHOOK_SECRET", "TELEGRAM_BOT_USERNAME", "TRUSTED_PROXY", "BIND_ADDR", "PORT"} {
+	for _, k := range []string{"PUBLIC_BASE_URL", "TELEGRAM_BOT_TOKEN", "TELEGRAM_WEBHOOK_SECRET", "TELEGRAM_BOT_USERNAME", "TRUSTED_PROXY", "BIND_ADDR", "PORT", "ADMIN_TELEGRAM_IDS"} {
 		t.Setenv(k, kv[k])
 	}
 }
@@ -100,5 +100,23 @@ func TestLoad_TrustedProxy(t *testing.T) {
 	setEnv(t, map[string]string{"TRUSTED_PROXY": "nginx"})
 	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "TRUSTED_PROXY") {
 		t.Errorf("unknown TRUSTED_PROXY: err = %v, want a TRUSTED_PROXY error", err)
+	}
+}
+
+func TestLoad_AdminTelegramIDs(t *testing.T) {
+	setEnv(t, map[string]string{"ADMIN_TELEGRAM_IDS": " 111, 222 ,,"})
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.AdminTelegramIDs) != 2 || cfg.AdminTelegramIDs[0] != 111 || cfg.AdminTelegramIDs[1] != 222 {
+		t.Errorf("AdminTelegramIDs = %v, want [111 222]", cfg.AdminTelegramIDs)
+	}
+
+	for _, bad := range []string{"111,abc", "-5", "0"} {
+		setEnv(t, map[string]string{"ADMIN_TELEGRAM_IDS": bad})
+		if _, err := Load(); err == nil || !strings.Contains(err.Error(), "ADMIN_TELEGRAM_IDS") {
+			t.Errorf("ADMIN_TELEGRAM_IDS=%q: err = %v, want an ADMIN_TELEGRAM_IDS error", bad, err)
+		}
 	}
 }

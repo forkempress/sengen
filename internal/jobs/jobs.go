@@ -13,8 +13,10 @@ import (
 
 	"shengen/internal/auth"
 	"shengen/internal/clock"
+	"shengen/internal/health"
 	"shengen/internal/status"
 	"shengen/internal/store"
+	"shengen/internal/superadmin"
 	"shengen/internal/telegram"
 )
 
@@ -25,6 +27,9 @@ type Runner struct {
 	// Client is the shared bot used to notify every firm; nil when no bot
 	// token is configured, in which case there is nothing to send.
 	Client *telegram.Client
+	// SuperAdmin pushes platform events to the operators; nil when no
+	// ADMIN_TELEGRAM_IDS are configured.
+	SuperAdmin *superadmin.Notifier
 
 	lastCleanup time.Time
 }
@@ -60,8 +65,11 @@ func (r *Runner) tick(ctx context.Context) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			log.Printf("jobs: panic during tick: %v", rec)
+			health.ReportError(health.KindJobPanic)
 		}
 	}()
+
+	health.MarkJobTick(time.Now())
 
 	if now := time.Now(); now.Sub(r.lastCleanup) >= cleanupInterval {
 		r.Cleanup(ctx, now)
@@ -74,10 +82,14 @@ func (r *Runner) tick(ctx context.Context) {
 	tenants, err := r.Store.ListAllTenants(ctx)
 	if err != nil {
 		log.Printf("jobs: list tenants: %v", err)
+		health.ReportError(health.KindJobError)
 		return
 	}
 	for _, t := range tenants {
 		r.processTenant(ctx, t)
+	}
+	if r.SuperAdmin != nil {
+		r.SuperAdmin.Tick(ctx)
 	}
 }
 
@@ -104,6 +116,7 @@ func (r *Runner) processTenant(ctx context.Context, t store.Tenant) {
 	settings, err := t.ParsedSettings()
 	if err != nil {
 		log.Printf("jobs: settings for tenant %d: %v", t.ID, err)
+		health.ReportError(health.KindJobError)
 		return
 	}
 	client := r.Client
@@ -113,11 +126,13 @@ func (r *Runner) processTenant(ctx context.Context, t store.Tenant) {
 	drivers, err := r.Store.ListDrivers(ctx, t.ID, true)
 	if err != nil {
 		log.Printf("jobs: list drivers for tenant %d: %v", t.ID, err)
+		health.ReportError(health.KindJobError)
 		return
 	}
 	allStays, err := r.Store.ListStaysForTenant(ctx, t.ID)
 	if err != nil {
 		log.Printf("jobs: list stays for tenant %d: %v", t.ID, err)
+		health.ReportError(health.KindJobError)
 		return
 	}
 	statuses := status.ComputeAll(drivers, allStays, today)
@@ -134,6 +149,7 @@ func (r *Runner) sendAlert(ctx context.Context, client *telegram.Client, t store
 	sent, err := r.Store.TryRecordAlert(ctx, t.ID, driverID, alertType, dateStr)
 	if err != nil {
 		log.Printf("jobs: dedup check failed for tenant %d: %v", t.ID, err)
+		health.ReportError(health.KindJobError)
 		return
 	}
 	if !sent {
@@ -141,6 +157,7 @@ func (r *Runner) sendAlert(ctx context.Context, client *telegram.Client, t store
 	}
 	if err := client.SendMessage(ctx, settings.TelegramAlertChatID, text, nil); err != nil {
 		log.Printf("jobs: send alert failed for tenant %d: %v", t.ID, err)
+		health.ReportError(health.KindSendError)
 	}
 }
 

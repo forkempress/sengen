@@ -1,6 +1,12 @@
 // Command seed onboards a firm: it creates the firm (or reuses it, found by
 // its slug) and an owner account. There is no public signup flow. Everyone
 // signs in at the same address; the email decides the firm.
+//
+// It also sets a firm's billing (plan, trial end, price), which the
+// superadmin bot reports on. With -slug and only billing flags it changes an
+// existing firm without creating an owner:
+//
+//	make seed ARGS="-slug prevoz-djuric -plan paid -price-cents 200"
 package main
 
 import (
@@ -9,6 +15,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"time"
 
 	"shengen/internal/auth"
 	"shengen/internal/config"
@@ -22,10 +29,16 @@ func main() {
 	email := flag.String("email", "", "email vlasnika za prijavu")
 	password := flag.String("password", "", "lozinka vlasnika za prijavu")
 	ownerName := flag.String("name", "", "ime vlasnika")
+	plan := flag.String("plan", "", "plan firme: trial, paid ili paused")
+	trialUntil := flag.String("trial-until", "", "poslednji dan triala, YYYY-MM-DD")
+	priceCents := flag.Int("price-cents", -1, "mesečna cena po aktivnom vozaču, u evro centima (200 = €2)")
 	flag.Parse()
 
-	if *tenantName == "" || *email == "" || *password == "" || *ownerName == "" {
-		log.Fatal("obavezni parametri: -tenant-name -email -password -name (opciono: -slug)")
+	billingOnly := *email == "" && *password == "" && *ownerName == "" && *slug != "" &&
+		(*plan != "" || *trialUntil != "" || *priceCents >= 0)
+	if !billingOnly && (*tenantName == "" || *email == "" || *password == "" || *ownerName == "") {
+		log.Fatal("obavezni parametri: -tenant-name -email -password -name (opciono: -slug, -plan, -trial-until, -price-cents)\n" +
+			"ili samo naplata postojeće firme: -slug uz -plan / -trial-until / -price-cents")
 	}
 	if *slug == "" {
 		*slug = store.SlugFromName(*tenantName)
@@ -48,6 +61,13 @@ func main() {
 	ctx := context.Background()
 
 	t, err := st.GetTenantBySlug(ctx, *slug)
+	if billingOnly {
+		if err != nil {
+			log.Fatalf("firma %q: %v", *slug, err)
+		}
+		setBilling(ctx, st, t.ID, *plan, *trialUntil, *priceCents)
+		return
+	}
 	if errors.Is(err, store.ErrNotFound) {
 		t, err = st.CreateTenant(ctx, *tenantName, *slug)
 		if err != nil {
@@ -81,4 +101,38 @@ func main() {
 		where = "na " + cfg.PublicBaseURL + "/login"
 	}
 	fmt.Printf("Kreiran vlasnik #%d (%s) — prijava %s\n", u.ID, u.Email, where)
+
+	if *plan != "" || *trialUntil != "" || *priceCents >= 0 {
+		setBilling(ctx, st, t.ID, *plan, *trialUntil, *priceCents)
+	}
+}
+
+// setBilling changes only the billing fields that were passed.
+func setBilling(ctx context.Context, st *store.Store, tenantID int64, plan, trialUntil string, priceCents int) {
+	cur, err := st.GetTenantOverview(ctx, tenantID)
+	if err != nil {
+		log.Fatalf("učitavanje firme: %v", err)
+	}
+	if plan == "" {
+		plan = cur.Plan
+	}
+	trial := cur.TrialUntil
+	if trialUntil != "" {
+		d, err := time.Parse("2006-01-02", trialUntil)
+		if err != nil {
+			log.Fatalf("-trial-until mora biti u obliku YYYY-MM-DD: %v", err)
+		}
+		trial = &d
+	}
+	if priceCents < 0 {
+		priceCents = cur.PricePerDriverCents
+	}
+	if err := st.SetTenantBilling(ctx, tenantID, plan, trial, priceCents); err != nil {
+		log.Fatalf("naplata: %v", err)
+	}
+	until := "-"
+	if trial != nil {
+		until = trial.Format("02.01.2006")
+	}
+	fmt.Printf("Firma #%d: plan %s, trial do %s, %d centi po vozaču\n", tenantID, plan, until, priceCents)
 }

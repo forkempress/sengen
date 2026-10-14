@@ -1,0 +1,665 @@
+package superadmin
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"shengen/internal/clock"
+	"shengen/internal/db"
+	"shengen/internal/health"
+	"shengen/internal/store"
+	"shengen/internal/telegram"
+)
+
+const adminID int64 = 4242
+
+// --- fake Telegram ---
+
+type sent struct {
+	ChatID int64
+	Text   string
+}
+
+type fakeTelegram struct {
+	mu    sync.Mutex
+	msgs  []sent
+	other []string // non-sendMessage methods called
+}
+
+func newFakeTelegram(t *testing.T) *fakeTelegram {
+	t.Helper()
+	f := &fakeTelegram{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		var body map[string]any
+		json.Unmarshal(raw, &body)
+		w.Header().Set("Content-Type", "application/json")
+		f.mu.Lock()
+		defer f.mu.Unlock()
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/sendMessage"):
+			id, _ := body["chat_id"].(float64)
+			text, _ := body["text"].(string)
+			f.msgs = append(f.msgs, sent{ChatID: int64(id), Text: text})
+			io.WriteString(w, `{"ok":true,"result":{}}`)
+		case strings.HasSuffix(r.URL.Path, "/getWebhookInfo"):
+			f.other = append(f.other, "getWebhookInfo")
+			io.WriteString(w, `{"ok":true,"result":{"url":"https://app.dani90.rs/telegram/webhook","pending_update_count":0}}`)
+		default:
+			f.other = append(f.other, r.URL.Path)
+			io.WriteString(w, `{"ok":true,"result":{}}`)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("TELEGRAM_API_BASE_URL", srv.URL)
+	return f
+}
+
+func (f *fakeTelegram) take() []sent {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := f.msgs
+	f.msgs = nil
+	return out
+}
+
+// --- fixture ---
+
+// The fixed "now": Wednesday 14.10.2026, 12:00 in Belgrade.
+var fixedNow = time.Date(2026, 10, 14, 12, 0, 0, 0, clock.Now().Location())
+
+func setNow(t *testing.T, at time.Time) {
+	t.Helper()
+	t.Cleanup(clock.Set(func() time.Time { return at }))
+}
+
+func ago(d time.Duration) string {
+	return fixedNow.Add(-d).UTC().Format("2006-01-02T15:04:05.000Z")
+}
+
+const day = 24 * time.Hour
+
+func dateIn(days int) *time.Time {
+	d := clock.Today().AddDate(0, 0, days)
+	return &d
+}
+
+// Every driver name in the fixture: none may ever appear in superadmin output.
+var driverNames = []string{"Marko Tajni", "Jovan Skriveni", "Petar Anonimni", "Stari Neaktivni", "Ana Diskretna", "Mila Privatna", "Zoran Povuceni"}
+
+type fixture struct {
+	st                       *store.Store
+	alfa, beta, cezar, delta *store.Tenant
+	epsilon                  *store.Tenant
+}
+
+// newFixture builds five firms with known counts:
+//
+//	Alfa    paid   €2,00  3 active drivers (2 on Telegram) + 1 inactive; owner+dispatcher on Telegram
+//	Beta    trial  €3,50  2 active drivers, trial ends in 2 days, first stay 2h ago, created 5 days ago
+//	Cezar   paused €2,00  1 active driver, no activity
+//	Delta   trial  €2,00  no drivers, created 30 days ago, never active, trial ends in 20 days
+//	Epsilon trial  €2,00  created 2 hours ago, trial ends in 30 days
+func newFixture(t *testing.T) *fixture {
+	t.Helper()
+	setNow(t, fixedNow)
+	health.Reset()
+	t.Cleanup(health.Reset)
+
+	conn, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { conn.Close() })
+	st := store.New(conn)
+	ctx := context.Background()
+	must := func(err error) {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	exec := func(q string, args ...any) {
+		t.Helper()
+		_, err := conn.Exec(q, args...)
+		must(err)
+	}
+	tenant := func(name, slug, plan string, trial *time.Time, price int, created time.Duration) *store.Tenant {
+		tn, err := st.CreateTenant(ctx, name, slug)
+		must(err)
+		must(st.SetTenantBilling(ctx, tn.ID, plan, trial, price))
+		exec(`UPDATE tenants SET created_at = ? WHERE id = ?`, ago(created), tn.ID)
+		return tn
+	}
+	driver := func(tn *store.Tenant, name string, created time.Duration) *store.Driver {
+		d, err := st.CreateDriver(ctx, tn.ID, name, "")
+		must(err)
+		exec(`UPDATE drivers SET created_at = ? WHERE id = ?`, ago(created), d.ID)
+		return d
+	}
+	stay := func(tn *store.Tenant, d *store.Driver, entryDays, exitDays int, open bool, created time.Duration) {
+		entry := clock.Today().AddDate(0, 0, -entryDays)
+		var exit *time.Time
+		if !open {
+			exit = dateIn(-exitDays)
+		}
+		s, err := st.CreateStay(ctx, tn.ID, d.ID, entry, exit, "work", "manual", "", nil)
+		must(err)
+		exec(`UPDATE stays SET created_at = ?, updated_at = ? WHERE id = ?`, ago(created), ago(created), s.ID)
+	}
+
+	f := &fixture{st: st}
+	f.alfa = tenant("Alfa Prevoz", "alfa", store.PlanPaid, nil, 200, 60*day)
+	owner, err := st.CreateUser(ctx, f.alfa.ID, "vlasnik@alfa.rs", "h", "owner", "Vlasnik Alfa")
+	must(err)
+	disp, err := st.CreateUser(ctx, f.alfa.ID, "dispecer@alfa.rs", "h", "dispatcher", "Dispečer Alfa")
+	must(err)
+	must(st.SetUserTelegramChatID(ctx, f.alfa.ID, owner.ID, 902))
+	must(st.SetUserTelegramChatID(ctx, f.alfa.ID, disp.ID, 903))
+	marko := driver(f.alfa, "Marko Tajni", 60*day)
+	jovan := driver(f.alfa, "Jovan Skriveni", 60*day)
+	petar := driver(f.alfa, "Petar Anonimni", 60*day)
+	stari := driver(f.alfa, "Stari Neaktivni", 60*day)
+	must(st.SetDriverTelegramChatID(ctx, f.alfa.ID, marko.ID, 901))
+	must(st.SetDriverTelegramChatID(ctx, f.alfa.ID, jovan.ID, 905))
+	stay(f.alfa, marko, 10, 0, true, 10*day)
+	stay(f.alfa, jovan, 40, 30, false, 40*day)
+	stay(f.alfa, petar, 100, 95, false, 100*day)
+	stay(f.alfa, stari, 5, 0, true, 5*day)
+	must(st.SetDriverActive(ctx, f.alfa.ID, stari.ID, false))
+
+	f.beta = tenant("Beta Trans", "beta", store.PlanTrial, dateIn(2), 350, 5*day)
+	_, err = st.CreateUser(ctx, f.beta.ID, "vlasnik@beta.rs", "h", "owner", "Vlasnik Beta")
+	must(err)
+	ana := driver(f.beta, "Ana Diskretna", 5*day)
+	driver(f.beta, "Mila Privatna", 5*day)
+	stay(f.beta, ana, 3, 2, false, 2*time.Hour)
+
+	f.cezar = tenant("Cezar Logistika", "cezar", store.PlanPaused, nil, 200, 100*day)
+	_, err = st.CreateUser(ctx, f.cezar.ID, "vlasnik@cezar.rs", "h", "owner", "Vlasnik Cezar")
+	must(err)
+	driver(f.cezar, "Zoran Povuceni", 100*day)
+
+	f.delta = tenant("Delta Kamioni", "delta", store.PlanTrial, dateIn(20), 200, 30*day)
+	f.epsilon = tenant("Epsilon Cargo", "epsilon", store.PlanTrial, dateIn(30), 200, 2*time.Hour)
+	return f
+}
+
+func assertNoDriverNames(t *testing.T, label, out string) {
+	t.Helper()
+	for _, n := range driverNames {
+		if strings.Contains(out, n) || strings.Contains(out, strings.Fields(n)[0]) {
+			t.Errorf("%s leaks driver name %q:\n%s", label, n, out)
+		}
+	}
+}
+
+func assertContains(t *testing.T, label, out string, want ...string) {
+	t.Helper()
+	for _, w := range want {
+		if !strings.Contains(out, w) {
+			t.Errorf("%s: missing %q in:\n%s", label, w, out)
+		}
+	}
+}
+
+// --- aggregates ---
+
+func TestPlatformStats_ExactCounts(t *testing.T) {
+	f := newFixture(t)
+	p, err := f.st.PlatformStats(context.Background(), fixedNow.Add(-7*day))
+	if err != nil {
+		t.Fatal(err)
+	}
+	checks := []struct {
+		name      string
+		got, want int
+	}{
+		{"tenants", p.Tenants(), 5},
+		{"trial", p.TenantsByPlan[store.PlanTrial], 3},
+		{"paid", p.TenantsByPlan[store.PlanPaid], 1},
+		{"paused", p.TenantsByPlan[store.PlanPaused], 1},
+		{"users", p.Users(), 4},
+		{"owners", p.UsersByRole["owner"], 3},
+		{"dispatchers", p.UsersByRole["dispatcher"], 1},
+		{"users on telegram", p.UsersOnTelegram, 2},
+		{"active drivers", p.DriversActive, 6},  // the deactivated driver is excluded
+		{"linked drivers", p.DriversLinked, 2},  // deactivating also unlinked nobody counted
+		{"in schengen", p.DriversInSchengen, 1}, // the inactive driver's open stay does not count
+		{"stays", p.Stays, 5},
+		{"stays last 7 days", p.StaysSince, 2},
+	}
+	for _, c := range checks {
+		if c.got != c.want {
+			t.Errorf("%s = %d, want %d", c.name, c.got, c.want)
+		}
+	}
+}
+
+func TestMRR_ExactAmounts(t *testing.T) {
+	f := newFixture(t)
+	firms, err := f.st.ListTenantOverviews(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := ComputeMRR(firms)
+	// Alfa: 3 active × €2 = €6. Trial: Beta 2 × €3,50 = €7; Delta and Epsilon have no drivers.
+	want := MRR{PaidCents: 600, PaidTenants: 1, PaidDrivers: 3, TrialCents: 700, TrialTenants: 3, TrialDrivers: 2}
+	if m != want {
+		t.Errorf("MRR = %+v, want %+v", m, want)
+	}
+
+	out, err := f.svc().Run(context.Background(), nil, "/mrr", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertContains(t, "/mrr", out, "MRR: €6,00", "Plaćene firme: 1, vozača 3", "prosek €6,00", "€7,00 iz 3 firmi, 2 vozača")
+}
+
+func (f *fixture) svc() *Service { return New(f.st, []int64{adminID}, "") }
+
+func TestCommands_OutputAndPrivacy(t *testing.T) {
+	f := newFixture(t)
+	s := f.svc()
+	ctx := context.Background()
+
+	cases := []struct {
+		cmd, args string
+		want      []string
+		notWant   []string
+	}{
+		{"/stats", "", []string{
+			"Firme: 5 (trial 3, plaćena 1, pauzirana 1)",
+			"Korisnici: 4 (vlasnici 3, dispečeri 1), na Telegramu 2",
+			"Vozači: 6 aktivnih, 2 povezanih sa botom",
+			"U Šengenu sada: 1 vozača",
+			"Boravci: 5 ukupno, 2 unetih u poslednjih 7 dana",
+		}, nil},
+		{"/firme", "", []string{
+			fmt.Sprintf("#%d Alfa Prevoz — plaćena, 3 vozača", f.alfa.ID),
+			fmt.Sprintf("#%d Delta Kamioni — trial, 0 vozača, bez aktivnosti", f.delta.ID),
+		}, nil},
+		{"/firma", fmt.Sprint(f.alfa.ID), []string{
+			"Alfa Prevoz (oznaka alfa)",
+			"Plan: plaćena",
+			"Cena: €2,00 po vozaču, mesečno €6,00",
+			"Korisnici: 2 (vlasnici 1, dispečeri 1)",
+			"Vozači: 3 aktivnih, 2 povezanih sa botom",
+			"Boravci: 4",
+			"Danas: 1 u Šengenu",
+		}, []string{"@alfa.rs", "Vlasnik Alfa"}},
+		{"/firma", "99999", []string{"Firma #99999 ne postoji."}, nil},
+		{"/firma", "abc", []string{"Upotreba: /firma <id>"}, nil},
+		{"/trial", "", []string{
+			"Trial (3)",
+			fmt.Sprintf("#%d Beta Trans — trial do %s (još 2 dana), 2 vozača", f.beta.ID, dateIn(2).Format("02.01.2006")),
+		}, []string{"Alfa", "Cezar"}},
+		{"/neaktivne", "", []string{
+			"(1)",
+			fmt.Sprintf("#%d Delta Kamioni — trial, poslednja aktivnost nikad", f.delta.ID),
+		}, []string{"Alfa", "Beta", "Cezar", "Epsilon"}},
+		{"/zdravlje", "", []string{"Baza: OK", "Backup: nije podešen", "Greške (24h): nema"}, nil},
+	}
+	for _, c := range cases {
+		out, err := s.Run(ctx, nil, c.cmd, c.args)
+		if err != nil {
+			t.Fatalf("%s %s: %v", c.cmd, c.args, err)
+		}
+		label := strings.TrimSpace(c.cmd + " " + c.args)
+		assertContains(t, label, out, c.want...)
+		for _, nw := range c.notWant {
+			if strings.Contains(out, nw) {
+				t.Errorf("%s: unexpected %q in:\n%s", label, nw, out)
+			}
+		}
+		assertNoDriverNames(t, label, out)
+		if len(out) > 4096 {
+			t.Errorf("%s: reply is %d chars, over Telegram's limit", label, len(out))
+		}
+	}
+
+	// Beta trial comes before Delta (sooner end).
+	out, _ := s.Run(ctx, nil, "/trial", "")
+	if strings.Index(out, "Beta") > strings.Index(out, "Delta") {
+		t.Errorf("/trial not sorted by end date:\n%s", out)
+	}
+}
+
+func TestFormatEUR(t *testing.T) {
+	for cents, want := range map[int]string{0: "€0,00", 5: "€0,05", 600: "€6,00", 123456: "€1.234,56", 100000000: "€1.000.000,00"} {
+		if got := formatEUR(cents); got != want {
+			t.Errorf("formatEUR(%d) = %q, want %q", cents, got, want)
+		}
+	}
+}
+
+// --- access control, end to end through the webhook ---
+
+const webhookSecret = "test-secret"
+
+var updateID atomic.Int64
+
+func post(t *testing.T, bot *telegram.Bot, chatID int64, chatType string, fromID int64, text string) {
+	t.Helper()
+	body := fmt.Sprintf(`{"update_id":%d,"message":{"message_id":1,"from":{"id":%d,"first_name":"x"},"chat":{"id":%d,"type":%q},"date":0,"text":%q}}`,
+		updateID.Add(1), fromID, chatID, chatType, text)
+	r := httptest.NewRequest(http.MethodPost, "/telegram/webhook", strings.NewReader(body))
+	r.Header.Set("X-Telegram-Bot-Api-Secret-Token", webhookSecret)
+	w := httptest.NewRecorder()
+	bot.HandleWebhook(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("webhook status %d", w.Code)
+	}
+	if err := bot.Wait(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func newBot(t *testing.T, f *fixture) (*telegram.Bot, *fakeTelegram) {
+	t.Helper()
+	fake := newFakeTelegram(t)
+	bot := telegram.New(f.st, telegram.Config{Token: "TEST-TOKEN", WebhookSecret: webhookSecret})
+	bot.SuperAdmin = f.svc()
+	return bot, fake
+}
+
+func joinTexts(ms []sent) string {
+	var parts []string
+	for _, m := range ms {
+		parts = append(parts, m.Text)
+	}
+	return strings.Join(parts, "\n---\n")
+}
+
+// A caller who is not an operator must not be able to run any superadmin
+// command, and must not be able to tell the commands exist: the reply is
+// exactly the reply to a made-up command.
+func TestNonAdmin_CannotRunAnySuperadminCommand(t *testing.T) {
+	f := newFixture(t)
+	bot, fake := newBot(t, f)
+
+	callers := []struct {
+		name     string
+		chatID   int64
+		chatType string
+		fromID   int64
+	}{
+		{"linked driver", 901, "private", 901},
+		{"linked owner", 902, "private", 902},
+		{"linked dispatcher", 903, "private", 903},
+		{"unknown account", 904, "private", 904},
+		{"operator id in a group chat", -100500, "group", adminID},
+		{"operator id in a supergroup", -100501, "supergroup", adminID},
+		{"someone else in the operator's chat id", adminID, "private", 777},
+	}
+	for _, c := range callers {
+		post(t, bot, c.chatID, c.chatType, c.fromID, "/nepostojeca_komanda")
+		baseline := joinTexts(fake.take())
+
+		for _, cmd := range Commands {
+			for _, text := range []string{cmd, cmd + " " + fmt.Sprint(f.alfa.ID)} {
+				post(t, bot, c.chatID, c.chatType, c.fromID, text)
+				got := joinTexts(fake.take())
+				if got != baseline {
+					t.Errorf("%s, %q: reply %q differs from the unknown-command reply %q", c.name, text, got, baseline)
+				}
+				for _, leak := range []string{"Statistika", "MRR", "Superadmin", "Alfa Prevoz", "Zdravlje", "Trial ("} {
+					if strings.Contains(got, leak) {
+						t.Errorf("%s, %q: reply leaks %q: %s", c.name, text, leak, got)
+					}
+				}
+			}
+		}
+	}
+
+	// Every private attempt was audited as refused; none as allowed.
+	entries, err := f.st.ListSuperadminAudit(context.Background(), 1000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The group chats and the foreign sender in a private chat are dropped by
+	// the bot before any handler runs, so only the first four are audited.
+	privateCallers := 4
+	if want := privateCallers * len(Commands) * 2; len(entries) != want {
+		t.Errorf("audit rows = %d, want %d", len(entries), want)
+	}
+	for _, e := range entries {
+		if e.Allowed {
+			t.Errorf("audit row allowed for non-operator: %+v", e)
+		}
+	}
+}
+
+func TestAdmin_RunsCommandsAndIsAudited(t *testing.T) {
+	f := newFixture(t)
+	bot, fake := newBot(t, f)
+
+	post(t, bot, adminID, "private", adminID, "/stats")
+	msgs := fake.take()
+	if len(msgs) != 1 || msgs[0].ChatID != adminID || !strings.Contains(msgs[0].Text, "Firme: 5") {
+		t.Fatalf("operator /stats reply = %+v", msgs)
+	}
+
+	post(t, bot, adminID, "private", adminID, fmt.Sprintf("/firma@dani90bot %d", f.beta.ID))
+	msgs = fake.take()
+	if len(msgs) != 1 || !strings.Contains(msgs[0].Text, "Beta Trans") {
+		t.Fatalf("operator /firma reply = %+v", msgs)
+	}
+
+	// An ordinary message from the operator is not a superadmin command and
+	// gets the normal (unlinked account) handling.
+	post(t, bot, adminID, "private", adminID, "/pregled")
+	if msgs = fake.take(); len(msgs) != 1 || strings.Contains(msgs[0].Text, "Firme") {
+		t.Errorf("operator /pregled = %+v, want the normal unknown-account reply", msgs)
+	}
+
+	entries, err := f.st.ListSuperadminAudit(context.Background(), 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("audit rows = %d, want 2: %+v", len(entries), entries)
+	}
+	// Newest first.
+	if e := entries[0]; e.TelegramUserID != adminID || e.Command != "/firma" || e.Args != fmt.Sprint(f.beta.ID) || !e.Allowed || e.OccurredAt.IsZero() {
+		t.Errorf("audit row = %+v", e)
+	}
+	if e := entries[1]; e.Command != "/stats" || !e.Allowed {
+		t.Errorf("audit row = %+v", e)
+	}
+}
+
+// If the audit row can't be written, the command does not run.
+func TestAdmin_AuditFailureBlocksCommand(t *testing.T) {
+	f := newFixture(t)
+	bot, fake := newBot(t, f)
+	if _, err := f.st.DB.ExecContext(context.Background(), `DROP TABLE superadmin_audit_log`); err != nil {
+		t.Fatal(err)
+	}
+	post(t, bot, adminID, "private", adminID, "/stats")
+	msgs := fake.take()
+	if len(msgs) != 1 || msgs[0].Text != auditFailedMsg {
+		t.Errorf("reply = %+v, want the audit failure message", msgs)
+	}
+}
+
+// --- push notifications ---
+
+func newNotifier(t *testing.T, f *fixture, backupFile string) (*Notifier, *fakeTelegram) {
+	t.Helper()
+	fake := newFakeTelegram(t)
+	s := New(f.st, []int64{adminID, 5151}, backupFile)
+	return s.Notifier(telegram.NewClient("TEST-TOKEN")), fake
+}
+
+func freshBackup(t *testing.T) string {
+	t.Helper()
+	p := filepath.Join(t.TempDir(), "backup-ok")
+	if err := os.WriteFile(p, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// File mtimes are real time; age it relative to the fake clock.
+	if err := os.Chtimes(p, fixedNow.Add(-time.Hour), fixedNow.Add(-time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+func TestNotifier_EventsGoOutOnceToEveryOperator(t *testing.T) {
+	f := newFixture(t)
+	n, fake := newNotifier(t, f, freshBackup(t))
+	ctx := context.Background()
+
+	n.Tick(ctx)
+	msgs := fake.take()
+	all := joinTexts(msgs)
+	assertContains(t, "first tick", all,
+		fmt.Sprintf("Nova firma: #%d Epsilon Cargo", f.epsilon.ID),
+		fmt.Sprintf("#%d Beta Trans, 2 vozača", f.beta.ID), // trial ends in 2 days
+		fmt.Sprintf("Prva aktivnost: #%d Beta Trans", f.beta.ID),
+	)
+	assertNoDriverNames(t, "notifications", all)
+	for _, unwanted := range []string{"Delta", "Alfa", "Cezar", "Greške", "Backup", "Dnevni pregled", "ne prima"} {
+		if strings.Contains(all, unwanted) {
+			t.Errorf("unexpected %q in first tick:\n%s", unwanted, all)
+		}
+	}
+	// Three events × two operators.
+	if len(msgs) != 6 {
+		t.Errorf("sent %d messages, want 6: %s", len(msgs), all)
+	}
+	perOperator := map[int64]int{}
+	for _, m := range msgs {
+		perOperator[m.ChatID]++
+	}
+	if perOperator[adminID] != 3 || perOperator[5151] != 3 {
+		t.Errorf("messages per operator = %v", perOperator)
+	}
+
+	// Nothing repeats on the next tick, nor from a fresh notifier (restart).
+	n.Tick(ctx)
+	n2, _ := newNotifier(t, f, freshBackup(t))
+	n2.Tick(ctx)
+	if again := fake.take(); len(again) != 0 {
+		t.Errorf("repeated notifications: %s", joinTexts(again))
+	}
+}
+
+func TestNotifier_ErrorsAtMostHourly(t *testing.T) {
+	f := newFixture(t)
+	n, fake := newNotifier(t, f, freshBackup(t))
+	ctx := context.Background()
+	n.Tick(ctx)
+	fake.take()
+
+	health.ReportError(health.KindTelegramPanic)
+	health.ReportError(health.KindSendError)
+	n.Tick(ctx)
+	got := joinTexts(fake.take())
+	assertContains(t, "error alert", got, "pad obrade poruke 1", "neuspelo slanje 1")
+
+	setNow(t, fixedNow.Add(30*time.Minute))
+	health.ReportError(health.KindJobPanic)
+	n.Tick(ctx)
+	if got := fake.take(); len(got) != 0 {
+		t.Errorf("second error alert within the hour: %s", joinTexts(got))
+	}
+
+	setNow(t, fixedNow.Add(61*time.Minute))
+	n.Tick(ctx)
+	got = joinTexts(fake.take())
+	assertContains(t, "next hour", got, "pad pozadinskog posla 1")
+	if strings.Contains(got, "pad obrade poruke") {
+		t.Errorf("already reported errors repeated: %s", got)
+	}
+}
+
+func TestNotifier_BackupMissingOrStale(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+
+	stale := freshBackup(t)
+	os.Chtimes(stale, fixedNow.Add(-30*time.Hour), fixedNow.Add(-30*time.Hour))
+	n, fake := newNotifier(t, f, stale)
+	n.Tick(ctx)
+	assertContains(t, "stale backup", joinTexts(fake.take()), "Backup: poslednji uspešan pre 30h")
+
+	f2 := newFixture(t)
+	n, fake = newNotifier(t, f2, filepath.Join(t.TempDir(), "nema"))
+	n.Tick(ctx)
+	assertContains(t, "missing backup", joinTexts(fake.take()), "Backup: nema zapisa o uspešnom backupu")
+}
+
+func TestNotifier_DailyDigestAt8Belgrade(t *testing.T) {
+	f := newFixture(t)
+	n, fake := newNotifier(t, f, freshBackup(t))
+	ctx := context.Background()
+
+	// 07:59 the same day: no digest.
+	setNow(t, time.Date(2026, 10, 14, 7, 59, 0, 0, fixedNow.Location()))
+	n.Tick(ctx)
+	if strings.Contains(joinTexts(fake.take()), "Dnevni pregled") {
+		t.Fatal("digest before 08:00")
+	}
+
+	// 08:05 next day: digest, once.
+	setNow(t, time.Date(2026, 10, 15, 8, 5, 0, 0, fixedNow.Location()))
+	n.Tick(ctx)
+	got := joinTexts(fake.take())
+	assertContains(t, "digest", got,
+		"Dnevni pregled — 15.10.2026",
+		"Juče: 1 novih firmi, 1 unetih boravaka", // Epsilon and Beta's stay, both on 14.10.
+		"MRR: €6,00 (1 plaćenih firmi), trial potencijal €7,00",
+		"Firme: 5",
+	)
+	assertNoDriverNames(t, "digest", got)
+	if c := strings.Count(got, "Dnevni pregled"); c != 2 {
+		t.Errorf("digest sent %d times, want once per operator (2)", c)
+	}
+
+	setNow(t, time.Date(2026, 10, 15, 8, 10, 0, 0, fixedNow.Location()))
+	n.Tick(ctx)
+	if strings.Contains(joinTexts(fake.take()), "Dnevni pregled") {
+		t.Error("digest sent twice the same day")
+	}
+}
+
+func TestNotifier_NoOperatorsSendsNothing(t *testing.T) {
+	f := newFixture(t)
+	fake := newFakeTelegram(t)
+	New(f.st, nil, "").Notifier(telegram.NewClient("TEST-TOKEN")).Tick(context.Background())
+	if got := fake.take(); len(got) != 0 {
+		t.Errorf("sent without operators: %s", joinTexts(got))
+	}
+}
+
+func TestWebhookProblem(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0)
+	ok := telegram.WebhookInfo{URL: "https://x/telegram/webhook"}
+	if p := webhookProblem(ok, now); p != "" {
+		t.Errorf("healthy webhook reported %q", p)
+	}
+	old := ok
+	old.LastErrorDate, old.LastErrorMessage = now.Add(-2*time.Hour).Unix(), "staro"
+	if p := webhookProblem(old, now); p != "" {
+		t.Errorf("old error reported %q", p)
+	}
+	bad := ok
+	bad.LastErrorDate, bad.LastErrorMessage, bad.PendingUpdateCount = now.Add(-5*time.Minute).Unix(), "Wrong response: 502", 150
+	p := webhookProblem(bad, now)
+	assertContains(t, "webhook problem", p, "Wrong response: 502", "150 poruka čeka")
+	if p := webhookProblem(telegram.WebhookInfo{}, now); !strings.Contains(p, "nije registrovan") {
+		t.Errorf("missing webhook: %q", p)
+	}
+}
