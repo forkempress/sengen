@@ -115,6 +115,25 @@ func MaxContinuousUntil(stays []Stay, today time.Time) (time.Time, bool) {
 		return time.Time{}, false
 	}
 	today = normalize(today)
+
+	// Already over the limit today: there is no legal day left, and the
+	// forward walk below would wrongly report today itself as allowed. Report
+	// instead the last day of this stay on which the driver was still within
+	// the limit — a deadline that has already passed — so callers can say
+	// "trebalo je da izađe do X". The result is then before today, which is
+	// how callers recognise an overstay.
+	if UsedDays(stays, today) > MaxDays {
+		entry := normalize(open.Entry)
+		for d := addDays(today, -1); !d.Before(entry); d = addDays(d, -1) {
+			if UsedDays(stays, d) <= MaxDays {
+				return d, true
+			}
+		}
+		// Over the limit from the very first day of the stay: the driver
+		// should not have entered at all.
+		return addDays(entry, -1), true
+	}
+
 	// Walk forward day by day from today until UsedDays would exceed 90 on the next day.
 	// This is O(days) but days is bounded (at most ~90-ish forward from today in practice);
 	// a closed-form derivation is error-prone given arbitrary overlapping history, so we

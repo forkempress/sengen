@@ -383,3 +383,80 @@ func TestMaxContinuousUntil_NotInSchengen(t *testing.T) {
 		t.Error("MaxContinuousUntil reported ok for a driver with no stays at all")
 	}
 }
+
+// --- MaxContinuousUntil when the limit is already exceeded ---
+
+// A driver who is already over 90 days today has no legal day left. The
+// function must not report today as allowed: it returns the last day of the
+// stay on which the driver was still within the limit — a deadline that has
+// already passed — so the UI can say "trebalo je da izađe do X".
+func TestMaxContinuousUntil_AlreadyOverLimit(t *testing.T) {
+	entry := d("01.06.2026")
+	today := addDays(entry, 92) // 93rd day of a continuous stay
+	stays := []Stay{{Entry: entry, Exit: nil, Type: TypeWork}}
+
+	if used := UsedDays(stays, today); used != 93 {
+		t.Fatalf("setup: UsedDays = %d, want 93", used)
+	}
+
+	until, ok := MaxContinuousUntil(stays, today)
+	if !ok {
+		t.Fatal("driver is in Schengen, ok should be true")
+	}
+	if !until.Before(today) {
+		t.Errorf("MaxContinuousUntil = %s, which is not before today %s — it claims an illegal day is allowed",
+			until.Format("02.01.2006"), today.Format("02.01.2006"))
+	}
+	wantLastLegal := addDays(entry, 89) // day 90
+	if !until.Equal(wantLastLegal) {
+		t.Errorf("MaxContinuousUntil = %s, want last legal day %s", until.Format("02.01.2006"), wantLastLegal.Format("02.01.2006"))
+	}
+}
+
+// Golden fixture, one day past the spec's 14.11 deadline: the answer must
+// still be 14.11, not 15.11.
+func TestMaxContinuousUntil_GoldenOneDayPastDeadline(t *testing.T) {
+	until, ok := MaxContinuousUntil(markoStays(), d("15.11.2026"))
+	if !ok {
+		t.Fatal("ok should be true while the stay is open")
+	}
+	if want := d("14.11.2026"); !until.Equal(want) {
+		t.Errorf("MaxContinuousUntil(15.11) = %s, want %s", until.Format("02.01.2006"), want.Format("02.01.2006"))
+	}
+}
+
+// Exactly on the limit (90/90) today is still a legal day.
+func TestMaxContinuousUntil_ExactlyAtLimitTodayIsLegal(t *testing.T) {
+	entry := d("01.06.2026")
+	today := addDays(entry, 89) // day 90
+	stays := []Stay{{Entry: entry, Exit: nil, Type: TypeWork}}
+
+	until, _ := MaxContinuousUntil(stays, today)
+	if !until.Equal(today) {
+		t.Errorf("at exactly 90 days MaxContinuousUntil = %s, want today %s", until.Format("02.01.2006"), today.Format("02.01.2006"))
+	}
+}
+
+// A driver who had already used all 90 days and enters again is over the
+// limit on the very first day: there was no legal day in this stay at all,
+// so the reported deadline is the day before entering.
+func TestMaxContinuousUntil_OverFromTheFirstDayOfStay(t *testing.T) {
+	first := d("01.06.2026")
+	firstExit := addDays(first, 89) // 90 days used
+	reentry := addDays(firstExit, 1)
+	stays := []Stay{
+		{Entry: first, Exit: &firstExit, Type: TypeWork},
+		{Entry: reentry, Exit: nil, Type: TypeWork},
+	}
+	if used := UsedDays(stays, reentry); used != 91 {
+		t.Fatalf("setup: UsedDays on re-entry = %d, want 91", used)
+	}
+
+	until, ok := MaxContinuousUntil(stays, reentry)
+	if !ok {
+		t.Fatal("ok should be true while the stay is open")
+	}
+	if want := addDays(reentry, -1); !until.Equal(want) {
+		t.Errorf("MaxContinuousUntil = %s, want %s (the day before entering)", until.Format("02.01.2006"), want.Format("02.01.2006"))
+	}
+}
