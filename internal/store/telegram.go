@@ -190,3 +190,15 @@ func (s *Store) TryRecordAlert(ctx context.Context, tenantID, driverID int64, al
 	}
 	return false, fmt.Errorf("record alert dedup: %w", err)
 }
+
+// ReleaseAlert gives back a slot claimed by TryRecordAlert, for a
+// notification that could not be sent, so the next attempt sends it.
+func (s *Store) ReleaseAlert(ctx context.Context, tenantID, driverID int64, alertType, date string) error {
+	_, err := s.DB.ExecContext(ctx,
+		`DELETE FROM telegram_alert_log WHERE tenant_id = ? AND driver_id = ? AND alert_type = ? AND alert_date = ?`,
+		tenantID, driverID, alertType, date)
+	if err != nil {
+		return fmt.Errorf("release alert dedup: %w", err)
+	}
+	return nil
+}

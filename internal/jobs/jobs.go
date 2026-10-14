@@ -1,8 +1,9 @@
 // Package jobs runs the recurring background checks that don't belong in a
 // request handler: driver reminders and threshold warnings, dispatcher
-// threshold alerts, and the daily digest. One ticker loop scans every tenant each tick; dedup is
-// handled by store.TryRecordAlert so a 5-minute tick cadence never produces
-// duplicate notifications for the same day.
+// threshold alerts, and the daily digest. One ticker loop scans every
+// tenant each tick; dedup is handled by sendOnce (store.TryRecordAlert) so a
+// 5-minute tick cadence never produces duplicate notifications for the same
+// day, and a failed send is retried on the next tick.
 package jobs
 
 import (
@@ -147,18 +148,29 @@ func (r *Runner) sendAlert(ctx context.Context, client *telegram.Client, t store
 	if settings.TelegramAlertChatID == 0 {
 		return
 	}
-	sent, err := r.Store.TryRecordAlert(ctx, t.ID, driverID, alertType, dateStr)
+	r.sendOnce(ctx, client, t.ID, driverID, alertType, dateStr, settings.TelegramAlertChatID, text, nil)
+}
+
+// sendOnce sends text unless the (driver, alertType, key) slot was already
+// used. The slot is claimed before sending, so two ticks never both send;
+// when the send fails it is released again, so the next tick retries
+// instead of the message being lost until the next day (AI-60).
+func (r *Runner) sendOnce(ctx context.Context, client *telegram.Client, tenantID, driverID int64, alertType, key string, chatID int64, text string, markup any) {
+	sent, err := r.Store.TryRecordAlert(ctx, tenantID, driverID, alertType, key)
 	if err != nil {
-		log.Printf("jobs: dedup check failed for tenant %d: %v", t.ID, err)
+		log.Printf("jobs: dedup check failed for tenant %d: %v", tenantID, err)
 		health.ReportError(health.KindJobError)
 		return
 	}
 	if !sent {
-		return // already notified today
+		return // already sent
 	}
-	if err := client.SendMessage(ctx, settings.TelegramAlertChatID, text, nil); err != nil {
-		log.Printf("jobs: send alert failed for tenant %d: %v", t.ID, err)
+	if err := client.SendMessage(ctx, chatID, text, markup); err != nil {
+		log.Printf("jobs: send %s failed for tenant %d: %v", alertType, tenantID, err)
 		health.ReportError(health.KindSendError)
+		if err := r.Store.ReleaseAlert(ctx, tenantID, driverID, alertType, key); err != nil {
+			log.Printf("jobs: release %s for tenant %d: %v", alertType, tenantID, err)
+		}
 	}
 }
 
@@ -244,19 +256,7 @@ func (r *Runner) checkDriverWarnings(ctx context.Context, client *telegram.Clien
 		default:
 			continue
 		}
-		sent, err := r.Store.TryRecordAlert(ctx, t.ID, ds.Driver.ID, alertType, key)
-		if err != nil {
-			log.Printf("jobs: dedup check failed for tenant %d: %v", t.ID, err)
-			health.ReportError(health.KindJobError)
-			continue
-		}
-		if !sent {
-			continue
-		}
-		if err := client.SendMessage(ctx, *chatID, text, nil); err != nil {
-			log.Printf("jobs: driver warning failed for tenant %d: %v", t.ID, err)
-			health.ReportError(health.KindSendError)
-		}
+		r.sendOnce(ctx, client, t.ID, ds.Driver.ID, alertType, key, *chatID, text, nil)
 	}
 }
 
@@ -293,11 +293,7 @@ func (r *Runner) checkOpenStayReminders(ctx context.Context, client *telegram.Cl
 		if daysOpen < 7 {
 			continue
 		}
-		sent, err := r.Store.TryRecordAlert(ctx, t.ID, driver.ID, "open_stay_reminder", dateStr)
-		if err != nil || !sent {
-			continue
-		}
-		client.SendMessage(ctx, *driver.TelegramChatID,
+		r.sendOnce(ctx, client, t.ID, driver.ID, "open_stay_reminder", dateStr, *driver.TelegramChatID,
 			fmt.Sprintf("Da li si još u Šengenu? Ulazak je evidentiran %s, a izlazak još nije.", st.Entry.Format("02.01.2006")),
 			telegram.InlineKeyboard(telegram.InlineRow(
 				telegram.InlineButton("Da, još sam u Šengenu", "reminder_still_in"),
@@ -314,11 +310,6 @@ func (r *Runner) checkDailyDigest(ctx context.Context, client *telegram.Client, 
 	if now.Hour() != 7 {
 		return
 	}
-	sent, err := r.Store.TryRecordAlert(ctx, t.ID, 0, "daily_digest", dateStr)
-	if err != nil || !sent {
-		return
-	}
-
 	var msg string
 	if len(statuses) == 0 {
 		msg = "Dnevni pregled: nema aktivnih vozača."
@@ -332,5 +323,5 @@ func (r *Runner) checkDailyDigest(ctx context.Context, client *telegram.Client, 
 			msg += line + "\n"
 		}
 	}
-	client.SendMessage(ctx, settings.TelegramAlertChatID, msg, nil)
+	r.sendOnce(ctx, client, t.ID, 0, "daily_digest", dateStr, settings.TelegramAlertChatID, msg, nil)
 }

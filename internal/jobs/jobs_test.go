@@ -240,3 +240,33 @@ func TestDriverWarning_OnlyInSchengen(t *testing.T) {
 		t.Error("the dispatcher got no threshold alert; the fixture is wrong")
 	}
 }
+
+// AI-60: while Telegram is down the dedup slot used to stay taken, so the
+// alert was lost until the next day. The next tick must send it.
+func TestAlert_FailedSendIsRetriedOnTheNextTick(t *testing.T) {
+	fake := newFakeTelegram(t)
+	r, st, tn, d := newJobsFixture(t)
+	stay(t, st, tn, d, clock.Today().AddDate(0, 0, -80), nil) // red for both
+
+	fake.setFailing(true)
+	r.tick(context.Background())
+	if got := fake.to(alertChat); len(got) != 0 {
+		t.Fatalf("sent %q while failing", got)
+	}
+
+	fake.setFailing(false)
+	r.tick(context.Background())
+	if got := fake.to(alertChat); len(got) == 0 || !strings.Contains(got[0], "Marko") {
+		t.Errorf("dispatcher got %q after Telegram came back, want the alert", got)
+	}
+	if got := driverWarnings(fake); len(got) != 1 {
+		t.Errorf("driver got %q after Telegram came back, want the warning once", got)
+	}
+
+	// And it is still sent only once.
+	n := len(fake.to(alertChat))
+	r.tick(context.Background())
+	if got := fake.to(alertChat); len(got) != n {
+		t.Errorf("third tick sent again: %q", got)
+	}
+}
