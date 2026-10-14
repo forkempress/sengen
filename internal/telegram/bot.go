@@ -159,10 +159,30 @@ func (b *Bot) tenantFor(ctx context.Context, tenantID int64) (*store.Tenant, sto
 
 const tryAgainMsg = "Greška, pokušajte ponovo za minut."
 const unknownChatMsg = "Nepoznat broj. Javite se dispečeru da vas poveže sa nalogom."
+const privateOnlyMsg = "Bot radi samo u privatnom razgovoru. Otvorite bota i pošaljite link tamo."
+
+// fromAccountOwner reports whether an update can act for the account linked
+// to chatID: only a private chat, written in by the account itself. In a
+// group, chat.id names the group, and every member would act as the driver
+// or admin linked to it.
+func fromAccountOwner(chat Chat, fromID int64) bool {
+	return chat.Type == "private" && fromID != 0 && fromID == chat.ID
+}
 
 func (b *Bot) handleMessage(ctx context.Context, client *Client, msg *Message) {
 	chatID := msg.Chat.ID
 	text := strings.TrimSpace(msg.Text)
+
+	var fromID int64
+	if msg.From != nil {
+		fromID = msg.From.ID
+	}
+	if !fromAccountOwner(msg.Chat, fromID) {
+		if strings.HasPrefix(text, "/start") {
+			client.SendMessage(ctx, chatID, privateOnlyMsg, nil)
+		}
+		return
+	}
 
 	if strings.HasPrefix(text, "/start") {
 		b.handleStart(ctx, client, chatID, text)
@@ -208,6 +228,10 @@ func (b *Bot) handleMessage(ctx context.Context, client *Client, msg *Message) {
 
 func (b *Bot) handleCallback(ctx context.Context, client *Client, cq *CallbackQuery) {
 	chatID := cq.Message.Chat.ID
+	if !fromAccountOwner(cq.Message.Chat, cq.From.ID) {
+		client.AnswerCallbackQuery(ctx, cq.ID, "Nepoznat nalog.")
+		return
+	}
 
 	if driver, err := b.Store.GetDriverByTelegramChat(ctx, chatID); err == nil {
 		t, _, err := b.tenantFor(ctx, driver.TenantID)

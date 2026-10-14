@@ -100,9 +100,13 @@ func (s *Store) CreateDriver(ctx context.Context, tenantID int64, name, vehicleL
 	return &Driver{ID: id, TenantID: tenantID, Name: name, VehicleLabel: vehicleLabel, Active: true}, nil
 }
 
+// SetDriverActive turns a driver on or off. Deactivating also unlinks his
+// Telegram account, so he can't keep writing through the bot and the account
+// can be linked again elsewhere; a reactivated driver needs a new link.
 func (s *Store) SetDriverActive(ctx context.Context, tenantID, id int64, active bool) error {
 	res, err := s.DB.ExecContext(ctx,
-		`UPDATE drivers SET active = ? WHERE tenant_id = ? AND id = ?`, boolToInt(active), tenantID, id)
+		`UPDATE drivers SET active = ?, telegram_chat_id = CASE WHEN ? THEN telegram_chat_id END
+		 WHERE tenant_id = ? AND id = ?`, boolToInt(active), boolToInt(active), tenantID, id)
 	if err != nil {
 		return fmt.Errorf("set driver active: %w", err)
 	}

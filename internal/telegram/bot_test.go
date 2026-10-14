@@ -169,7 +169,7 @@ func postWebhook(t *testing.T, bot *Bot, headerSecret, body string) *httptest.Re
 }
 
 func textUpdate(chatID int64, text string) string {
-	b, _ := json.Marshal(Update{UpdateID: 1, Message: &Message{MessageID: 1, Chat: Chat{ID: chatID, Type: "private"}, Text: text}})
+	b, _ := json.Marshal(Update{UpdateID: 1, Message: &Message{MessageID: 1, From: &TgUser{ID: chatID}, Chat: Chat{ID: chatID, Type: "private"}, Text: text}})
 	return string(b)
 }
 
@@ -704,5 +704,114 @@ func TestDriverExited_DaytimeRecordsToday(t *testing.T) {
 	open, err := bot.Store.OpenStayForDriver(ctx, tn.ID, driver.ID)
 	if err != nil || open.Entry.Format("2006-01-02") != "2026-10-14" {
 		t.Errorf("open stay = %+v, %v; want entry 2026-10-14", open, err)
+	}
+}
+
+// --- Telegram identity (SEC-09, SEC-12) ---
+
+func groupUpdate(chatID, fromID int64, text string) string {
+	b, _ := json.Marshal(Update{UpdateID: 1, Message: &Message{MessageID: 1, From: &TgUser{ID: fromID}, Chat: Chat{ID: chatID, Type: "group"}, Text: text}})
+	return string(b)
+}
+
+func callbackUpdate(chatID, fromID int64, data string) string {
+	b, _ := json.Marshal(Update{UpdateID: 1, CallbackQuery: &CallbackQuery{
+		ID: "cb", From: TgUser{ID: fromID}, Data: data,
+		Message: &Message{MessageID: 1, Chat: Chat{ID: chatID, Type: "private"}},
+	}})
+	return string(b)
+}
+
+// /start in a group would make every member of the group the driver (or the
+// admin). The link token must survive untouched and nothing gets linked.
+func TestWebhook_StartInGroupIsRefused(t *testing.T) {
+	newFakeTelegram(t)
+	bot, tn := newTestBot(t)
+	ctx := context.Background()
+	driver, _ := bot.Store.CreateDriver(ctx, tn.ID, "Marko", "")
+	if err := bot.Store.CreateDriverLinkToken(ctx, "tokG", tn.ID, driver.ID, time.Hour); err != nil {
+		t.Fatal(err)
+	}
+
+	postWebhook(t, bot, testSecret, groupUpdate(-100500, 777, "/start tokG"))
+
+	for _, chat := range []int64{-100500, 777} {
+		if d, err := bot.Store.GetDriverByTelegramChat(ctx, chat); err == nil {
+			t.Errorf("chat %d linked to driver %d from a group", chat, d.ID)
+		}
+	}
+	if _, err := bot.Store.ConsumeLinkToken(ctx, "tokG"); err != nil {
+		t.Errorf("the token was spent by the group: %v", err)
+	}
+}
+
+// A group chat linked before the fix must not act as the driver either.
+func TestWebhook_ButtonsInGroupAreIgnored(t *testing.T) {
+	newFakeTelegram(t)
+	bot, tn := newTestBot(t)
+	ctx := context.Background()
+	driver, _ := bot.Store.CreateDriver(ctx, tn.ID, "Marko", "")
+	if err := bot.Store.SetDriverTelegramChatID(ctx, tn.ID, driver.ID, -100500); err != nil {
+		t.Fatal(err)
+	}
+
+	postWebhook(t, bot, testSecret, groupUpdate(-100500, 777, BtnExitedSerbia))
+
+	if _, err := bot.Store.OpenStayForDriver(ctx, tn.ID, driver.ID); err == nil {
+		t.Error("a group member recorded an exit for the driver")
+	}
+}
+
+// A button press is the driver's only if the person who pressed it is the
+// linked account.
+func TestWebhook_CallbackFromSomeoneElseIsRefused(t *testing.T) {
+	newFakeTelegram(t)
+	bot, tn := newTestBot(t)
+	ctx := context.Background()
+	driver, _ := bot.Store.CreateDriver(ctx, tn.ID, "Marko", "")
+	if err := bot.Store.SetDriverTelegramChatID(ctx, tn.ID, driver.ID, 555); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := bot.Store.CreateStay(ctx, tn.ID, driver.ID, clock.Today().AddDate(0, 0, -3), nil, "work", "telegram_button", "", nil); err != nil {
+		t.Fatal(err)
+	}
+
+	postWebhook(t, bot, testSecret, callbackUpdate(555, 777, "reminder_returned"))
+	if _, err := bot.Store.OpenStayForDriver(ctx, tn.ID, driver.ID); err != nil {
+		t.Error("a callback from another account closed the driver's stay")
+	}
+
+	postWebhook(t, bot, testSecret, callbackUpdate(555, 555, "reminder_returned"))
+	if _, err := bot.Store.OpenStayForDriver(ctx, tn.ID, driver.ID); err == nil {
+		t.Error("the driver's own callback did not close the stay")
+	}
+}
+
+// A deactivated driver no longer writes through the bot, and his Telegram
+// account is free to be linked again (by another firm, say).
+func TestDeactivatedDriverLosesBotAccess(t *testing.T) {
+	newFakeTelegram(t)
+	bot, tn := newTestBot(t)
+	ctx := context.Background()
+	driver, _ := bot.Store.CreateDriver(ctx, tn.ID, "Marko", "")
+	if err := bot.Store.SetDriverTelegramChatID(ctx, tn.ID, driver.ID, 555); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := bot.Store.SetDriverActive(ctx, tn.ID, driver.ID, false); err != nil {
+		t.Fatal(err)
+	}
+	postWebhook(t, bot, testSecret, textUpdate(555, BtnExitedSerbia))
+
+	if _, err := bot.Store.OpenStayForDriver(ctx, tn.ID, driver.ID); err == nil {
+		t.Error("deactivated driver recorded an exit")
+	}
+	d, _ := bot.Store.GetDriver(ctx, tn.ID, driver.ID)
+	if d.TelegramChatID != nil {
+		t.Errorf("deactivated driver keeps telegram_chat_id %d", *d.TelegramChatID)
+	}
+	other, _ := bot.Store.CreateDriver(ctx, tn.ID, "Novi", "")
+	if err := bot.Store.SetDriverTelegramChatID(ctx, tn.ID, other.ID, 555); err != nil {
+		t.Errorf("the account can't be linked again: %v", err)
 	}
 }

@@ -28,7 +28,14 @@ type LinkToken struct {
 	UsedAt    *time.Time
 }
 
+// Issuing a new link voids the driver's (or user's) earlier unused ones, so
+// only the last link sent out can be redeemed.
 func (s *Store) CreateDriverLinkToken(ctx context.Context, token string, tenantID, driverID int64, ttl time.Duration) error {
+	if _, err := s.DB.ExecContext(ctx,
+		`DELETE FROM telegram_link_tokens WHERE tenant_id = ? AND driver_id = ? AND used_at IS NULL`,
+		tenantID, driverID); err != nil {
+		return fmt.Errorf("void driver link tokens: %w", err)
+	}
 	_, err := s.DB.ExecContext(ctx,
 		`INSERT INTO telegram_link_tokens (token, tenant_id, driver_id, expires_at) VALUES (?, ?, ?, ?)`,
 		token, tenantID, driverID, time.Now().Add(ttl).UTC().Format(time.RFC3339))
@@ -39,6 +46,11 @@ func (s *Store) CreateDriverLinkToken(ctx context.Context, token string, tenantI
 }
 
 func (s *Store) CreateUserLinkToken(ctx context.Context, token string, tenantID, userID int64, ttl time.Duration) error {
+	if _, err := s.DB.ExecContext(ctx,
+		`DELETE FROM telegram_link_tokens WHERE tenant_id = ? AND user_id = ? AND used_at IS NULL`,
+		tenantID, userID); err != nil {
+		return fmt.Errorf("void user link tokens: %w", err)
+	}
 	_, err := s.DB.ExecContext(ctx,
 		`INSERT INTO telegram_link_tokens (token, tenant_id, user_id, expires_at) VALUES (?, ?, ?, ?)`,
 		token, tenantID, userID, time.Now().Add(ttl).UTC().Format(time.RFC3339))
@@ -48,38 +60,42 @@ func (s *Store) CreateUserLinkToken(ctx context.Context, token string, tenantID,
 	return nil
 }
 
-// ConsumeLinkToken looks up a token, verifies it is unused and unexpired,
-// and marks it used, all in one call so a token can never be redeemed twice
-// even under concurrent webhook deliveries (SQLite's single-writer
-// serialization makes this read-then-update safe).
+// ConsumeLinkToken redeems an unused, unexpired token. Claiming it is one
+// UPDATE guarded by used_at IS NULL, so under concurrent webhook deliveries
+// exactly one caller gets the token; the others see it as already used.
 func (s *Store) ConsumeLinkToken(ctx context.Context, token string) (*LinkToken, error) {
-	var lt LinkToken
+	now := time.Now().UTC().Format(time.RFC3339)
+	lt := LinkToken{Token: token}
 	var expiresAt string
-	var usedAt sql.NullString
 	err := s.DB.QueryRowContext(ctx,
-		`SELECT token, tenant_id, driver_id, user_id, expires_at, used_at FROM telegram_link_tokens WHERE token = ?`,
-		token,
-	).Scan(&lt.Token, &lt.TenantID, &lt.DriverID, &lt.UserID, &expiresAt, &usedAt)
+		`UPDATE telegram_link_tokens SET used_at = ?
+		 WHERE token = ? AND used_at IS NULL AND expires_at > ?
+		 RETURNING tenant_id, driver_id, user_id, expires_at`,
+		now, token, now,
+	).Scan(&lt.TenantID, &lt.DriverID, &lt.UserID, &expiresAt)
+	if err == nil {
+		lt.ExpiresAt, _ = time.Parse(time.RFC3339, expiresAt)
+		return &lt, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("consume link token: %w", err)
+	}
+
+	// Not claimed: say why.
+	var usedAt sql.NullString
+	err = s.DB.QueryRowContext(ctx,
+		`SELECT used_at FROM telegram_link_tokens WHERE token = ?`, token,
+	).Scan(&usedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("lookup link token: %w", err)
 	}
-	lt.ExpiresAt, _ = time.Parse(time.RFC3339, expiresAt)
 	if usedAt.Valid {
 		return nil, &ValidationError{Msg: "link je već iskorišćen"}
 	}
-	if time.Now().After(lt.ExpiresAt) {
-		return nil, &ValidationError{Msg: "link je istekao"}
-	}
-	if _, err := s.DB.ExecContext(ctx,
-		`UPDATE telegram_link_tokens SET used_at = ? WHERE token = ?`,
-		time.Now().UTC().Format(time.RFC3339), token,
-	); err != nil {
-		return nil, fmt.Errorf("mark link token used: %w", err)
-	}
-	return &lt, nil
+	return nil, &ValidationError{Msg: "link je istekao"}
 }
 
 func (s *Store) SetDriverTelegramChatID(ctx context.Context, tenantID, driverID, chatID int64) error {
@@ -111,12 +127,13 @@ func (s *Store) SetUserTelegramChatID(ctx context.Context, tenantID, userID, cha
 // GetDriverByTelegramChat finds the driver linked to a Telegram chat, in any
 // firm. With one shared bot the chat is what tells us the firm: a Telegram
 // account can be linked to at most one driver system-wide (unique index on
-// drivers.telegram_chat_id), so the answer is never ambiguous.
+// drivers.telegram_chat_id), so the answer is never ambiguous. A deactivated
+// driver is not found: he no longer writes through the bot.
 func (s *Store) GetDriverByTelegramChat(ctx context.Context, chatID int64) (*Driver, error) {
 	var d Driver
 	var active int
 	err := s.DB.QueryRowContext(ctx,
-		`SELECT id, tenant_id, name, vehicle_label, telegram_chat_id, active FROM drivers WHERE telegram_chat_id = ?`,
+		`SELECT id, tenant_id, name, vehicle_label, telegram_chat_id, active FROM drivers WHERE telegram_chat_id = ? AND active = 1`,
 		chatID,
 	).Scan(&d.ID, &d.TenantID, &d.Name, &d.VehicleLabel, &d.TelegramChatID, &active)
 	if errors.Is(err, sql.ErrNoRows) {
