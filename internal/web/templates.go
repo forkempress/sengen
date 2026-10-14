@@ -49,6 +49,12 @@ var funcMap = template.FuncMap{
 		}
 		return pct
 	},
+	"roleLabel": func(role string) string {
+		if label, ok := assignableRoles[role]; ok {
+			return label
+		}
+		return role
+	},
 	"sourceLabel": func(source string) string {
 		switch source {
 		case "manual":

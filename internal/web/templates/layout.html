@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Evidencija 90/180</title>
+  <title>Dani90 — Evidencija 90/180</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
@@ -13,7 +13,7 @@
 <body>
   {{if .User}}
   <header class="app-header">
-    <div class="brand">Evidencija 90/180</div>
+    <div class="brand">Dani90 <span class="brand-sub">Evidencija 90/180</span></div>
     <nav>
       <a href="/pregled" class="{{if eq .Active "pregled"}}active{{end}}">Pregled</a>
       <a href="/podesavanja/vozaci" class="{{if eq .Active "vozaci"}}active{{end}}">Vozači</a>
@@ -23,7 +23,7 @@
       <a href="/podesavanja/telegram" class="{{if eq .Active "telegram"}}active{{end}}">Telegram</a>{{end}}
     </nav>
     <div class="user-box">
-      <span>{{.User.Name}} ({{.User.Role}})</span>
+      <span>{{.User.Name}} ({{roleLabel .User.Role}})</span>
       <form class="logout-form" method="post" action="/logout">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <button type="submit">Odjava</button>

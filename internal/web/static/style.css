@@ -48,6 +48,12 @@ header.app-header .brand {
   font-weight: 600;
   font-size: 1.05rem;
 }
+header.app-header .brand-sub {
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: #9AA6B2;
+  margin-left: 0.35rem;
+}
 
 header.app-header nav {
   display: flex;
@@ -264,7 +270,8 @@ tr:last-child td { border-bottom: none; }
   display: inline-block;
   vertical-align: middle;
 }
-.bar-fill { height: 100%; background: var(--accent); }
+/* display:block — the fill is a <span>, and inline elements ignore width. */
+.bar-fill { display: block; height: 100%; background: var(--accent); }
 .bar-fill.danger { background: var(--status-urgent); }
 
 .btn {
