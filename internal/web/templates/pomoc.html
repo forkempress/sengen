@@ -1,0 +1,116 @@
+{{define "content"}}
+<h1>Pomoć</h1>
+
+<nav class="help-toc">
+  <a href="#brojanje">Kako se broji</a>
+  <a href="#boje">Boje</a>
+  <a href="#pregled">Pregled</a>
+  <a href="#vozac">Vozač i kalendar</a>
+  <a href="#uvoz">Uvoz istorije</a>
+  <a href="#telegram">Telegram</a>
+  <a href="#greske">Kad nešto ne štima</a>
+</nav>
+
+<section class="help-section" id="brojanje">
+  <h2>Kako se broji</h2>
+  <ul>
+    <li>Vozač sme da bude u Šengenu <strong>najviše 90 dana u bilo kom periodu od 180 dana</strong>. Za svaki dan aplikacija gleda 180 dana unazad, uključujući i taj dan.</li>
+    <li>Dan ulaska i dan izlaska se broje kao <strong>celi dani</strong>. Ulazak i izlazak istog dana je 1 dan.</li>
+    <li>Računaju se i <strong>privatna putovanja</strong>, ne samo posao.</li>
+    <li>Broji se <strong>Šengen, a ne EU</strong>. Bugarska, Rumunija i Hrvatska se broje. Kipar i Irska su u EU ali se ne broje, kao ni BiH, Crna Gora, Severna Makedonija, Albanija, Kosovo, Turska i Velika Britanija.</li>
+    <li>Kako vreme prolazi, najstariji dani izlaze iz perioda od 180 dana, pa se vozaču dani <strong>vraćaju</strong>. Kolona „Sledeće oslobađanje" kaže kada i koliko.</li>
+    <li>Datum je uvek lokalni datum u Srbiji.</li>
+  </ul>
+</section>
+
+<section class="help-section" id="boje">
+  <h2>Boje</h2>
+  <p>Boja zavisi od toga koliko je dana vozaču preostalo danas (ili na izabrani dan).</p>
+  <table class="help-table">
+    <tbody>
+      <tr><td><span class="badge badge-urgent">HITNO</span></td><td>0 dana — iskorišćeno je svih 90. Ako je vozač u Šengenu, mora odmah da izađe.</td></tr>
+      <tr><td><span class="badge badge-red">&lt; {{.Thresholds.Red}}</span></td><td>manje od {{.Thresholds.Red}} dana</td></tr>
+      <tr><td><span class="badge badge-orange">{{.Thresholds.Red}}–{{.Thresholds.Orange}}</span></td><td>od {{.Thresholds.Red}} do {{.Thresholds.Orange}} dana</td></tr>
+      <tr><td><span class="badge badge-green">&gt; {{.Thresholds.Orange}}</span></td><td>više od {{.Thresholds.Orange}} dana</td></tr>
+    </tbody>
+  </table>
+  <p class="muted">Pragove{{if .IsOwner}} menjate u <a href="/podesavanja/telegram">Podešavanja → Telegram</a>{{else}} podešava vlasnik naloga{{end}}. Važe i za pregled i za upozorenja.</p>
+</section>
+
+<section class="help-section" id="pregled">
+  <h2>Pregled</h2>
+  <p>Vozači su poređani po riziku — oni sa najmanje preostalih dana su na vrhu.</p>
+  <dl class="help-dl">
+    <dt>Gde je / od kada</dt><dd>Da li je vozač trenutno u Šengenu i od kog dana.</dd>
+    <dt>Iskorišćeno/90</dt><dd>Koliko je dana iskoristio u poslednjih 180 dana.</dd>
+    <dt>Preostalo</dt><dd>Koliko dana još sme da provede u Šengenu, gledano od danas.</dd>
+    <dt>Može do</dt><dd>Za vozača koji je u Šengenu: poslednji dan do kog sme da ostane bez prekida. Obično je kasnije nego što „preostalo" sugeriše, jer mu tokom boravka stari dani izlaze iz perioda.</dd>
+    <dt>Najduža tura sada</dt><dd>Za vozača koji je u Srbiji: koliko dana bi mogao da ostane bez prekida ako krene danas.</dd>
+    <dt>−N preko limita</dt><dd>Vozač je prekoračio 90 dana. Uz to piše rok koji je prošao.</dd>
+    <dt>Sledeće oslobađanje</dt><dd>Kog dana mu se vraćaju dani i koliko.</dd>
+  </dl>
+  <h3>Stanje na dan</h3>
+  <p>Izaberite datum iznad tabele i sve kolone se računaju kao da je taj dan danas.</p>
+  <ul>
+    <li><strong>Prošli datum</strong> pokazuje stanje kakvo je bilo tog dana.</li>
+    <li><strong>Budući datum</strong> pretpostavlja da vozači koji su sada u Šengenu tamo ostaju do tog dana. To je oprezna pretpostavka: pokazuje najgori slučaj.</li>
+  </ul>
+  <h3>Filteri</h3>
+  <p>Pretraga radi po imenu i po registraciji vozila, i ne mora se kucati sa č, ć, š, ž i đ („djordje" nalazi „Đorđe"). Kartice na vrhu uvek broje sve vozače, bez obzira na filter.</p>
+</section>
+
+<section class="help-section" id="vozac">
+  <h2>Vozač i kalendar</h2>
+  <div class="legend">
+    <span><span class="swatch" style="background:var(--accent);"></span>Posao</span>
+    <span><span class="swatch" style="background:#9FB3DE;"></span>Privatno</span>
+    <span><span class="swatch" style="background:var(--yellow);"></span>Projekcija trenutnog boravka</span>
+    <span><span class="swatch" style="background:#E3E6E0;"></span>Van perioda od 180 dana — više se ne broji</span>
+    <span><span class="swatch" style="border:2px solid var(--status-green);"></span>Dan kad se dani vraćaju</span>
+  </div>
+  <ul>
+    <li><strong>Dodaj boravak</strong>: unesite ulazak i izlazak. Prazan izlazak znači da je vozač još u Šengenu.</li>
+    <li><strong>Vratio se danas</strong> zatvara otvoren boravak današnjim datumom.</li>
+    <li>Svaki boravak u istoriji može da se izmeni ili obriše.</li>
+    <li>Aplikacija ne dozvoljava: izlazak pre ulaska, boravke koji se preklapaju, više od jednog otvorenog boravka i datume u budućnosti.</li>
+  </ul>
+</section>
+
+<section class="help-section" id="uvoz">
+  <h2>Uvoz istorije</h2>
+  <p>Da bi brojanje bilo tačno od prvog dana, unesite boravke iz poslednjih 180 dana. Najbrže je preko CSV fajla:</p>
+  <pre class="help-pre">vozac,ulaz,izlaz,tip
+Marko Marković,22.04.2026,29.04.2026,posao
+Marko Marković,08.07.2026,14.07.2026,privatno</pre>
+  <ul>
+    <li>Datumi su u formatu dd.mm.gggg. Prazan izlazak znači da je vozač još u Šengenu.</li>
+    <li>Vozači moraju već postojati u <a href="/podesavanja/vozaci">Vozači</a>.</li>
+    <li>Prvo dobijete pregled sa greškama po redu. <strong>Ništa se ne upisuje dok ne potvrdite</strong>, a ako i jedan red ne može da se upiše, ne upisuje se nijedan.</li>
+  </ul>
+</section>
+
+<section class="help-section" id="telegram">
+  <h2>Telegram</h2>
+  <h3>Vozač</h3>
+  <ul>
+    <li>U <a href="/podesavanja/vozaci">Vozači</a> kliknite <strong>Telegram link</strong> i pošaljite vozaču komandu koju dobijete. Važi 48 sati i samo jednom.</li>
+    <li>Vozač ima dugmad <strong>Izašao iz Srbije</strong>, <strong>Vratio se u Srbiju</strong>, <strong>Moji dani</strong> i <strong>Pomoć</strong>.</li>
+    <li><strong>Brojanje je tačno onoliko koliko vozač redovno pritiska dugmad.</strong> Dugme upisuje današnji datum; ako je vozač zaboravio, ispravite datum na njegovom profilu.</li>
+    <li>Ako boravak ostane otvoren 7 dana, bot vozača pita da li je još u EU.</li>
+  </ul>
+  <h3>Upozorenja dispečeru</h3>
+  <p>Ako je podešen chat za upozorenja, bot javlja kad vozač padne ispod praga, kad mu za 3 dana ili manje ističe rok, kad je preko limita, i šalje dnevni pregled u 07:00. Isto upozorenje se ne šalje dvaput istog dana.</p>
+  <h3>Admin komande</h3>
+  <p>Kad povežete svoj Telegram, u botu pošaljite <code>/pomoc</code> za spisak komandi: pregled, detalji vozača, provera ture, dodavanje vozača, brzi unos teksta i uvoz fajla.</p>
+</section>
+
+<section class="help-section" id="greske">
+  <h2>Kad nešto ne štima</h2>
+  <ul>
+    <li>Pogrešan datum ispravite na profilu vozača, u istoriji boravaka.</li>
+    <li>Vozač koji je pogrešno pritisnuo dugme ima 10 minuta da klikne „Poništi" ispod potvrde.</li>
+    <li>U botu <code>/ispravi</code> prikazuje poslednjih 5 izmena i nudi poništavanje.</li>
+  </ul>
+  <p class="notice">Evidencija služi za internu kontrolu. Zvanično stanje vodi EES sistem na granici.</p>
+</section>
+{{end}}

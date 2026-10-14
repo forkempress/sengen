@@ -4,6 +4,7 @@ const (
 	BtnExitedSerbia   = "Izašao iz Srbije"
 	BtnReturnedSerbia = "Vratio se u Srbiju"
 	BtnMyDays         = "Moji dani"
+	BtnHelp           = "Pomoć"
 )
 
 func DriverKeyboard() ReplyKeyboardMarkup {
@@ -11,7 +12,7 @@ func DriverKeyboard() ReplyKeyboardMarkup {
 		ResizeKeyboard: true,
 		Keyboard: [][]KeyboardButton{
 			{{Text: BtnExitedSerbia}, {Text: BtnReturnedSerbia}},
-			{{Text: BtnMyDays}},
+			{{Text: BtnMyDays}, {Text: BtnHelp}},
 		},
 	}
 }

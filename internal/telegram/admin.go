@@ -33,6 +33,10 @@ func (b *Bot) handleAdminMessage(ctx context.Context, client *Client, t *store.T
 	if text == "" {
 		return
 	}
+	if isHelpRequest(text) {
+		client.SendMessage(ctx, chatID, adminHelpText, nil)
+		return
+	}
 	if strings.HasPrefix(text, "/") {
 		b.handleAdminCommand(ctx, client, t, chatID, user, text)
 		return
@@ -60,10 +64,12 @@ func (b *Bot) handleAdminCommand(ctx context.Context, client *Client, t *store.T
 		b.cmdIspravi(ctx, client, t, chatID)
 	case "/sablon", "/šablon":
 		b.cmdSablon(ctx, client, chatID)
+	case "/pomoc", "/pomoć", "/help":
+		client.SendMessage(ctx, chatID, adminHelpText, nil)
 	case "/start":
 		// already handled upstream, but a linked admin might resend it
 	default:
-		client.SendMessage(ctx, chatID, "Nepoznata komanda. Probajte /pregled, /vozac, /planer, /dodaj, /link, /ispravi, /sablon.", nil)
+		client.SendMessage(ctx, chatID, "Nepoznata komanda. Pošaljite /pomoc za spisak komandi.", nil)
 	}
 	_ = user
 }

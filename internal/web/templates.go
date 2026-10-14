@@ -78,6 +78,7 @@ var pages = []string{
 	"podesavanja_telegram.html",
 	"podesavanja_korisnici.html",
 	"import.html",
+	"pomoc.html",
 }
 
 func loadTemplates() templateSet {

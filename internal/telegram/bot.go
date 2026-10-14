@@ -179,21 +179,13 @@ func (b *Bot) handleStart(ctx context.Context, client *Client, t *store.Tenant, 
 		if driver != nil {
 			name = driver.Name
 		}
-		client.SendMessage(ctx, chatID, "Zdravo, "+name+"! Povezani ste. Koristite dugmad ispod za prijavu izlaska/povratka iz Srbije.", DriverKeyboard())
+		client.SendMessage(ctx, chatID, "Zdravo, "+name+"! Povezani ste.\n\n"+driverHelpText, DriverKeyboard())
 	case lt.UserID != nil:
 		if err := b.Store.SetUserTelegramChatID(ctx, t.ID, *lt.UserID, chatID); err != nil {
 			log.Printf("telegram: link user: %v", err)
 			client.SendMessage(ctx, chatID, "Greška pri povezivanju, pokušajte ponovo.", nil)
 			return
 		}
-		client.SendMessage(ctx, chatID,
-			"Povezani ste kao administrator. Dostupne komande:\n"+
-				"/pregled — semafor svih vozača\n"+
-				"/vozac <ime> — detalji vozača\n"+
-				"/dodaj <ime> — dodaj vozača\n"+
-				"/link <ime> — link za povezivanje vozača\n"+
-				"/ispravi — poslednje izmene\n"+
-				"/sablon — prazan CSV šablon\n"+
-				"Možete i poslati CSV fajl, ili tekst poput: Marko 22.04-29.04, 06.05-15.05 p", nil)
+		client.SendMessage(ctx, chatID, "Povezani ste kao administrator.\n\n"+adminHelpText, nil)
 	}
 }

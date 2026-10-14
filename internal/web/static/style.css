@@ -169,6 +169,39 @@ form.filters .filters-actions { flex: 0 0 auto; display: flex; gap: 0.5rem; }
 
 .over { color: var(--status-urgent); font-weight: 600; font-family: var(--font-mono); }
 
+.help-toc { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; margin-bottom: 1.25rem; font-size: 0.9rem; }
+.help-section {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 0.25rem 1.25rem 1rem;
+  margin-bottom: 1rem;
+  scroll-margin-top: 1rem;
+}
+.help-section h2 { margin-top: 1rem; }
+.help-section h3 { font-size: 0.98rem; margin: 1.1rem 0 0.4rem; }
+.help-section ul { padding-left: 1.2rem; margin: 0.4rem 0; }
+.help-section li { margin-bottom: 0.35rem; }
+.help-section .legend { margin: 0.5rem 0 0.75rem; }
+.help-table { min-width: 0; width: auto; }
+.help-table td { white-space: normal; border-bottom: none; padding: 0.35rem 0.7rem 0.35rem 0; }
+.help-dl { display: grid; grid-template-columns: minmax(120px, max-content) 1fr; gap: 0.35rem 1rem; margin: 0.5rem 0; }
+.help-dl dt { font-weight: 600; }
+.help-dl dd { margin: 0; }
+.help-pre {
+  background: #F6F7F4;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  overflow-x: auto;
+}
+@media (max-width: 600px) {
+  .help-dl { grid-template-columns: 1fr; }
+  .help-dl dd { margin-bottom: 0.5rem; }
+}
+
 .table-wrap { overflow-x: auto; border: 1px solid var(--card-border); border-radius: 8px; background: var(--card-bg); }
 
 table { width: 100%; border-collapse: collapse; min-width: 720px; }

@@ -14,6 +14,10 @@ import (
 )
 
 func (b *Bot) handleDriverMessage(ctx context.Context, client *Client, t *store.Tenant, chatID int64, driver *store.Driver, text string) {
+	if isHelpRequest(text) {
+		client.SendMessage(ctx, chatID, driverHelpText, DriverKeyboard())
+		return
+	}
 	switch text {
 	case BtnExitedSerbia:
 		b.driverExited(ctx, client, t, chatID, driver)
@@ -22,7 +26,7 @@ func (b *Bot) handleDriverMessage(ctx context.Context, client *Client, t *store.
 	case BtnMyDays:
 		b.driverMyDays(ctx, client, t, chatID, driver)
 	default:
-		client.SendMessage(ctx, chatID, "Koristite dugmad ispod.", DriverKeyboard())
+		client.SendMessage(ctx, chatID, "Koristite dugmad ispod. Za uputstvo pritisnite „"+BtnHelp+"“.", DriverKeyboard())
 	}
 }
 

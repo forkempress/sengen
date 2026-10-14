@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"shengen/internal/clock"
 	"shengen/internal/db"
@@ -269,5 +270,99 @@ func TestFormatMyDays_OverLimit(t *testing.T) {
 	}
 	if !strings.Contains(text, "PREKORAČENO za 3 dana") {
 		t.Errorf("over-limit summary does not state the overstay:\n%s", text)
+	}
+}
+
+// --- help ---
+
+func TestDriverHelp_ReachableByButtonAndCommand(t *testing.T) {
+	for _, input := range []string{BtnHelp, "/pomoc", "/pomoć", "/help"} {
+		t.Run(input, func(t *testing.T) {
+			fake := newFakeTelegram(t)
+			bot, tn := newWebhookTestBot(t, "")
+			driver := &store.Driver{ID: 1, TenantID: tn.ID, Name: "Marko"}
+
+			bot.handleDriverMessage(context.Background(), fake.client(), tn, 555, driver, input)
+
+			texts := fake.texts()
+			if len(texts) != 1 || texts[0] != driverHelpText {
+				t.Fatalf("reply to %q = %v, want the driver help text", input, texts)
+			}
+		})
+	}
+}
+
+// The help must steer drivers on transit routes to the Schengen border, not
+// the Serbian one — pressing at the wrong border is the main way the count
+// goes wrong.
+func TestDriverHelp_ExplainsTheSchengenBorderAndRecovery(t *testing.T) {
+	for _, must := range []string{
+		"granica Šengena",
+		"BiH",
+		"privatna putovanja",
+		"zaboravio",
+		"Poništi",
+		"EES",
+	} {
+		if !strings.Contains(driverHelpText, must) {
+			t.Errorf("driver help is missing %q", must)
+		}
+	}
+}
+
+func TestDriverKeyboard_HasHelpButton(t *testing.T) {
+	var found bool
+	for _, row := range DriverKeyboard().Keyboard {
+		for _, b := range row {
+			if b.Text == BtnHelp {
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Error("driver keyboard has no help button — drivers don't type commands")
+	}
+}
+
+func TestAdminHelp_ListsEveryCommand(t *testing.T) {
+	for _, cmd := range []string{"/pregled", "/vozac", "/planer", "/dodaj", "/link", "/ispravi", "/sablon", "/pomoc"} {
+		if !strings.Contains(adminHelpText, cmd) {
+			t.Errorf("admin help does not mention %s", cmd)
+		}
+	}
+}
+
+func TestAdminHelp_ReachableByCommand(t *testing.T) {
+	fake := newFakeTelegram(t)
+	bot, tn := newWebhookTestBot(t, "")
+	owner := &store.User{ID: 1, TenantID: tn.ID, Role: "owner"}
+
+	bot.handleAdminMessage(context.Background(), fake.client(), tn, store.TenantSettings{}, 777, owner, &Message{Text: "/pomoc"})
+
+	if texts := fake.texts(); len(texts) != 1 || texts[0] != adminHelpText {
+		t.Fatalf("reply to /pomoc = %v, want the admin help text", texts)
+	}
+}
+
+// Linking a driver is the moment he is most likely to read instructions, so
+// the welcome message carries the full help, not just "povezani ste".
+func TestStart_DriverWelcomeIncludesHelp(t *testing.T) {
+	fake := newFakeTelegram(t)
+	bot, tn := newWebhookTestBot(t, "")
+	ctx := context.Background()
+
+	driver, err := bot.Store.CreateDriver(ctx, tn.ID, "Marko", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := bot.Store.CreateDriverLinkToken(ctx, "tok123", tn.ID, driver.ID, time.Hour); err != nil {
+		t.Fatal(err)
+	}
+
+	bot.handleStart(ctx, fake.client(), tn, 555, "/start tok123")
+
+	texts := fake.texts()
+	if len(texts) != 1 || !strings.Contains(texts[0], driverHelpText) {
+		t.Fatalf("welcome = %v, want it to contain the driver help", texts)
 	}
 }

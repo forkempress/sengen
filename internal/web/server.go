@@ -45,6 +45,7 @@ func (s *Server) Routes() http.Handler {
 	protected := http.NewServeMux()
 	protected.HandleFunc("GET /{$}", s.handleRoot)
 	protected.HandleFunc("GET /pregled", s.handlePregled)
+	protected.HandleFunc("GET /pomoc", s.handleHelp)
 
 	protected.HandleFunc("GET /vozaci/{id}", s.handleDriverDetail)
 	protected.HandleFunc("POST /vozaci/{id}/vratio-se", s.handleDriverReturned)
