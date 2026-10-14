@@ -82,7 +82,7 @@ func (s *Server) handleTelegramSettingsUpdate(w http.ResponseWriter, r *http.Req
 
 	if th := status.ThresholdsFor(settings); th.Red >= th.Orange {
 		s.redirectErr(w, r, "/podesavanja/telegram",
-			fmt.Sprintf("Crveni prag (%d) mora biti manji od narandžastog (%d).", th.Red, th.Orange))
+			fmt.Sprintf("Prag za Kritično (%d) mora biti manji od praga za Pažnju (%d).", th.Red, th.Orange))
 		return
 	}
 

@@ -38,32 +38,22 @@ func parseAsOf(raw string, today time.Time) (day time.Time, errMsg string) {
 	return day, ""
 }
 
-// Severity filter values as they appear in the URL.
-const (
-	severityRed    = "crveno"
-	severityYellow = "zuto"
-	severityGreen  = "zeleno"
-)
-
+// validSeverity reports whether s is a status key (?ozbiljnost=preko,
+// kriticno, paznja or ok). Old colour values from bookmarks (crveno, zuto,
+// zeleno) are not keys, so they show every driver rather than nothing.
 func validSeverity(s string) bool {
-	return s == severityRed || s == severityYellow || s == severityGreen
+	_, ok := status.LevelFromKey(s)
+	return ok
 }
 
-// matchesSeverity maps the badge colour — the single source of truth for
-// how bad a driver looks — onto the three filter choices. Urgent (0 days
-// left) counts as red: it is the worst case, and a "show me the red ones"
-// filter that hid it would be dangerous.
-func matchesSeverity(badgeClass, severity string) bool {
-	switch severity {
-	case severityRed:
-		return badgeClass == "badge-urgent" || badgeClass == "badge-red"
-	case severityYellow:
-		return badgeClass == "badge-orange"
-	case severityGreen:
-		return badgeClass == "badge-green"
-	default:
-		return true
-	}
+// matchesSeverity compares the driver's status — the same one the badge
+// shows — with the filter. Each status matches only itself, so the filter
+// returns exactly the drivers its KPI card counts. Drivers over the limit
+// are never hidden by that: they have their own card, listed first, and
+// the HITNO banner above it.
+func matchesSeverity(b status.Badge, severity string) bool {
+	l, ok := status.LevelFromKey(severity)
+	return !ok || b.Level == l
 }
 
 // serbianFold lower-cases and strips Serbian diacritics so that "Djordje"
@@ -92,7 +82,7 @@ func filterStatuses(in []status.DriverStatus, query, severity string) []status.D
 			!strings.Contains(fold(ds.Driver.VehicleLabel), needle) {
 			continue
 		}
-		if !matchesSeverity(ds.BadgeClass, severity) {
+		if !matchesSeverity(ds.Badge, severity) {
 			continue
 		}
 		out = append(out, ds)

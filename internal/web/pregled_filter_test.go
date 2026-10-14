@@ -54,10 +54,10 @@ func TestParseAsOf(t *testing.T) {
 
 // --- filtering ---
 
-func ds(name, vehicle, badge string) status.DriverStatus {
+func ds(name, vehicle string, level status.Level) status.DriverStatus {
 	return status.DriverStatus{
-		Driver:     store.Driver{Name: name, VehicleLabel: vehicle},
-		BadgeClass: badge,
+		Driver: store.Driver{Name: name, VehicleLabel: vehicle},
+		Badge:  status.Badge{Level: level},
 	}
 }
 
@@ -83,10 +83,10 @@ func sameNames(t *testing.T, got []status.DriverStatus, want ...string) {
 }
 
 var fleet = []status.DriverStatus{
-	ds("Marko Marković", "BG-123-AB", "badge-urgent"),
-	ds("Đorđe Ćosić", "NS-456-CD", "badge-red"),
-	ds("Ana Anić", "KG-789-EF", "badge-orange"),
-	ds("Petar Petrović", "BG-555-GH", "badge-green"),
+	ds("Marko Marković", "BG-123-AB", status.LevelOver),
+	ds("Đorđe Ćosić", "NS-456-CD", status.LevelCritical),
+	ds("Ana Anić", "KG-789-EF", status.LevelWarn),
+	ds("Petar Petrović", "BG-555-GH", status.LevelOK),
 }
 
 func TestFilterStatuses_NoFilterReturnsEverythingInOrder(t *testing.T) {
@@ -113,20 +113,22 @@ func TestFilterStatuses_IgnoresSerbianDiacritics(t *testing.T) {
 	sameNames(t, filterStatuses(fleet, "petrovic", ""), "Petar Petrović")
 }
 
-// "Show me the red ones" must include the urgent (0 days left) drivers — a
-// filter that hid the worst case behind the wrong bucket would be dangerous.
-func TestFilterStatuses_RedIncludesUrgent(t *testing.T) {
-	sameNames(t, filterStatuses(fleet, "", "crveno"), "Marko Marković", "Đorđe Ćosić")
+// Each status filter returns exactly the drivers its KPI card counts.
+func TestFilterStatuses_EachStatusMatchesItself(t *testing.T) {
+	sameNames(t, filterStatuses(fleet, "", "preko"), "Marko Marković")
+	sameNames(t, filterStatuses(fleet, "", "kriticno"), "Đorđe Ćosić")
+	sameNames(t, filterStatuses(fleet, "", "paznja"), "Ana Anić")
+	sameNames(t, filterStatuses(fleet, "", "ok"), "Petar Petrović")
 }
 
-func TestFilterStatuses_YellowAndGreen(t *testing.T) {
-	sameNames(t, filterStatuses(fleet, "", "zuto"), "Ana Anić")
-	sameNames(t, filterStatuses(fleet, "", "zeleno"), "Petar Petrović")
+// Old bookmarks with colour names show everyone instead of an empty table.
+func TestFilterStatuses_OldColourValuesShowEveryone(t *testing.T) {
+	sameNames(t, filterStatuses(fleet, "", "crveno"), "Marko Marković", "Đorđe Ćosić", "Ana Anić", "Petar Petrović")
 }
 
 func TestFilterStatuses_CombinesNameAndSeverity(t *testing.T) {
-	sameNames(t, filterStatuses(fleet, "an", "zuto"), "Ana Anić")
-	sameNames(t, filterStatuses(fleet, "ana", "zeleno")) // right name, wrong colour
+	sameNames(t, filterStatuses(fleet, "an", "paznja"), "Ana Anić")
+	sameNames(t, filterStatuses(fleet, "ana", "ok")) // right name, wrong status
 }
 
 // An unrecognised severity value (hand-edited URL) must be ignored, not turn
@@ -138,7 +140,7 @@ func TestFilterStatuses_UnknownSeverityIsIgnored(t *testing.T) {
 
 func TestFilterStatuses_DoesNotModifyInput(t *testing.T) {
 	before := names(fleet)
-	filterStatuses(fleet, "ana", "zuto")
+	filterStatuses(fleet, "ana", "paznja")
 	after := names(fleet)
 	for i := range before {
 		if before[i] != after[i] {

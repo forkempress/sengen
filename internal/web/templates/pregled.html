@@ -2,9 +2,15 @@
 <h1>Pregled</h1>
 
 {{if .UrgentDrivers}}
-<div class="urgent-banner">
-  <strong>HITNO:</strong> {{range $i, $u := .UrgentDrivers}}{{if $i}}, {{end}}<a href="/vozaci/{{$u.Driver.ID}}">{{$u.Driver.Name}}</a>{{end}}
-  — iskorišćeno je 90/90 dana, vozač mora napustiti Šengen odmah.
+<div class="urgent-banner" role="alert">
+  {{range .UrgentDrivers}}
+  <p>
+    <span aria-hidden="true">⛔</span> <strong>HITNO:</strong>
+    <a href="/vozaci/{{.Driver.ID}}">{{.Driver.Name}}</a>
+    {{if .OverBy}}je <span class="num">{{.OverBy}}</span> {{if eq .OverBy 1}}dan{{else}}dana{{end}} preko limita i još je u Šengenu.{{else}}je iskoristio svih 90 dana i mora odmah da izađe iz Šengena.{{end}}
+    <a href="/vozaci/{{.Driver.ID}}" class="btn btn-sm btn-on-dark">Otvori vozača</a>
+  </p>
+  {{end}}
 </div>
 {{end}}
 
@@ -17,12 +23,15 @@
 </div>
 {{end}}
 
-<div class="cards-row">
-  <div class="card"><div class="label">Ukupno vozača</div><div class="value">{{.TotalDrivers}}</div></div>
-  <div class="card"><div class="label">U Šengenu</div><div class="value">{{.InSchengenNow}}</div></div>
-  <div class="card"><div class="label">Ispod {{.Thresholds.Red}} dana</div><div class="value">{{.BelowRedCount}}</div></div>
-  <div class="card"><div class="label">Slobodni {{.Thresholds.Orange}}+ dana</div><div class="value">{{.AboveOrangeCount}}</div></div>
-</div>
+<nav class="cards-row kpi-row" aria-label="Filter po statusu">
+  {{range .KPIs}}
+  <a href="{{.URL}}" class="card kpi kpi-{{.Level.Key}}{{if .Active}} kpi-active{{end}}"{{if .Active}} aria-current="true"{{end}}>
+    <span class="label"><span aria-hidden="true">{{.Level.Icon}}</span> {{.Level.Word}} <span class="kpi-range">({{.Range}})</span></span>
+    <span class="value">{{.Count}}</span>
+  </a>
+  {{end}}
+</nav>
+<p class="muted kpi-summary">Ukupno vozača: <span class="num">{{.TotalDrivers}}</span> · u Šengenu: <span class="num">{{.InSchengenNow}}</span>. Kartica filtrira tabelu; ponovni klik vraća sve.</p>
 
 <form class="filters" method="get" action="/pregled">
   <div>
@@ -30,12 +39,12 @@
     <input type="search" id="f-q" name="q" value="{{.Query}}" placeholder="ime ili vozilo">
   </div>
   <div>
-    <label for="f-sev">Ozbiljnost</label>
+    <label for="f-sev">Status</label>
     <select id="f-sev" name="ozbiljnost">
-      <option value="">sve</option>
-      <option value="crveno" {{if eq .Severity "crveno"}}selected{{end}}>crveno (ispod {{.Thresholds.Red}})</option>
-      <option value="zuto" {{if eq .Severity "zuto"}}selected{{end}}>žuto ({{.Thresholds.Red}}–{{.Thresholds.Orange}})</option>
-      <option value="zeleno" {{if eq .Severity "zeleno"}}selected{{end}}>zeleno (preko {{.Thresholds.Orange}})</option>
+      <option value="">svi</option>
+      {{$sev := .Severity}}{{$th := .Thresholds}}
+      {{range levels}}<option value="{{.Key}}" {{if eq $sev .Key}}selected{{end}}>{{.Icon}} {{.Word}} ({{$th.Range .}})</option>
+      {{end}}
     </select>
   </div>
   <div>
@@ -72,7 +81,7 @@
         <span class="bar-track"><span class="bar-fill{{if ge .UsedDays 90}} danger{{end}}" style="width: {{barPct .UsedDays}}%;"></span></span>
         <span class="num muted">{{.UsedDays}}/90</span>
       </td>
-      <td><span class="badge {{.BadgeClass}}">{{.BadgeLabel}}</span></td>
+      <td>{{.Badge.HTML}}</td>
       <td class="num">
         {{if .OverBy}}<span class="over">−{{.OverBy}} preko limita</span>{{if .InSchengen}}<br><span class="muted">rok je bio {{fmtDate (deref .MaxContinuousUntil)}}</span>{{end}}
         {{else if .InSchengen}}{{fmtDate (deref .MaxContinuousUntil)}}{{else}}{{.MaxTripLengthToday}} dana{{end}}

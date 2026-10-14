@@ -227,12 +227,12 @@ func (s *Service) driverCounts(ctx context.Context, tenantID int64) (tenantDrive
 		if ds.InSchengen {
 			c.InSchengen++
 		}
-		switch class, _ := th.Badge(ds.Remaining); class {
-		case "badge-urgent":
+		switch th.Level(ds.Remaining) {
+		case status.LevelOver:
 			c.Urgent++
-		case "badge-red":
+		case status.LevelCritical:
 			c.Red++
-		case "badge-orange":
+		case status.LevelWarn:
 			c.Orange++
 		}
 	}
@@ -285,7 +285,7 @@ func (s *Service) cmdFirma(ctx context.Context, args string) (string, error) {
 	} else {
 		b.WriteString("nema\n")
 	}
-	fmt.Fprintf(&b, "Danas: %d u Šengenu, %d hitno, %d crveno, %d narandžasto", dc.InSchengen, dc.Urgent, dc.Red, dc.Orange)
+	fmt.Fprintf(&b, "Danas: %d u Šengenu, %d preko limita, %d kritično, %d pažnja", dc.InSchengen, dc.Urgent, dc.Red, dc.Orange)
 	return b.String(), nil
 }
 

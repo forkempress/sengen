@@ -4,7 +4,6 @@
 package status
 
 import (
-	"fmt"
 	"sort"
 	"time"
 
@@ -34,8 +33,10 @@ type DriverStatus struct {
 	// that has already passed, so it must not be shown as "može do".
 	OverBy int
 
-	BadgeClass string
-	BadgeLabel string
+	// Badge is the driver's status as shown everywhere: icon, word and
+	// number from one place, so the dashboard, the driver page and the
+	// filter can never name the same driver differently.
+	Badge Badge
 }
 
 func ToCalcStays(stays []store.Stay) []calc.Stay {
@@ -82,14 +83,15 @@ func Compute(d store.Driver, stays []store.Stay, today time.Time) DriverStatus {
 		status.LastStayExit = last.Exit
 	}
 
-	status.BadgeClass, status.BadgeLabel = BadgeFor(status.Remaining)
+	status.Badge = DefaultThresholds.BadgeFor(status.Remaining, status.OverBy)
 	return status
 }
 
-// Thresholds are the remaining-days cut-offs for the traffic-light badge.
-// A driver with fewer than Red days left is red, up to and including Orange
-// days is orange, and anything above is green. Zero days left is always
-// "urgent", regardless of configuration.
+// Thresholds are the remaining-days cut-offs for the status. A driver with
+// fewer than Red days left is Kritično, up to and including Orange days is
+// Pažnja, and anything above is OK. Zero days left is always Preko limita,
+// regardless of configuration. (The field names keep the old colour names
+// because they map onto stored tenant settings.)
 type Thresholds struct {
 	Red    int
 	Orange int
@@ -110,28 +112,29 @@ func ThresholdsFor(s store.TenantSettings) Thresholds {
 	return t
 }
 
-func (t Thresholds) Badge(remaining int) (class, label string) {
+// Level returns the status for a number of remaining days.
+func (t Thresholds) Level(remaining int) Level {
 	switch {
 	case remaining <= 0:
-		return "badge-urgent", "HITNO"
+		return LevelOver
 	case remaining < t.Red:
-		return "badge-red", fmt.Sprintf("%d", remaining)
+		return LevelCritical
 	case remaining <= t.Orange:
-		return "badge-orange", fmt.Sprintf("%d", remaining)
+		return LevelWarn
 	default:
-		return "badge-green", fmt.Sprintf("%d", remaining)
+		return LevelOK
 	}
 }
 
-// BadgeFor uses the default thresholds. Callers that know the tenant should
-// call ApplyThresholds on the computed status instead.
-func BadgeFor(remaining int) (class, label string) {
-	return DefaultThresholds.Badge(remaining)
+// BadgeFor builds the badge for a driver with `remaining` days left who is
+// overBy days past the limit (0 when within it).
+func (t Thresholds) BadgeFor(remaining, overBy int) Badge {
+	return Badge{Level: t.Level(remaining), Remaining: remaining, OverBy: overBy}
 }
 
 // ApplyThresholds recomputes the badge using a tenant's own cut-offs.
 func (ds *DriverStatus) ApplyThresholds(t Thresholds) {
-	ds.BadgeClass, ds.BadgeLabel = t.Badge(ds.Remaining)
+	ds.Badge = t.BadgeFor(ds.Remaining, ds.OverBy)
 }
 
 // AsOf returns the stays as they stood on `day`, so that Compute(…, day) can

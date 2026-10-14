@@ -1,6 +1,7 @@
 package status
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -47,43 +48,72 @@ var marko = store.Driver{ID: 1, Name: "Marko"}
 func TestThresholds_DefaultBoundaries(t *testing.T) {
 	cases := []struct {
 		remaining int
-		wantClass string
+		want      Level
 	}{
-		{-3, "badge-urgent"}, // never produced by calc, but must not fall through to green
-		{0, "badge-urgent"},
-		{1, "badge-red"},
-		{14, "badge-red"},
-		{15, "badge-orange"}, // spec: "15–30" is orange, "ispod 15" is red
-		{30, "badge-orange"},
-		{31, "badge-green"}, // spec: "preko 30" is green
-		{90, "badge-green"},
+		{-3, LevelOver}, // never produced by calc, but must not fall through to OK
+		{0, LevelOver},
+		{1, LevelCritical},
+		{14, LevelCritical},
+		{15, LevelWarn}, // spec: "15–30" is Pažnja, "ispod 15" is Kritično
+		{30, LevelWarn},
+		{31, LevelOK}, // spec: "preko 30" is OK
+		{90, LevelOK},
 	}
 	for _, tc := range cases {
-		if got, _ := DefaultThresholds.Badge(tc.remaining); got != tc.wantClass {
-			t.Errorf("Badge(%d) = %s, want %s", tc.remaining, got, tc.wantClass)
+		if got := DefaultThresholds.Level(tc.remaining); got != tc.want {
+			t.Errorf("Level(%d) = %s, want %s", tc.remaining, got.Word(), tc.want.Word())
 		}
 	}
 }
 
 func TestThresholds_CustomBoundaries(t *testing.T) {
 	th := Thresholds{Red: 10, Orange: 20}
-	cases := map[int]string{
-		0: "badge-urgent", 9: "badge-red", 10: "badge-orange",
-		20: "badge-orange", 21: "badge-green",
+	cases := map[int]Level{
+		0: LevelOver, 9: LevelCritical, 10: LevelWarn,
+		20: LevelWarn, 21: LevelOK,
 	}
 	for remaining, want := range cases {
-		if got, _ := th.Badge(remaining); got != want {
-			t.Errorf("custom Badge(%d) = %s, want %s", remaining, got, want)
+		if got := th.Level(remaining); got != want {
+			t.Errorf("custom Level(%d) = %s, want %s", remaining, got.Word(), want.Word())
 		}
 	}
 }
 
-func TestThresholds_LabelShowsDaysOrUrgent(t *testing.T) {
-	if _, label := DefaultThresholds.Badge(0); label != "HITNO" {
-		t.Errorf("label at 0 days = %q, want HITNO", label)
+func TestBadge_IconWordNumber(t *testing.T) {
+	cases := []struct {
+		remaining, overBy int
+		want              string
+	}{
+		{48, 0, "✓ OK 48"},
+		{22, 0, "! Pažnja 22"},
+		{6, 0, "▲ Kritično 6"},
+		{0, 0, "⛔ Preko limita 0"},
+		{0, 6, "⛔ Preko limita −6"},
 	}
-	if _, label := DefaultThresholds.Badge(14); label != "14" {
-		t.Errorf("label at 14 days = %q, want 14", label)
+	for _, tc := range cases {
+		if got := DefaultThresholds.BadgeFor(tc.remaining, tc.overBy).Text(); got != tc.want {
+			t.Errorf("BadgeFor(%d, %d) = %q, want %q", tc.remaining, tc.overBy, got, tc.want)
+		}
+	}
+}
+
+func TestBadge_HTMLCarriesWordNotOnlyColour(t *testing.T) {
+	got := string(DefaultThresholds.BadgeFor(6, 0).HTML())
+	for _, want := range []string{"badge-kriticno", "Kritično", ">6<", `aria-hidden="true"`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("badge HTML %q is missing %q", got, want)
+		}
+	}
+}
+
+func TestLevelFromKey_RoundTrips(t *testing.T) {
+	for _, l := range Levels {
+		if got, ok := LevelFromKey(l.Key()); !ok || got != l {
+			t.Errorf("LevelFromKey(%q) = %v, %v", l.Key(), got, ok)
+		}
+	}
+	if _, ok := LevelFromKey("crveno"); ok {
+		t.Error("old colour name must not parse as a status")
 	}
 }
 
@@ -106,13 +136,13 @@ func TestThresholdsFor_FallsBackToDefaults(t *testing.T) {
 
 func TestApplyThresholds_ChangesBadgeNotNumbers(t *testing.T) {
 	ds := Compute(marko, markoStays(), d("13.10.2026"))
-	if ds.Remaining != 14 || ds.BadgeClass != "badge-red" {
-		t.Fatalf("setup: golden Marko = %d remaining / %s, want 14 / badge-red", ds.Remaining, ds.BadgeClass)
+	if ds.Remaining != 14 || ds.Badge.Level != LevelCritical {
+		t.Fatalf("setup: golden Marko = %d remaining / %s, want 14 / Kritično", ds.Remaining, ds.Badge.Level.Word())
 	}
 
 	ds.ApplyThresholds(Thresholds{Red: 10, Orange: 20})
-	if ds.BadgeClass != "badge-orange" {
-		t.Errorf("14 days with red<10 = %s, want badge-orange", ds.BadgeClass)
+	if ds.Badge.Level != LevelWarn {
+		t.Errorf("14 days with red<10 = %s, want Pažnja", ds.Badge.Level.Word())
 	}
 	if ds.Remaining != 14 || ds.UsedDays != 76 {
 		t.Errorf("thresholds must not alter the counted days: remaining=%d used=%d", ds.Remaining, ds.UsedDays)

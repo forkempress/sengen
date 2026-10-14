@@ -24,7 +24,7 @@
       <td class="num">{{fmtDatePtr .Exit}}</td>
       <td>{{.Type}}</td>
       <td>
-        {{if .Valid}}<span class="badge badge-green">OK</span>
+        {{if .Valid}}<span class="badge badge-ok">OK</span>
         {{else}}{{range .Errors}}<div class="muted" style="color:var(--status-urgent);">{{.}}</div>{{end}}
         {{end}}
       </td>

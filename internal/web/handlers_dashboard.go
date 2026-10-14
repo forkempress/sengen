@@ -2,6 +2,7 @@ package web
 
 import (
 	"net/http"
+	"net/url"
 	"time"
 
 	"shengen/internal/clock"
@@ -18,11 +19,11 @@ type pregledData struct {
 	Statuses      []status.DriverStatus
 	UrgentDrivers []status.DriverStatus
 
-	TotalDrivers     int
-	InSchengenNow    int
-	BelowRedCount    int
-	AboveOrangeCount int
-	Thresholds       status.Thresholds
+	TotalDrivers  int
+	InSchengenNow int
+	Thresholds    status.Thresholds
+	// KPI cards, one per status from the worst; each is also a filter link.
+	KPIs []kpiCard
 
 	AsOf      time.Time
 	IsToday   bool
@@ -32,6 +33,35 @@ type pregledData struct {
 	Query         string
 	Severity      string
 	FiltersActive bool
+}
+
+// kpiCard is one status card on the dashboard. Clicking it filters the
+// table to that status; clicking the active card clears the filter.
+type kpiCard struct {
+	Level  status.Level
+	Range  string
+	Count  int
+	Active bool
+	URL    string
+}
+
+// kpiURL keeps the search and the chosen day, so a card only changes the
+// status filter.
+func kpiURL(query, severity string, day time.Time, isToday bool) string {
+	v := url.Values{}
+	if query != "" {
+		v.Set("q", query)
+	}
+	if severity != "" {
+		v.Set("ozbiljnost", severity)
+	}
+	if !isToday {
+		v.Set("na_dan", day.Format("2006-01-02"))
+	}
+	if len(v) == 0 {
+		return "/pregled"
+	}
+	return "/pregled?" + v.Encode()
 }
 
 func (s *Server) handlePregled(w http.ResponseWriter, r *http.Request) {
@@ -76,19 +106,24 @@ func (s *Server) handlePregled(w http.ResponseWriter, r *http.Request) {
 		Severity:      severity,
 		FiltersActive: query != "" || severity != "",
 	}
+	counts := map[status.Level]int{}
 	for _, st := range statuses {
 		if st.InSchengen {
 			data.InSchengenNow++
 		}
-		if st.Remaining < thresholds.Red {
-			data.BelowRedCount++
-		}
-		if st.Remaining > thresholds.Orange {
-			data.AboveOrangeCount++
-		}
+		counts[st.Badge.Level]++
 		if data.IsToday && st.InSchengen && st.Remaining <= 0 {
 			data.UrgentDrivers = append(data.UrgentDrivers, st)
 		}
+	}
+	for _, l := range status.Levels {
+		card := kpiCard{Level: l, Range: thresholds.Range(l), Count: counts[l], Active: severity == l.Key()}
+		next := l.Key()
+		if card.Active {
+			next = ""
+		}
+		card.URL = kpiURL(query, next, day, data.IsToday)
+		data.KPIs = append(data.KPIs, card)
 	}
 	data.Statuses = filterStatuses(statuses, query, severity)
 

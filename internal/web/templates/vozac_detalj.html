@@ -3,7 +3,7 @@
 
 <div class="cards-row">
   <div class="card"><div class="label">Iskorišćeno</div><div class="value">{{.Status.UsedDays}}/90</div></div>
-  <div class="card"><div class="label">Preostalo danas</div><div class="value"><span class="badge {{.Status.BadgeClass}}">{{.Status.BadgeLabel}}</span></div></div>
+  <div class="card"><div class="label">Preostalo danas</div><div class="value">{{.Status.Badge.HTML}}</div></div>
   <div class="card">
     {{if .Status.OverBy}}
       <div class="label">Preko limita</div><div class="value over">−{{.Status.OverBy}} d</div>

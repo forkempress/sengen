@@ -3,7 +3,7 @@
 
 <nav class="help-toc">
   <a href="#brojanje">Kako se broji</a>
-  <a href="#boje">Boje</a>
+  <a href="#boje">Statusi</a>
   <a href="#pregled">Pregled</a>
   <a href="#vozac">Vozač i kalendar</a>
   <a href="#uvoz">Uvoz istorije</a>
@@ -24,14 +24,14 @@
 </section>
 
 <section class="help-section" id="boje">
-  <h2>Boje</h2>
-  <p>Boja zavisi od toga koliko je dana vozaču preostalo danas (ili na izabrani dan).</p>
+  <h2>Statusi</h2>
+  <p>Status zavisi od toga koliko je dana vozaču preostalo danas (ili na izabrani dan). Svaki status ima svoju ikonu i reč, pa se razlikuje i bez boja. Isti nazivi su u filteru i na karticama Pregleda.</p>
   <table class="help-table">
     <tbody>
-      <tr><td><span class="badge badge-urgent">HITNO</span></td><td>0 dana — iskorišćeno je svih 90. Ako je vozač u Šengenu, mora odmah da izađe.</td></tr>
-      <tr><td><span class="badge badge-red">&lt; {{.Thresholds.Red}}</span></td><td>manje od {{.Thresholds.Red}} dana</td></tr>
-      <tr><td><span class="badge badge-orange">{{.Thresholds.Red}}–{{.Thresholds.Orange}}</span></td><td>od {{.Thresholds.Red}} do {{.Thresholds.Orange}} dana</td></tr>
-      <tr><td><span class="badge badge-green">&gt; {{.Thresholds.Orange}}</span></td><td>više od {{.Thresholds.Orange}} dana</td></tr>
+      <tr><td>{{levelBadge 3}}</td><td class="num">{{.Thresholds.Range 3}}</td><td>0 dana — iskorišćeno je svih 90. Broj sa minusom (npr. −6) kaže koliko je dana vozač preko limita. Ako je vozač u Šengenu, mora odmah da izađe.</td></tr>
+      <tr><td>{{levelBadge 2}}</td><td class="num">{{.Thresholds.Range 2}}</td><td>manje od {{.Thresholds.Red}} dana</td></tr>
+      <tr><td>{{levelBadge 1}}</td><td class="num">{{.Thresholds.Range 1}}</td><td>od {{.Thresholds.Red}} do {{.Thresholds.Orange}} dana</td></tr>
+      <tr><td>{{levelBadge 0}}</td><td class="num">{{.Thresholds.Range 0}}</td><td>više od {{.Thresholds.Orange}} dana</td></tr>
     </tbody>
   </table>
   <p class="muted">Pragove{{if .IsOwner}} menjate u <a href="/podesavanja/telegram">Podešavanja → Telegram</a>{{else}} podešava vlasnik naloga{{end}}. Važe i za pregled i za upozorenja.</p>

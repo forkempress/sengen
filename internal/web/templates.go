@@ -4,6 +4,8 @@ import (
 	"embed"
 	"html/template"
 	"time"
+
+	"shengen/internal/status"
 )
 
 //go:embed static
@@ -15,6 +17,9 @@ var templateFS embed.FS
 type templateSet map[string]*template.Template
 
 var funcMap = template.FuncMap{
+	// levelBadge renders a status without a number (legends, filters).
+	"levelBadge": status.LevelBadge,
+	"levels":     func() []status.Level { return status.Levels },
 	"fmtDate": func(t time.Time) string {
 		if t.IsZero() {
 			return ""

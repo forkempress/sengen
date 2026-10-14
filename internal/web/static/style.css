@@ -7,12 +7,16 @@
   --accent-contrast: #FFFFFF;
   --yellow: #F2B33D;
   --text: #16202B;
-  --text-muted: #5B6670;
+  --text-muted: #55606A;
 
-  --status-urgent: #7A1408;
-  --status-red: #C2381F;
-  --status-orange: #D88B12;
-  --status-green: #2E8A55;
+  /* Statusi: taman tekst na svetloj pozadini, svi parovi >= 4,5:1 (UX-04). */
+  --status-urgent: #7A1408;   /* Preko limita: beo na ovome 10,9:1 */
+  --status-red: #B3301A;      /* Kritično: na #FBE9E6 5,3:1 */
+  --status-red-bg: #FBE9E6;
+  --status-orange: #935600;   /* Pažnja: na #FBEFD9 5,2:1 */
+  --status-orange-bg: #FBEFD9;
+  --status-green: #1F7A47;    /* OK: na #E3F3EA 4,7:1 */
+  --status-green-bg: #E3F3EA;
 
   --font-sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -103,7 +107,7 @@ main.container {
   margin-bottom: 1rem;
   font-size: 0.92rem;
 }
-.flash-ok { background: #e3f3ea; border: 1px solid var(--status-green); color: #1e5c3a; }
+.flash-ok { background: var(--status-green-bg); border: 1px solid var(--status-green); color: #1e5c3a; }
 .flash-err { background: #fbe9e6; border: 1px solid var(--status-red); color: var(--status-urgent); }
 
 .urgent-banner {
@@ -114,7 +118,18 @@ main.container {
   margin-bottom: 1.25rem;
   font-size: 0.95rem;
 }
+.urgent-banner p { margin: 0.25rem 0; }
 .urgent-banner strong { color: var(--yellow); }
+/* Beo podvučen link na tamnocrvenom (10,9:1), umesto plavog (1,1:1). */
+.urgent-banner a { color: #fff; text-decoration: underline; font-weight: 600; }
+.urgent-banner a.btn-on-dark {
+  text-decoration: none;
+  margin-left: 0.5rem;
+  background: transparent;
+  border: 1px solid #fff;
+  color: #fff;
+}
+.urgent-banner a.btn-on-dark:hover { background: #fff; color: var(--status-urgent); }
 
 .cards-row {
   display: grid;
@@ -253,15 +268,30 @@ tr:last-child td { border-bottom: none; }
   gap: 0.35rem;
   padding: 0.18rem 0.55rem;
   border-radius: 999px;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 0.82rem;
   font-weight: 600;
-  color: #fff;
+  white-space: nowrap;
 }
-.badge-urgent { background: var(--status-urgent); }
-.badge-red { background: var(--status-red); }
-.badge-orange { background: var(--status-orange); }
-.badge-green { background: var(--status-green); }
+.badge .num { font-family: var(--font-mono); }
+.badge-preko { background: var(--status-urgent); border: 1px solid var(--status-urgent); color: #fff; }
+.badge-kriticno { background: var(--status-red-bg); border: 1px solid var(--status-red); color: var(--status-red); }
+.badge-paznja { background: var(--status-orange-bg); border: 1px solid var(--status-orange); color: var(--status-orange); }
+.badge-ok { background: var(--status-green-bg); border: 1px solid var(--status-green); color: var(--status-green); }
+
+/* KPI kartice su filteri: traka u boji statusa levo (UX-12). */
+.kpi-row { margin-bottom: 0.5rem; }
+a.card.kpi { display: block; color: var(--text); border-left-width: 5px; text-decoration: none; }
+a.card.kpi:hover { border-color: var(--text); }
+a.card.kpi .label { display: block; }
+a.card.kpi .value { display: block; }
+.kpi-range { text-transform: none; letter-spacing: 0; }
+.kpi-preko { border-left-color: var(--status-urgent); }
+.kpi-kriticno { border-left-color: var(--status-red); }
+.kpi-paznja { border-left-color: var(--status-orange); }
+.kpi-ok { border-left-color: var(--status-green); }
+a.card.kpi.kpi-active { outline: 2px solid var(--text); outline-offset: -1px; background: #F6F7F4; }
+.kpi-summary { margin: 0 0 1rem; }
 
 .bar-track {
   width: 110px;
