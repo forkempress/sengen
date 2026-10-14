@@ -30,9 +30,34 @@ type pregledData struct {
 	IsFuture  bool
 	DateError string
 
+	// Onboarding: a new firm sees its first steps instead of zeros (UX-06).
+	Setup setupSteps
+
 	Query         string
 	Severity      string
 	FiltersActive bool
+}
+
+// setupSteps are the first steps of a new firm, shown on the dashboard
+// until the firm has drivers and at least one stay.
+type setupSteps struct {
+	HasDrivers bool
+	HasStays   bool
+	HasLinked  bool
+}
+
+// Show reports whether the checklist replaces (or tops) the dashboard.
+func (s setupSteps) Show() bool { return !s.HasDrivers || !s.HasStays }
+
+// Left counts the steps still to do.
+func (s setupSteps) Left() int {
+	n := 0
+	for _, done := range []bool{s.HasDrivers, s.HasStays, s.HasLinked} {
+		if !done {
+			n++
+		}
+	}
+	return n
 }
 
 // kpiCard is one status card on the dashboard. Clicking it filters the
@@ -106,6 +131,14 @@ func (s *Server) handlePregled(w http.ResponseWriter, r *http.Request) {
 		Severity:      severity,
 		FiltersActive: query != "" || severity != "",
 	}
+	data.Setup = setupSteps{HasDrivers: len(drivers) > 0, HasStays: len(allStays) > 0}
+	for _, d := range drivers {
+		if d.TelegramChatID != nil {
+			data.Setup.HasLinked = true
+			break
+		}
+	}
+
 	counts := map[status.Level]int{}
 	for _, st := range statuses {
 		if st.InSchengen {

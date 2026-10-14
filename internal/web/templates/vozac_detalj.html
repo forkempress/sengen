@@ -58,6 +58,16 @@
 </section>
 
 
+{{if not .Stays}}
+<section class="empty-state panel">
+  <h2>Još nema unetih boravaka</h2>
+  <p>Unesite boravke iz poslednjih 180 dana da bi brojanje bilo tačno. Dok ih nema, aplikacija računa kao da vozač nije bio u Šengenu.</p>
+  <div class="actions-row">
+    <a href="#dodaj-boravak" class="btn btn-primary">Dodaj boravak</a>
+    <a href="/import" class="btn">Uvezi CSV</a>
+  </div>
+</section>
+{{else}}
 <h2>Kalendar</h2>
 <div class="legend">
   <span><span class="swatch" style="background:var(--accent);"></span>Posao</span>
@@ -113,12 +123,11 @@
         </form>
       </div></td>
     </tr>
-    {{else}}
-    <tr><td colspan="6" class="muted">Još nema unetih boravaka.</td></tr>
     {{end}}
   </tbody>
 </table>
 </div>
+{{end}}
 
 <details class="plan-block" id="provera-ture"{{if or .PlanStart .PlanDays}} open{{end}}>
 <summary><h2>Provera ture</h2> <span class="muted">da li planirana tura staje u 90/180</span></summary>

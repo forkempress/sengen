@@ -518,3 +518,16 @@ td.wrap { white-space: normal; }
 .plan-form .form-grid { max-width: 420px; }
 .plan-result { margin-bottom: 1.5rem; }
 .plan-result p { margin: 0.3rem 0; }
+
+/* Prazna stanja (UX-06, UX-17). */
+.checklist { list-style: none; padding: 0; margin: 0.5rem 0 1rem; }
+.checklist li { display: flex; gap: 0.6rem; align-items: center; padding: 0.4rem 0; }
+.checklist .check {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.6rem; height: 1.6rem; border-radius: 50%;
+  border: 1px solid #8C958C; font-family: var(--font-mono); font-size: 0.85rem;
+}
+.checklist li.done { color: var(--text-muted); }
+.checklist li.done .check { background: var(--status-green-bg); border-color: var(--status-green); color: var(--status-green); }
+.empty-state p { margin: 0.25rem 0 1rem; }
