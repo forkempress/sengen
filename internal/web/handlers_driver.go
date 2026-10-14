@@ -25,8 +25,11 @@ type driverDetailData struct {
 	baseData
 	Driver store.Driver
 	Status status.DriverStatus
-	Months []MonthGrid
-	Stays  []store.Stay // most recent first
+	// The calendar: the current month and the next ones, then the earlier
+	// months, which phones show only on request (UX-14).
+	Months        []MonthGrid
+	EarlierMonths []MonthGrid
+	Stays         []store.Stay // most recent first
 
 	// "Provera ture": the form's values as entered, and either a result or
 	// an error message once the form has been submitted.
@@ -71,7 +74,8 @@ func (s *Server) handleDriverDetail(w http.ResponseWriter, r *http.Request) {
 		settings, _ := t.ParsedSettings()
 		driverStatus.ApplyThresholds(status.ThresholdsFor(settings))
 	}
-	months := buildMonthGrids(stays, today, 3, 2)
+	const monthsBefore = 3
+	months := buildMonthGrids(stays, today, monthsBefore, 2)
 
 	reversed := make([]store.Stay, len(stays))
 	for i, st := range stays {
@@ -79,11 +83,12 @@ func (s *Server) handleDriverDetail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := driverDetailData{
-		baseData: s.base(r, "vozaci"),
-		Driver:   *driver,
-		Status:   driverStatus,
-		Months:   months,
-		Stays:    reversed,
+		baseData:      s.base(r, "vozaci"),
+		Driver:        *driver,
+		Status:        driverStatus,
+		Months:        months[monthsBefore:],
+		EarlierMonths: months[:monthsBefore],
+		Stays:         reversed,
 	}
 	data.PlanStart, data.PlanDays = r.URL.Query().Get("polazak"), r.URL.Query().Get("dana")
 	if data.PlanStart != "" || data.PlanDays != "" {

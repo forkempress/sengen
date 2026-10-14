@@ -51,6 +51,36 @@ header.app-header {
 header.app-header .brand {
   font-weight: 600;
   font-size: 1.05rem;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  text-decoration: none;
+}
+.logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 6px;
+  background: var(--yellow);
+  color: var(--header-bg);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.nav-wrap { display: flex; align-items: center; justify-content: space-between; flex: 1; gap: 1rem; flex-wrap: wrap; }
+.nav-toggle {
+  display: none;
+  background: none;
+  border: 1px solid #8C958C;
+  color: #fff;
+  border-radius: 6px;
+  min-height: 44px;
+  padding: 0 1rem;
+  font: inherit;
+  cursor: pointer;
 }
 header.app-header .brand-sub {
   font-weight: 400;
@@ -96,7 +126,7 @@ header.app-header form.logout-form button {
 header.app-header form.logout-form button:hover { background: #22303e; }
 
 main.container {
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 1.25rem 1rem 3rem;
 }
@@ -390,9 +420,97 @@ footer.app-footer {
   padding: 1.5rem 1rem 2.5rem;
 }
 
-@media (max-width: 600px) {
-  header.app-header { flex-direction: column; align-items: flex-start; }
+/* Pregled: kartice vozača umesto tabele na telefonu (UX-02). */
+.driver-cards { display: none; list-style: none; margin: 0; padding: 0; }
+.driver-cards li { margin-bottom: 0.6rem; }
+.driver-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.2rem 0.75rem;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-left: 5px solid var(--status-green);
+  border-radius: 6px;
+  padding: 0.7rem 0.9rem;
+  color: var(--text);
+}
+.driver-card:hover { text-decoration: none; border-color: var(--text); }
+.dc-preko { border-left-color: var(--status-urgent); }
+.dc-kriticno { border-left-color: var(--status-red); }
+.dc-paznja { border-left-color: var(--status-orange); }
+.dc-head { display: flex; flex-direction: column; min-width: 0; }
+.dc-name { font-weight: 600; color: var(--accent); }
+.dc-figure { display: flex; flex-direction: column; align-items: flex-end; gap: 0.2rem; grid-row: span 2; }
+.dc-number { font-size: 2rem; font-weight: 700; line-height: 1; }
+.dc-line { font-size: 0.9rem; color: var(--text-muted); }
+.driver-card-empty { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 6px; padding: 0.9rem; }
+
+/* Stranica vozača: hero sa preostalim danima (UX-07). */
+.hero {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-left: 6px solid var(--status-green);
+  border-radius: 6px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+.hero-preko { border-left-color: var(--status-urgent); }
+.hero-kriticno { border-left-color: var(--status-red); }
+.hero-paznja { border-left-color: var(--status-orange); }
+.hero-figure { display: flex; flex-direction: column; align-items: center; min-width: 7rem; }
+.hero-number { font-size: 3.5rem; font-weight: 700; line-height: 1; }
+.hero-preko .hero-number { color: var(--status-urgent); }
+.hero-unit { font-size: 0.85rem; color: var(--text-muted); text-align: center; }
+.hero-body { flex: 1; min-width: 0; }
+.hero-sentence { font-size: 1.1rem; margin: 0.5rem 0 0.25rem; }
+.hero-body .muted { margin: 0; }
+.actions-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+.panel { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 6px; padding: 0.25rem 1rem 1rem; margin-bottom: 1rem; }
+.panel h2 { margin-top: 0.75rem; }
+.months-earlier > summary { list-style: none; margin-bottom: 0.5rem; }
+.months-earlier > summary::-webkit-details-marker { display: none; }
+.months-earlier[open] > summary { display: none; }
+.months-earlier .months-grid { margin-bottom: 1rem; }
+.plan-block { margin-top: 2rem; }
+.plan-block > summary { cursor: pointer; display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; }
+.plan-block > summary h2 { display: inline; margin: 0; }
+.plan-block[open] > summary { margin-bottom: 0.75rem; }
+.edit-form { margin-top: 0.5rem; white-space: normal; }
+.row-actions { display: flex; gap: 0.4rem; align-items: flex-start; flex-wrap: wrap; }
+td.wrap { white-space: normal; }
+.btn-quiet-danger { color: var(--status-red); }
+.btn-quiet-danger:hover { border-color: var(--status-red); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+@media (max-width: 700px) {
+  header.app-header { padding: 0.5rem 1rem; }
+  .nav-toggle { display: inline-block; }
+  .nav-wrap { display: none; flex-basis: 100%; flex-direction: column; align-items: stretch; gap: 0.25rem; }
+  .no-js .nav-wrap, header.nav-open .nav-wrap { display: flex; }
+  header.app-header nav { flex-direction: column; gap: 0; }
+  header.app-header nav a { padding: 0.6rem 0; font-size: 1rem; border-bottom: 1px solid #2a3846; }
+  header.app-header .user-box { flex-wrap: wrap; padding: 0.5rem 0; }
+  main.container { padding: 1rem 1rem 2rem; }
   .cards-row { grid-template-columns: repeat(2, 1fr); }
+  .driver-cards { display: block; }
+  .driver-table { display: none; }
+  .hero { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  .hero-figure { flex-direction: row; align-items: baseline; gap: 0.5rem; min-width: 0; }
+  .months-earlier:not([open]) + .months-grid .month-card:nth-child(n+4) { display: none; }
+
+  /* Tabela sa klasom stack postaje niz kartica (istorija boravaka, UX-14). */
+  table.stack { min-width: 0; }
+  table.stack thead { display: none; }
+  table.stack, table.stack tbody, table.stack tr, table.stack td { display: block; width: 100%; }
+  table.stack tr { border-bottom: 1px solid var(--card-border); padding: 0.6rem 0.8rem; }
+  table.stack tr:last-child { border-bottom: none; }
+  table.stack td { border: none; padding: 0.15rem 0; white-space: normal; }
+  table.stack td[data-label]::before { content: attr(data-label) ": "; color: var(--text-muted); font-family: var(--font-sans); font-size: 0.85rem; }
+  table.stack td[data-label]:empty { display: none; }
+  table.stack .row-actions { display: flex; padding-top: 0.5rem; }
 }
 
 /* Provera ture (stranica vozača) */

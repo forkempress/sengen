@@ -1,37 +1,127 @@
 {{define "content"}}
 <h1>{{.Driver.Name}} <span class="muted">— {{.Driver.VehicleLabel}}</span></h1>
 
-<div class="cards-row">
-  <div class="card"><div class="label">Iskorišćeno</div><div class="value">{{.Status.UsedDays}}/90</div></div>
-  <div class="card"><div class="label">Preostalo danas</div><div class="value">{{.Status.Badge.HTML}}</div></div>
-  <div class="card">
-    {{if .Status.OverBy}}
-      <div class="label">Preko limita</div><div class="value over">−{{.Status.OverBy}} d</div>
-      {{if .Status.InSchengen}}<div class="muted">rok je bio {{fmtDate (deref .Status.MaxContinuousUntil)}}</div>{{end}}
-    {{else if .Status.InSchengen}}
-      <div class="label">Može da ostane do</div><div class="value">{{fmtDate (deref .Status.MaxContinuousUntil)}}</div>
+{{with .Status}}
+<section class="hero hero-{{.Badge.Level.Key}}" aria-label="Stanje vozača">
+  <div class="hero-figure">
+    {{if .OverBy}}
+    <span class="hero-number num">−{{.OverBy}}</span>
+    <span class="hero-unit">{{dana .OverBy}} preko limita</span>
     {{else}}
-      <div class="label">Najduža tura sada</div><div class="value">{{.Status.MaxTripLengthToday}}d</div>
+    <span class="hero-number num">{{.Remaining}}</span>
+    <span class="hero-unit">{{dana .Remaining}} preostalo danas</span>
     {{end}}
   </div>
-  <div class="card">
-    <div class="label">Sledeće oslobađanje</div>
-    <div class="value">{{if .Status.NextFreeUp}}{{fmtDate .Status.NextFreeUp.Date}} (+{{.Status.NextFreeUp.DaysFreed}}){{else}}—{{end}}</div>
+  <div class="hero-body">
+    {{.Badge.HTML}}
+    <p class="hero-sentence">
+      {{if and .OverBy .InSchengen}}U Šengenu od <span class="num">{{fmtDate (deref .CurrentSince)}}</span>. Rok je bio <strong class="num">{{fmtDate (deref .MaxContinuousUntil)}}</strong> — mora odmah da izađe.
+      {{else if .InSchengen}}U Šengenu od <span class="num">{{fmtDate (deref .CurrentSince)}}</span>. Mora da izađe najkasnije <strong class="num">{{fmtDate (deref .MaxContinuousUntil)}}</strong>.
+      {{else if .OverBy}}U Srbiji. Ne sme u Šengen dok mu se ne oslobode dani{{if .NextFreeUp}} (prvi se vraćaju <span class="num">{{fmtDate .NextFreeUp.Date}}</span>){{end}}.
+      {{else}}U Srbiji. Najduža tura ako krene danas: <strong><span class="num">{{.MaxTripLengthToday}}</span> {{dana .MaxTripLengthToday}}</strong>.
+      {{end}}
+    </p>
+    <p class="muted">
+      Iskorišćeno <span class="num">{{.UsedDays}}/90</span> u poslednjih 180 dana{{if .NextFreeUp}} · sledeće oslobađanje <span class="num">{{fmtDate .NextFreeUp.Date}} (+{{.NextFreeUp.DaysFreed}})</span>{{end}}
+    </p>
   </div>
-</div>
+</section>
+{{end}}
 
-<div style="margin-bottom:1.5rem;">
+<div class="actions-row">
   {{if .Status.InSchengen}}
   <form class="inline" method="post" action="/vozaci/{{.Driver.ID}}/vratio-se">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <button type="submit" class="btn btn-primary">Vratio se danas</button>
   </form>
   {{end}}
-  <a href="#dodaj-boravak" class="btn">Dodaj boravak</a>
-  <a href="#provera-ture" class="btn">Provera ture</a>
+  <a href="#provera-ture" class="btn" data-open-details>Provera ture</a>
 </div>
 
-<h2 id="provera-ture">Provera ture</h2>
+<section class="panel" id="dodaj-boravak">
+<h2>Dodaj boravak</h2>
+<form method="post" action="/vozaci/{{.Driver.ID}}/boravci">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <div class="form-grid">
+    <div><label for="new-entry">Ulazak</label><input id="new-entry" type="date" name="entry_date" required></div>
+    <div><label for="new-exit">Izlazak (prazno = u toku)</label><input id="new-exit" type="date" name="exit_date"></div>
+    <div><label for="new-type">Tip</label>
+      <select id="new-type" name="type">
+        <option value="work">Posao</option>
+        <option value="private">Privatno</option>
+      </select>
+    </div>
+    <div><label for="new-note">Napomena</label><input id="new-note" type="text" name="note" maxlength="200"></div>
+  </div>
+  <button type="submit" class="btn btn-primary">Dodaj</button>
+</form>
+</section>
+
+
+<h2>Kalendar</h2>
+<div class="legend">
+  <span><span class="swatch" style="background:var(--accent);"></span>Posao</span>
+  <span><span class="swatch" style="background:#9FB3DE;"></span>Privatno</span>
+  <span><span class="swatch" style="background:var(--yellow);"></span>Projekcija boravka</span>
+  <span><span class="swatch" style="background:#E3E6E0;"></span>Van prozora (180 dana)</span>
+  <span><span class="swatch" style="border:2px solid var(--status-green);"></span>Dan oslobađanja</span>
+</div>
+<details class="months-earlier" open data-close-on-mobile>
+  <summary class="btn btn-sm">Prethodni meseci</summary>
+  <div class="months-grid">{{range .EarlierMonths}}{{template "monthCard" .}}{{end}}</div>
+</details>
+<div class="months-grid">{{range .Months}}{{template "monthCard" .}}{{end}}</div>
+
+<h2>Istorija boravaka</h2>
+<div class="table-wrap">
+<table class="stack">
+  <thead>
+    <tr><th>Ulazak</th><th>Izlazak</th><th>Tip</th><th>Izvor</th><th>Napomena</th><th><span class="sr-only">Akcije</span></th></tr>
+  </thead>
+  <tbody>
+    {{$driverID := .Driver.ID}}
+    {{$csrf := .CSRFToken}}
+    {{range .Stays}}
+    <tr>
+      <td class="num" data-label="Ulazak">{{fmtDate .Entry}}</td>
+      <td class="num" data-label="Izlazak">{{fmtDatePtr .Exit}}</td>
+      <td data-label="Tip">{{if eq .Type "work"}}Posao{{else}}Privatno{{end}}</td>
+      <td class="muted" data-label="Izvor">{{sourceLabel .Source}}</td>
+      <td class="muted wrap" data-label="Napomena">{{.Note}}</td>
+      <td><div class="row-actions">
+        <details>
+          <summary class="btn btn-sm">Izmeni</summary>
+          <form method="post" action="/vozaci/{{$driverID}}/boravci/{{.ID}}" class="edit-form">
+            <input type="hidden" name="csrf_token" value="{{$csrf}}">
+            <div class="form-grid">
+              <div><label for="e{{.ID}}-entry">Ulazak</label><input id="e{{.ID}}-entry" type="date" name="entry_date" value="{{fmtDateInput .Entry}}" required></div>
+              <div><label for="e{{.ID}}-exit">Izlazak</label><input id="e{{.ID}}-exit" type="date" name="exit_date" value="{{if .Exit}}{{fmtDateInput (deref .Exit)}}{{end}}"></div>
+              <div><label for="e{{.ID}}-type">Tip</label>
+                <select id="e{{.ID}}-type" name="type">
+                  <option value="work" {{if eq .Type "work"}}selected{{end}}>Posao</option>
+                  <option value="private" {{if eq .Type "private"}}selected{{end}}>Privatno</option>
+                </select>
+              </div>
+              <div><label for="e{{.ID}}-note">Napomena</label><input id="e{{.ID}}-note" type="text" name="note" value="{{.Note}}" maxlength="200"></div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Sačuvaj</button>
+          </form>
+        </details>
+        <form class="inline" method="post" action="/vozaci/{{$driverID}}/boravci/{{.ID}}/obrisi" data-confirm="Obrisati boravak {{fmtDate .Entry}} – {{fmtDatePtr .Exit}}? Brisanje se ne može poništiti.">
+          <input type="hidden" name="csrf_token" value="{{$csrf}}">
+          <button type="submit" class="btn btn-sm btn-quiet-danger">Obriši</button>
+        </form>
+      </div></td>
+    </tr>
+    {{else}}
+    <tr><td colspan="6" class="muted">Još nema unetih boravaka.</td></tr>
+    {{end}}
+  </tbody>
+</table>
+</div>
+
+<details class="plan-block" id="provera-ture"{{if or .PlanStart .PlanDays}} open{{end}}>
+<summary><h2>Provera ture</h2> <span class="muted">da li planirana tura staje u 90/180</span></summary>
 <form method="get" action="/vozaci/{{.Driver.ID}}#provera-ture" class="plan-form">
   <div class="form-grid">
     <div><label for="plan-start">Polazak</label><input id="plan-start" type="date" name="polazak" value="{{.PlanStart}}" required></div>
@@ -56,91 +146,17 @@
   </div>
   {{end}}
 {{end}}{{end}}
+</details>
+{{end}}
 
-<h2>Kalendar</h2>
-<div class="legend">
-  <span><span class="swatch" style="background:var(--accent);"></span>Posao</span>
-  <span><span class="swatch" style="background:#9FB3DE;"></span>Privatno</span>
-  <span><span class="swatch" style="background:var(--yellow);"></span>Projekcija boravka</span>
-  <span><span class="swatch" style="background:#E3E6E0;"></span>Van prozora (180 dana)</span>
-  <span><span class="swatch" style="border:2px solid var(--status-green);"></span>Dan oslobađanja</span>
-</div>
-<div class="months-grid">
-  {{range .Months}}
-  <div class="month-card">
-    <h3>{{.Label}}</h3>
-    <div class="month-grid">
-      <div class="dow">Pon</div><div class="dow">Uto</div><div class="dow">Sre</div><div class="dow">Čet</div><div class="dow">Pet</div><div class="dow">Sub</div><div class="dow">Ned</div>
-      {{range .Weeks}}{{range .}}
-        <div class="day-cell {{.Class}}{{if .Today}} day-today{{end}}{{if .Freed}} day-freed{{end}}{{if eq .Day 0}} day-empty{{end}}">{{if .Day}}{{.Day}}{{end}}</div>
-      {{end}}{{end}}
-    </div>
+{{define "monthCard"}}
+<div class="month-card">
+  <h3>{{.Label}}</h3>
+  <div class="month-grid">
+    <div class="dow">Pon</div><div class="dow">Uto</div><div class="dow">Sre</div><div class="dow">Čet</div><div class="dow">Pet</div><div class="dow">Sub</div><div class="dow">Ned</div>
+    {{range .Weeks}}{{range .}}
+      <div class="day-cell {{.Class}}{{if .Today}} day-today{{end}}{{if .Freed}} day-freed{{end}}{{if eq .Day 0}} day-empty{{end}}">{{if .Day}}{{.Day}}{{end}}</div>
+    {{end}}{{end}}
   </div>
-  {{end}}
-</div>
-
-<h2 id="dodaj-boravak">Dodaj boravak</h2>
-<form method="post" action="/vozaci/{{.Driver.ID}}/boravci">
-  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-  <div class="form-grid">
-    <div><label>Ulazak</label><input type="date" name="entry_date" required></div>
-    <div><label>Izlazak (prazno = u toku)</label><input type="date" name="exit_date"></div>
-    <div><label>Tip</label>
-      <select name="type">
-        <option value="work">Posao</option>
-        <option value="private">Privatno</option>
-      </select>
-    </div>
-    <div><label>Napomena</label><input type="text" name="note" maxlength="200"></div>
-  </div>
-  <button type="submit" class="btn btn-primary">Dodaj</button>
-</form>
-
-<h2>Istorija boravaka</h2>
-<div class="table-wrap">
-<table>
-  <thead>
-    <tr><th>Ulazak</th><th>Izlazak</th><th>Tip</th><th>Izvor</th><th>Napomena</th><th></th></tr>
-  </thead>
-  <tbody>
-    {{$driverID := .Driver.ID}}
-    {{$csrf := .CSRFToken}}
-    {{range .Stays}}
-    <tr>
-      <td class="num">{{fmtDate .Entry}}</td>
-      <td class="num">{{fmtDatePtr .Exit}}</td>
-      <td>{{if eq .Type "work"}}Posao{{else}}Privatno{{end}}</td>
-      <td class="muted">{{sourceLabel .Source}}</td>
-      <td class="muted">{{.Note}}</td>
-      <td>
-        <details>
-          <summary class="btn btn-sm">Izmeni</summary>
-          <form method="post" action="/vozaci/{{$driverID}}/boravci/{{.ID}}" style="margin-top:0.5rem;">
-            <input type="hidden" name="csrf_token" value="{{$csrf}}">
-            <div class="form-grid">
-              <div><label>Ulazak</label><input type="date" name="entry_date" value="{{fmtDateInput .Entry}}" required></div>
-              <div><label>Izlazak</label><input type="date" name="exit_date" value="{{if .Exit}}{{fmtDateInput (deref .Exit)}}{{end}}"></div>
-              <div><label>Tip</label>
-                <select name="type">
-                  <option value="work" {{if eq .Type "work"}}selected{{end}}>Posao</option>
-                  <option value="private" {{if eq .Type "private"}}selected{{end}}>Privatno</option>
-                </select>
-              </div>
-              <div><label>Napomena</label><input type="text" name="note" value="{{.Note}}" maxlength="200"></div>
-            </div>
-            <button type="submit" class="btn btn-primary btn-sm">Sačuvaj</button>
-          </form>
-        </details>
-        <form class="inline" method="post" action="/vozaci/{{$driverID}}/boravci/{{.ID}}/obrisi" data-confirm="Obrisati boravak {{fmtDate .Entry}} – {{fmtDatePtr .Exit}}? Brisanje se ne može poništiti.">
-          <input type="hidden" name="csrf_token" value="{{$csrf}}">
-          <button type="submit" class="btn btn-sm btn-danger">Obriši</button>
-        </form>
-      </td>
-    </tr>
-    {{else}}
-    <tr><td colspan="6" class="muted">Još nema unetih boravaka.</td></tr>
-    {{end}}
-  </tbody>
-</table>
 </div>
 {{end}}

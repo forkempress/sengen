@@ -57,7 +57,35 @@
   </div>
 </form>
 
-<div class="table-wrap">
+{{/* Ispod 700px tabela se zamenjuje karticama: ime, veliki broj preostalih
+     dana, status i jedan red o tome gde je vozač (UX-02). */}}
+<ul class="driver-cards">
+  {{range .Statuses}}
+  <li>
+    <a href="/vozaci/{{.Driver.ID}}" class="driver-card dc-{{.Badge.Level.Key}}">
+      <span class="dc-head">
+        <span class="dc-name">{{.Driver.Name}}</span>
+        <span class="muted">{{.Driver.VehicleLabel}}</span>
+      </span>
+      <span class="dc-figure">
+        <span class="dc-number num">{{if .OverBy}}−{{.OverBy}}{{else}}{{.Remaining}}{{end}}</span>
+        {{levelBadge .Badge.Level}}
+      </span>
+      <span class="dc-line">
+        {{if .InSchengen}}U Šengenu od <span class="num">{{fmtDate (deref .CurrentSince)}}</span> · {{if .OverBy}}rok je bio{{else}}može do{{end}} <span class="num">{{fmtDate (deref .MaxContinuousUntil)}}</span>
+        {{else}}U Srbiji · najduža tura <span class="num">{{.MaxTripLengthToday}}</span> {{dana .MaxTripLengthToday}}{{end}}
+      </span>
+    </a>
+  </li>
+  {{else}}
+  <li class="driver-card-empty muted">
+    {{if .FiltersActive}}Nijedan vozač ne odgovara filteru. <a href="/pregled">Poništi filtere</a>.
+    {{else}}Nema vozača. Dodajte ih na stranici <a href="/podesavanja/vozaci">Vozači</a>.{{end}}
+  </li>
+  {{end}}
+</ul>
+
+<div class="table-wrap driver-table">
 <table>
   <thead>
     <tr>
@@ -67,7 +95,6 @@
       <th>Preostalo {{if .IsToday}}danas{{else}}na dan {{fmtDate .AsOf}}{{end}}</th>
       <th>Može do / najduža tura</th>
       <th>Sledeće oslobađanje</th>
-      <th>Izvor</th>
     </tr>
   </thead>
   <tbody>
@@ -89,10 +116,9 @@
       <td class="num">
         {{if .NextFreeUp}}{{fmtDate .NextFreeUp.Date}} (+{{.NextFreeUp.DaysFreed}}){{else}}—{{end}}
       </td>
-      <td class="muted">{{sourceLabel .LastStaySource}}</td>
     </tr>
     {{else}}
-    <tr><td colspan="7" class="muted">
+    <tr><td colspan="6" class="muted">
       {{if .FiltersActive}}Nijedan vozač ne odgovara filteru. <a href="/pregled">Poništi filtere</a>.
       {{else}}Nema vozača. Dodajte ih u <a href="/podesavanja/vozaci">podešavanjima</a>.{{end}}
     </td></tr>

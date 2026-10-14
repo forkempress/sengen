@@ -20,6 +20,16 @@ var funcMap = template.FuncMap{
 	// levelBadge renders a status without a number (legends, filters).
 	"levelBadge": status.LevelBadge,
 	"levels":     func() []status.Level { return status.Levels },
+	// dana picks "dan" or "dana" for a count: 1 dan, 21 dan, 11 dana, 5 dana.
+	"dana": func(n int) string {
+		if n < 0 {
+			n = -n
+		}
+		if n%10 == 1 && n%100 != 11 {
+			return "dan"
+		}
+		return "dana"
+	},
 	"fmtDate": func(t time.Time) string {
 		if t.IsZero() {
 			return ""
