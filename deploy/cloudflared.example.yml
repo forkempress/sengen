@@ -1,0 +1,15 @@
+# Primer konfiguracije za Cloudflare Tunnel.
+# Kopirati u ~/.cloudflared/config.yml i zameniti UUID i putanju.
+#
+#   cloudflared tunnel create dani90          -> ispisuje UUID i credentials fajl
+#   cloudflared tunnel route dns dani90 dani90.rs
+#   cloudflared tunnel run dani90
+
+tunnel: ZAMENI-SA-UUID-TUNELA
+credentials-file: /Users/KORISNIK/.cloudflared/ZAMENI-SA-UUID-TUNELA.json
+
+ingress:
+  - hostname: dani90.rs
+    service: http://localhost:8080
+  # Sve ostalo se odbija — bez ovog pravila cloudflared ne startuje.
+  - service: http_status:404

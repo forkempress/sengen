@@ -21,11 +21,20 @@ import (
 // LAST one in the list: Caddy appends the address it actually saw, after any
 // values the client may have sent. Reading the first element instead — the
 // common mistake — reads attacker-controlled input.
+//
+// Behind Cloudflare (tunnel or proxied DNS) CF-Connecting-IP is preferred:
+// Cloudflare always sets it to the true client address and strips any copy
+// the client sent, whereas the exact shape of X-Forwarded-For depends on
+// whether cloudflared appends its own hop.
 func ClientIP(r *http.Request) string {
 	peer := remoteIP(r.RemoteAddr)
 
 	if !isLoopback(peer) {
 		return peer
+	}
+
+	if cf := strings.TrimSpace(r.Header.Get("CF-Connecting-IP")); net.ParseIP(cf) != nil {
+		return cf
 	}
 
 	xff := r.Header.Get("X-Forwarded-For")

@@ -15,6 +15,14 @@ func requestFrom(remoteAddr, xff string) *http.Request {
 	return r
 }
 
+func requestWithCF(remoteAddr, cfIP, xff string) *http.Request {
+	r := requestFrom(remoteAddr, xff)
+	if cfIP != "" {
+		r.Header.Set("CF-Connecting-IP", cfIP)
+	}
+	return r
+}
+
 func TestClientIP(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -117,5 +125,66 @@ func TestClientIP_SeparatesClientsBehindProxy(t *testing.T) {
 	}
 	if len(keys) != 1 {
 		t.Errorf("attacker produced %d distinct rate-limit keys (%v), want 1", len(keys), keys)
+	}
+}
+
+// Behind a Cloudflare tunnel the app sees cloudflared on loopback, and
+// Cloudflare guarantees CF-Connecting-IP holds the real visitor address
+// (it strips any copy the visitor tried to send).
+func TestClientIP_Cloudflare(t *testing.T) {
+	cases := []struct {
+		name       string
+		remoteAddr string
+		cfIP       string
+		xff        string
+		want       string
+		why        string
+	}{
+		{
+			name:       "cloudflared on loopback",
+			remoteAddr: "127.0.0.1:51234",
+			cfIP:       "203.0.113.7",
+			xff:        "203.0.113.7",
+			want:       "203.0.113.7",
+			why:        "the dani90.rs tunnel setup",
+		},
+		{
+			name:       "CF header wins over an XFF that ends in a proxy hop",
+			remoteAddr: "127.0.0.1:51234",
+			cfIP:       "203.0.113.7",
+			xff:        "203.0.113.7, 127.0.0.1",
+			want:       "203.0.113.7",
+			why:        "if cloudflared appends its own hop, XFF-last would collapse everyone onto one bucket",
+		},
+		{
+			name:       "untrusted peer cannot fake the CF header",
+			remoteAddr: "198.51.100.9:51234",
+			cfIP:       "203.0.113.7",
+			want:       "198.51.100.9",
+			why:        "only the loopback proxy is trusted to set it",
+		},
+		{
+			name:       "junk CF header falls through to XFF",
+			remoteAddr: "127.0.0.1:51234",
+			cfIP:       "not-an-ip",
+			xff:        "203.0.113.7",
+			want:       "203.0.113.7",
+			why:        "malformed value must not become a rate-limit key",
+		},
+		{
+			name:       "junk CF header and no XFF falls back to peer",
+			remoteAddr: "127.0.0.1:51234",
+			cfIP:       "not-an-ip",
+			want:       "127.0.0.1",
+			why:        "nothing trustworthy left to use",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := ClientIP(requestWithCF(tc.remoteAddr, tc.cfIP, tc.xff)); got != tc.want {
+				t.Errorf("ClientIP() = %q, want %q\n  razlog: %s", got, tc.want, tc.why)
+			}
+		})
 	}
 }
