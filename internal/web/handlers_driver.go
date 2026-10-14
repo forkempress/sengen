@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"shengen/internal/auth"
 	"shengen/internal/calc"
@@ -167,6 +168,9 @@ func parseStayForm(r *http.Request) (entry time.Time, exit *time.Time, typ, note
 		return time.Time{}, nil, "", "", errors.New("neispravan tip boravka")
 	}
 	note = r.FormValue("note")
+	if utf8.RuneCountInString(note) > store.MaxNoteLen {
+		return time.Time{}, nil, "", "", fmt.Errorf("napomena je predugačka (najviše %d znakova)", store.MaxNoteLen)
+	}
 	return entry, exit, typ, note, nil
 }
 

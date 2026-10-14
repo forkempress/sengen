@@ -175,6 +175,9 @@ func formatExitForMessage(exit *time.Time) string {
 }
 
 func (s *Store) CreateStay(ctx context.Context, tenantID, driverID int64, entry time.Time, exit *time.Time, typ, source, note string, createdBy *int64) (*Stay, error) {
+	if err := checkLen("napomena", note, MaxNoteLen); err != nil {
+		return nil, err
+	}
 	// The driver id may come from a form; never attach a stay to another
 	// firm's driver.
 	if _, err := s.GetDriver(ctx, tenantID, driverID); err != nil {
@@ -202,6 +205,9 @@ func (s *Store) CreateStay(ctx context.Context, tenantID, driverID int64, entry 
 }
 
 func (s *Store) UpdateStay(ctx context.Context, tenantID, id int64, entry time.Time, exit *time.Time, typ, note string) error {
+	if err := checkLen("napomena", note, MaxNoteLen); err != nil {
+		return err
+	}
 	st, err := s.GetStay(ctx, tenantID, id)
 	if err != nil {
 		return err

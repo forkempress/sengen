@@ -1,6 +1,30 @@
 package web
 
-import "net/http"
+import (
+	"net/http"
+	"strings"
+)
+
+// Request body caps. Forms are a few kilobytes; only the CSV import (the
+// upload and the confirm form that echoes its rows) needs more.
+const (
+	maxBodyBytes       = 1 << 20
+	maxImportBodyBytes = 2 << 20
+)
+
+// limitBody caps every request body, so neither an upload nor a form field
+// can make the server buffer or store an unbounded amount of data. Reading
+// past the cap fails, which the handlers already treat as a bad form.
+func limitBody(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		limit := int64(maxBodyBytes)
+		if strings.HasPrefix(r.URL.Path, "/import/") {
+			limit = maxImportBodyBytes
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, limit)
+		next.ServeHTTP(w, r)
+	})
+}
 
 // contentSecurityPolicy allows only the app's own files: fonts, htmx and
 // app.js are served from /static, so no page load reaches a third party.

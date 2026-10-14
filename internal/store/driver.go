@@ -90,6 +90,12 @@ func (s *Store) GetDriver(ctx context.Context, tenantID, id int64) (*Driver, err
 }
 
 func (s *Store) CreateDriver(ctx context.Context, tenantID int64, name, vehicleLabel string) (*Driver, error) {
+	if err := checkLen("naziv vozača", name, MaxNameLen); err != nil {
+		return nil, err
+	}
+	if err := checkLen("oznaka vozila", vehicleLabel, MaxNameLen); err != nil {
+		return nil, err
+	}
 	res, err := s.DB.ExecContext(ctx,
 		`INSERT INTO drivers (tenant_id, name, vehicle_label, active) VALUES (?, ?, ?, 1)`,
 		tenantID, name, vehicleLabel)

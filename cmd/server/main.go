@@ -61,7 +61,7 @@ func main() {
 	})
 	mux.Handle("/", webServer.Routes())
 
-	srv := &http.Server{Addr: ":" + cfg.Port, Handler: mux}
+	srv := newHTTPServer(cfg.ListenAddr(), mux)
 	shutdownDone := make(chan struct{})
 	go func() {
 		defer close(shutdownDone)
@@ -74,11 +74,25 @@ func main() {
 		bot.Wait(shutdownCtx)
 	}()
 
-	log.Printf("listening on :%s", cfg.Port)
+	log.Printf("listening on %s", srv.Addr)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
 	<-shutdownDone
+}
+
+// newHTTPServer sets timeouts on every phase of a connection, so a client
+// that sends its request (or reads the reply) a byte at a time cannot hold
+// connections open indefinitely (slowloris).
+func newHTTPServer(addr string, h http.Handler) *http.Server {
+	return &http.Server{
+		Addr:              addr,
+		Handler:           h,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
 }
 
 // registerWebhook points the shared bot at this server. setWebhook is

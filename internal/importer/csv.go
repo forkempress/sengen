@@ -10,6 +10,7 @@ import (
 	"io"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"shengen/internal/clock"
 )
@@ -67,6 +68,14 @@ func normalizeType(s string) (string, bool) {
 	}
 }
 
+// MaxRows caps how many data rows one import may hold. A real history is a
+// few hundred rows; the cap keeps a huge file from tying up the server.
+const MaxRows = 5000
+
+// MaxNoteLen matches store.MaxNoteLen, so a row that previews as valid is
+// also accepted when it is written.
+const MaxNoteLen = 500
+
 // Parse reads a CSV file with columns: vozač, ulaz, izlaz, tip[, napomena]
 // (header row required, any header text accepted — only column position
 // matters) and validates each row:
@@ -110,9 +119,16 @@ func Parse(r io.Reader, existing []ExistingDriver) ([]Row, error) {
 			continue
 		}
 
+		if len(rows) >= MaxRows {
+			return nil, fmt.Errorf("fajl ima više od %d redova; podelite ga na manje fajlove", MaxRows)
+		}
+
 		row := Row{LineNum: lineNum, DriverName: strings.TrimSpace(rec[0])}
 		if len(rec) >= 5 {
 			row.Note = strings.TrimSpace(rec[4])
+			if utf8.RuneCountInString(row.Note) > MaxNoteLen {
+				row.Errors = append(row.Errors, fmt.Sprintf("napomena je duža od %d znakova", MaxNoteLen))
+			}
 		}
 
 		driver, known := byName[strings.ToLower(row.DriverName)]

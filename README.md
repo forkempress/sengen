@@ -155,6 +155,7 @@ poslao sam klijent.
 | Varijabla | Podrazumevano | Opis |
 |---|---|---|
 | `PORT` | `8080` | port web servera |
+| `BIND_ADDR` | `127.0.0.1` | interfejs na kome server sluša; tunel i Caddy rade na istom računaru, pa `0.0.0.0` samo ako baš treba |
 | `DB_PATH` | `shengen.db` | putanja do SQLite baze |
 | `DEV_INSECURE_COOKIES` | `false` | `true` samo za lokalni HTTP razvoj |
 | `TRUSTED_PROXY` | `none` | `cloudflare` (tunel), `caddy` ili `none`; odakle se čita adresa klijenta za limit prijava |

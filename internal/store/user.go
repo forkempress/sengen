@@ -62,6 +62,12 @@ func NormalizeEmail(email string) string {
 
 func (s *Store) CreateUser(ctx context.Context, tenantID int64, email, passwordHash, role, name string) (*User, error) {
 	email = NormalizeEmail(email)
+	if err := checkLen("ime", name, MaxNameLen); err != nil {
+		return nil, err
+	}
+	if err := checkLen("email", email, MaxEmailLen); err != nil {
+		return nil, err
+	}
 	res, err := s.DB.ExecContext(ctx,
 		`INSERT INTO users (tenant_id, email, password_hash, role, name) VALUES (?, ?, ?, ?, ?)`,
 		tenantID, email, passwordHash, role, name)

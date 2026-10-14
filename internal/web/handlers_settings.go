@@ -2,8 +2,11 @@ package web
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
+	"unicode/utf8"
 
 	"shengen/internal/store"
 	"shengen/internal/tenant"
@@ -42,6 +45,11 @@ func (s *Server) handleSettingsDriverCreate(w http.ResponseWriter, r *http.Reque
 	vehicle := strings.TrimSpace(r.FormValue("vehicle_label"))
 	if name == "" {
 		http.Redirect(w, r, "/podesavanja/vozaci?err=Ime+vozača+je+obavezno.", http.StatusSeeOther)
+		return
+	}
+	if utf8.RuneCountInString(name) > store.MaxNameLen || utf8.RuneCountInString(vehicle) > store.MaxNameLen {
+		msg := fmt.Sprintf("Ime vozača i oznaka vozila mogu imati najviše %d znakova.", store.MaxNameLen)
+		http.Redirect(w, r, "/podesavanja/vozaci?err="+url.QueryEscape(msg), http.StatusSeeOther)
 		return
 	}
 	if _, err := s.Store.CreateDriver(r.Context(), t.ID, name, vehicle); err != nil {

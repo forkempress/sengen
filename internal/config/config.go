@@ -6,6 +6,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"regexp"
 	"strings"
@@ -14,7 +15,11 @@ import (
 )
 
 type Config struct {
-	Port            string // HTTP listen port, e.g. "8080"
+	Port string // HTTP listen port, e.g. "8080"
+	// BindAddr is the interface to listen on. The default 127.0.0.1 keeps
+	// the app off the LAN: only the tunnel or Caddy on the same host reach
+	// it. Set BIND_ADDR=0.0.0.0 only if something else must connect.
+	BindAddr        string
 	DBPath          string // path to the SQLite file
 	InsecureCookies bool   // set true only for local http:// dev; omits the Secure cookie flag
 
@@ -45,6 +50,7 @@ var webhookSecretRe = regexp.MustCompile(`^[A-Za-z0-9_-]{1,256}$`)
 func Load() (Config, error) {
 	cfg := Config{
 		Port:                  getenv("PORT", "8080"),
+		BindAddr:              getenv("BIND_ADDR", "127.0.0.1"),
 		DBPath:                getenv("DB_PATH", "shengen.db"),
 		InsecureCookies:       getenv("DEV_INSECURE_COOKIES", "") == "true",
 		PublicBaseURL:         strings.TrimRight(strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL")), "/"),
@@ -79,3 +85,6 @@ func getenv(key, fallback string) string {
 	}
 	return fallback
 }
+
+// ListenAddr is the host:port the HTTP server listens on.
+func (c Config) ListenAddr() string { return net.JoinHostPort(c.BindAddr, c.Port) }

@@ -7,7 +7,7 @@ import (
 
 func setEnv(t *testing.T, kv map[string]string) {
 	t.Helper()
-	for _, k := range []string{"PUBLIC_BASE_URL", "TELEGRAM_BOT_TOKEN", "TELEGRAM_WEBHOOK_SECRET", "TELEGRAM_BOT_USERNAME"} {
+	for _, k := range []string{"PUBLIC_BASE_URL", "TELEGRAM_BOT_TOKEN", "TELEGRAM_WEBHOOK_SECRET", "TELEGRAM_BOT_USERNAME", "TRUSTED_PROXY", "BIND_ADDR", "PORT"} {
 		t.Setenv(k, kv[k])
 	}
 }
@@ -70,5 +70,35 @@ func TestLoad_NormalisesValues(t *testing.T) {
 	}
 	if cfg.TelegramBotUsername != "Dani90Bot" {
 		t.Errorf("TelegramBotUsername = %q, want it without @", cfg.TelegramBotUsername)
+	}
+}
+
+// SEC-14: by default the app listens only on loopback, where the tunnel or
+// Caddy reach it, not on every interface of the machine.
+func TestLoad_ListensOnLoopbackByDefault(t *testing.T) {
+	setEnv(t, map[string]string{})
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := cfg.ListenAddr(); got != "127.0.0.1:8080" {
+		t.Errorf("ListenAddr() = %q, want 127.0.0.1:8080", got)
+	}
+
+	setEnv(t, map[string]string{"BIND_ADDR": "0.0.0.0", "PORT": "9000"})
+	if cfg, _ := Load(); cfg.ListenAddr() != "0.0.0.0:9000" {
+		t.Errorf("ListenAddr() = %q, want 0.0.0.0:9000 when set", cfg.ListenAddr())
+	}
+}
+
+// SEC-06: the proxy mode is explicit and an unknown value stops startup.
+func TestLoad_TrustedProxy(t *testing.T) {
+	setEnv(t, map[string]string{"TRUSTED_PROXY": "caddy"})
+	if cfg, err := Load(); err != nil || cfg.TrustedProxy != "caddy" {
+		t.Errorf("TRUSTED_PROXY=caddy: %q, %v", cfg.TrustedProxy, err)
+	}
+	setEnv(t, map[string]string{"TRUSTED_PROXY": "nginx"})
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "TRUSTED_PROXY") {
+		t.Errorf("unknown TRUSTED_PROXY: err = %v, want a TRUSTED_PROXY error", err)
 	}
 }

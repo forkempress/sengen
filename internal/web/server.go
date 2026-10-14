@@ -88,7 +88,7 @@ func (s *Server) Routes() http.Handler {
 
 	mux.Handle("/", s.Auth.RequireAuth(auth.CSRFProtect(protected)))
 
-	return securityHeaders(mux)
+	return securityHeaders(limitBody(mux))
 }
 
 func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {

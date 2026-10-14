@@ -3,6 +3,7 @@ package telegram
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -100,5 +101,27 @@ func TestUpdateQueue_KeepsOrderPerChat(t *testing.T) {
 		if string(b) != want {
 			t.Errorf("chat %d handled in order %s", chat, b)
 		}
+	}
+}
+
+// SEC-13: a CSV sent to the bot is capped like the web upload.
+func TestDownloadDocument_RefusesFilesOverTwoMegabytes(t *testing.T) {
+	size := MaxDocumentBytes
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/getFile") {
+			io.WriteString(w, `{"ok":true,"result":{"file_path":"documents/istorija.csv"}}`)
+			return
+		}
+		w.Write([]byte(strings.Repeat("a", size)))
+	}))
+	t.Cleanup(api.Close)
+	c := &Client{BaseURL: api.URL, Token: "T", HTTP: api.Client()}
+
+	if data, err := c.DownloadDocument(context.Background(), "f"); err != nil || len(data) != MaxDocumentBytes {
+		t.Fatalf("file at the limit: %d bytes, err %v", len(data), err)
+	}
+	size = MaxDocumentBytes + 1
+	if _, err := c.DownloadDocument(context.Background(), "f"); !errors.Is(err, ErrDocumentTooLarge) {
+		t.Errorf("file over the limit: err = %v, want ErrDocumentTooLarge", err)
 	}
 }

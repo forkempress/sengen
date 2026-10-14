@@ -2,10 +2,12 @@ package web
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/mail"
 	"net/url"
 	"strings"
+	"unicode/utf8"
 
 	"shengen/internal/auth"
 	"shengen/internal/store"
@@ -31,6 +33,12 @@ func validateNewUser(name, email, password, role string) (cleanName, cleanEmail 
 
 	if cleanName == "" {
 		return "", "", errors.New("Ime je obavezno.")
+	}
+	if utf8.RuneCountInString(cleanName) > store.MaxNameLen {
+		return "", "", fmt.Errorf("Ime je predugačko (najviše %d znakova).", store.MaxNameLen)
+	}
+	if len(cleanEmail) > store.MaxEmailLen {
+		return "", "", errors.New("Email adresa nije ispravna.")
 	}
 	if addr, perr := mail.ParseAddress(cleanEmail); perr != nil || addr.Address != cleanEmail {
 		return "", "", errors.New("Email adresa nije ispravna.")

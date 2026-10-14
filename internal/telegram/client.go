@@ -140,5 +140,20 @@ func (c *Client) downloadDocument(ctx context.Context, fileID string) ([]byte, e
 		return nil, fmt.Errorf("download file: %w", err)
 	}
 	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
+	// Same cap as the web upload: read one byte past it to tell "exactly at
+	// the limit" from "too big".
+	data, err := io.ReadAll(io.LimitReader(resp.Body, MaxDocumentBytes+1))
+	if err != nil {
+		return nil, fmt.Errorf("download file: %w", err)
+	}
+	if len(data) > MaxDocumentBytes {
+		return nil, ErrDocumentTooLarge
+	}
+	return data, nil
 }
+
+// MaxDocumentBytes is the largest CSV the bot downloads (as on the web).
+const MaxDocumentBytes = 2 << 20
+
+// ErrDocumentTooLarge is returned for a file over MaxDocumentBytes.
+var ErrDocumentTooLarge = errors.New("fajl je veći od 2 MB")

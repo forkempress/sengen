@@ -3,6 +3,7 @@ package telegram
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -190,6 +191,11 @@ func (b *Bot) cmdDodaj(ctx context.Context, client *Client, t *store.Tenant, cha
 		return
 	}
 	driver, err := b.Store.CreateDriver(ctx, t.ID, name, "")
+	var verr *store.ValidationError
+	if errors.As(err, &verr) {
+		client.SendMessage(ctx, chatID, "Nije dodat: "+verr.Msg+".", nil)
+		return
+	}
 	if err != nil {
 		client.SendMessage(ctx, chatID, "Greška pri dodavanju.", nil)
 		return
@@ -289,6 +295,10 @@ func (b *Bot) handleAdminDocument(ctx context.Context, client *Client, t *store.
 		return
 	}
 	data, err := client.DownloadDocument(ctx, doc.FileID)
+	if errors.Is(err, ErrDocumentTooLarge) {
+		client.SendMessage(ctx, chatID, "Fajl je prevelik (najviše 2 MB). Podelite ga na manje fajlove.", nil)
+		return
+	}
 	if err != nil {
 		client.SendMessage(ctx, chatID, "Greška pri preuzimanju fajla.", nil)
 		return

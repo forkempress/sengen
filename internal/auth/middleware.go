@@ -2,7 +2,9 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"strings"
 
 	"shengen/internal/store"
 	"shengen/internal/tenant"
@@ -93,6 +95,12 @@ func CSRFProtect(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
+			// A body over the server's cap fails to parse; say so instead of
+			// reporting it as a missing CSRF token.
+			if tooLarge(parseForm(r)) {
+				http.Error(w, "zahtev je prevelik", http.StatusRequestEntityTooLarge)
+				return
+			}
 			sess, ok := SessionFromContext(r.Context())
 			if !ok || !VerifyCSRF(r, sess) {
 				http.Error(w, "nevažeći CSRF token", http.StatusForbidden)
@@ -101,4 +109,17 @@ func CSRFProtect(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// parseForm parses the body the way r.FormValue would, but keeps the error.
+func parseForm(r *http.Request) error {
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
+		return r.ParseMultipartForm(32 << 20)
+	}
+	return r.ParseForm()
+}
+
+func tooLarge(err error) bool {
+	var mbe *http.MaxBytesError
+	return errors.As(err, &mbe)
 }
