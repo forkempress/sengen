@@ -127,12 +127,14 @@ func (s *Store) GetStay(ctx context.Context, tenantID, id int64) (*Stay, error) 
 // the driver's other stays. excludeID excludes a stay from the overlap check
 // when editing it (pass 0 when creating).
 func (s *Store) validateStay(ctx context.Context, tenantID, driverID, excludeID int64, entry time.Time, exit *time.Time) error {
-	today := clock.Today()
-	if entry.After(today) {
+	// A crossing at an EET border after 23:00 Belgrade time is stamped with
+	// tomorrow's Belgrade date; that is not the future.
+	latest := clock.LatestToday()
+	if entry.After(latest) {
 		return &ValidationError{Msg: "datum ulaska ne može biti u budućnosti"}
 	}
 	if exit != nil {
-		if exit.After(today) {
+		if exit.After(latest) {
 			return &ValidationError{Msg: "datum izlaska ne može biti u budućnosti"}
 		}
 		if exit.Before(entry) {
@@ -144,7 +146,7 @@ func (s *Store) validateStay(ctx context.Context, tenantID, driverID, excludeID 
 	if err != nil {
 		return err
 	}
-	newExitForCompare := today // open stay treated as extending through today for overlap purposes
+	newExitForCompare := latest // open stay treated as extending through today for overlap purposes
 	if exit != nil {
 		newExitForCompare = *exit
 	}
@@ -152,7 +154,7 @@ func (s *Store) validateStay(ctx context.Context, tenantID, driverID, excludeID 
 		if ex.ID == excludeID {
 			continue
 		}
-		exExitForCompare := today
+		exExitForCompare := latest
 		if ex.Exit != nil {
 			exExitForCompare = *ex.Exit
 		}

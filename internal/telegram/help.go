@@ -18,7 +18,8 @@ Važno:
 • Broji se granica Šengena, ne Srbije. Ako ideš preko BiH, Crne Gore, Makedonije ili Albanije, dani tamo se ne broje — pritisni tek kad uđeš u Šengen (npr. u Hrvatsku ili Grčku).
 • Dan ulaska i dan izlaska se broje kao celi dani.
 • Računaju se i privatna putovanja u Šengen — koristi ista dugmad.
-• Dugme upisuje današnji datum. Ako si zaboravio da pritisneš na granici, pritisni čim se setiš i javi dispečeru tačan datum da ga ispravi.
+• Dugme upisuje današnji datum. Između 23:00 i 01:30 bot pita koji datum je na pečatu (na granici sa Bugarskom, Rumunijom i Grčkom tamo je sat više).
+• Ako si zaboravio da pritisneš na granici, pritisni čim se setiš i javi dispečeru tačan datum da ga ispravi.
 • Pogrešno pritisnuto? Dugme „Poništi" ispod potvrde važi 10 minuta.
 • Ako dugo ne javiš povratak, bot će te pitati da li si još u EU.
 

@@ -145,8 +145,14 @@ func newTestDB(t *testing.T) (*store.Store, *store.Tenant) {
 // newTestBot builds the shared bot over a fresh database with one firm.
 // Call newFakeTelegram first: the bot's client reads the API address when it
 // is constructed.
+//
+// The clock is pinned to noon of the current Belgrade date, so button tests
+// don't hit the midnight date question when the suite runs late at night.
 func newTestBot(t *testing.T) (*Bot, *store.Tenant) {
 	t.Helper()
+	d := clock.Today()
+	noon := time.Date(d.Year(), d.Month(), d.Day(), 12, 0, 0, 0, clock.Now().Location())
+	t.Cleanup(clock.Set(func() time.Time { return noon }))
 	st, tn := newTestDB(t)
 	return New(st, Config{Token: "TEST-TOKEN", WebhookSecret: testSecret}), tn
 }
@@ -592,5 +598,111 @@ func TestReopenConfirm_DriverStaysInSchengen(t *testing.T) {
 	open, err = bot.Store.OpenStayForDriver(ctx, tn.ID, driver.ID)
 	if err != nil || !open.Entry.Equal(oldEntry) {
 		t.Errorf("after Poništi open stay = %+v, %v; want entry %s", open, err, oldEntry.Format("02.01.2006"))
+	}
+}
+
+// --- crossing date around midnight (QA-02) ---
+
+// pinClock sets the Belgrade wall clock for the rest of the test.
+func pinClock(t *testing.T, belgradeTime string) {
+	t.Helper()
+	loc := clock.Now().Location()
+	v, err := time.ParseInLocation("2006-01-02 15:04", belgradeTime, loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(clock.Set(func() time.Time { return v }))
+}
+
+func (f *fakeTelegram) lastCallbackData() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []string
+	for i := len(f.calls) - 1; i >= 0; i-- {
+		rm, ok := f.calls[i].Body["reply_markup"].(map[string]any)
+		if !ok {
+			continue
+		}
+		rows, _ := rm["inline_keyboard"].([]any)
+		for _, row := range rows {
+			for _, btn := range row.([]any) {
+				out = append(out, btn.(map[string]any)["callback_data"].(string))
+			}
+		}
+		return out
+	}
+	return nil
+}
+
+// 00:30 in Sofia is 23:30 in Belgrade. The stamp says the 15th; the bot must
+// be able to record the 15th, not silently write the 14th.
+func TestDriverExited_NearMidnightAsksForStampDate(t *testing.T) {
+	fake := newFakeTelegram(t)
+	bot, tn := newTestBot(t)
+	pinClock(t, "2026-10-14 23:30")
+	ctx := context.Background()
+	driver, _ := bot.Store.CreateDriver(ctx, tn.ID, "Marko", "")
+
+	bot.driverExited(ctx, fake.client(), tn, 555, driver)
+	if _, err := bot.Store.OpenStayForDriver(ctx, tn.ID, driver.ID); err == nil {
+		t.Fatal("stay recorded without asking for the date")
+	}
+	choices := fake.lastCallbackData()
+	want := []string{"date:exit:2026-10-14", "date:exit:2026-10-15"}
+	if strings.Join(choices, ",") != strings.Join(want, ",") {
+		t.Fatalf("choices = %v, want %v", choices, want)
+	}
+
+	bot.handleDriverCallback(ctx, fake.client(), tn, 555, driver, &CallbackQuery{ID: "cb", Data: choices[1]})
+	open, err := bot.Store.OpenStayForDriver(ctx, tn.ID, driver.ID)
+	if err != nil {
+		t.Fatalf("no open stay after picking the date: %v (replies %q)", err, fake.texts())
+	}
+	if got := open.Entry.Format("2006-01-02"); got != "2026-10-15" {
+		t.Errorf("entry = %s, want 2026-10-15 (stamp date)", got)
+	}
+}
+
+func TestDriverReturned_AfterMidnightOffersYesterday(t *testing.T) {
+	fake := newFakeTelegram(t)
+	bot, tn := newTestBot(t)
+	pinClock(t, "2026-10-15 00:40")
+	ctx := context.Background()
+	driver, _ := bot.Store.CreateDriver(ctx, tn.ID, "Marko", "")
+	if _, err := bot.Store.CreateStay(ctx, tn.ID, driver.ID, clock.Today().AddDate(0, 0, -5), nil, "work", "telegram_button", "", nil); err != nil {
+		t.Fatal(err)
+	}
+
+	bot.driverReturned(ctx, fake.client(), tn, 555, driver)
+	choices := fake.lastCallbackData()
+	want := []string{"date:return:2026-10-14", "date:return:2026-10-15"}
+	if strings.Join(choices, ",") != strings.Join(want, ",") {
+		t.Fatalf("choices = %v, want %v", choices, want)
+	}
+	bot.handleDriverCallback(ctx, fake.client(), tn, 555, driver, &CallbackQuery{ID: "cb", Data: choices[0]})
+	stays, _ := bot.Store.ListStaysByDriver(ctx, tn.ID, driver.ID)
+	if len(stays) != 1 || stays[0].Exit == nil || stays[0].Exit.Format("2006-01-02") != "2026-10-14" {
+		t.Errorf("stays = %+v, want one closed on 2026-10-14", stays)
+	}
+}
+
+// Outside the window the button records today without a question, and a
+// forged or stale date choice is refused.
+func TestDriverExited_DaytimeRecordsToday(t *testing.T) {
+	fake := newFakeTelegram(t)
+	bot, tn := newTestBot(t)
+	pinClock(t, "2026-10-14 22:59")
+	ctx := context.Background()
+	driver, _ := bot.Store.CreateDriver(ctx, tn.ID, "Marko", "")
+
+	bot.handleDriverCallback(ctx, fake.client(), tn, 555, driver, &CallbackQuery{ID: "cb", Data: "date:exit:2026-10-16"})
+	if _, err := bot.Store.OpenStayForDriver(ctx, tn.ID, driver.ID); err == nil {
+		t.Fatal("a date two days ahead was accepted")
+	}
+
+	bot.driverExited(ctx, fake.client(), tn, 555, driver)
+	open, err := bot.Store.OpenStayForDriver(ctx, tn.ID, driver.ID)
+	if err != nil || open.Entry.Format("2006-01-02") != "2026-10-14" {
+		t.Errorf("open stay = %+v, %v; want entry 2026-10-14", open, err)
 	}
 }
