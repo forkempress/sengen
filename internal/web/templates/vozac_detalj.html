@@ -131,7 +131,7 @@
             <button type="submit" class="btn btn-primary btn-sm">Sačuvaj</button>
           </form>
         </details>
-        <form class="inline" method="post" action="/vozaci/{{$driverID}}/boravci/{{.ID}}/obrisi" hx-confirm="Obrisati ovaj boravak?">
+        <form class="inline" method="post" action="/vozaci/{{$driverID}}/boravci/{{.ID}}/obrisi" data-confirm="Obrisati boravak {{fmtDate .Entry}} – {{fmtDatePtr .Exit}}? Brisanje se ne može poništiti.">
           <input type="hidden" name="csrf_token" value="{{$csrf}}">
           <button type="submit" class="btn btn-sm btn-danger">Obriši</button>
         </form>

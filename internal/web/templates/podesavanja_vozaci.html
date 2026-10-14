@@ -30,7 +30,7 @@
           <button type="submit" class="btn btn-sm">{{if .TelegramChatID}}Ponovo poveži Telegram{{else}}Telegram link{{end}}</button>
         </form>
         {{if .Active}}
-        <form class="inline" method="post" action="/podesavanja/vozaci/{{.ID}}/deaktiviraj" hx-confirm="Deaktivirati ovog vozača?">
+        <form class="inline" method="post" action="/podesavanja/vozaci/{{.ID}}/deaktiviraj" data-confirm="Deaktivirati vozača {{.Name}}? Nestaje sa pregleda i bot više ne prima njegove poruke.">
           <input type="hidden" name="csrf_token" value="{{$csrf}}">
           <button type="submit" class="btn btn-sm">Deaktiviraj</button>
         </form>

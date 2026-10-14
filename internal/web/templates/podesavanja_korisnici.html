@@ -52,7 +52,7 @@
           <button type="submit" class="btn btn-sm btn-primary">Aktiviraj</button>
         </form>
         {{else if ne .ID $me}}
-        <form class="inline" method="post" action="/podesavanja/korisnici/{{.ID}}/deaktiviraj">
+        <form class="inline" method="post" action="/podesavanja/korisnici/{{.ID}}/deaktiviraj" data-confirm="Deaktivirati korisnika {{.Name}}? Biće odjavljen svuda i bot više neće primati njegove komande.">
           <input type="hidden" name="csrf_token" value="{{$csrf}}">
           <button type="submit" class="btn btn-sm">Deaktiviraj</button>
         </form>

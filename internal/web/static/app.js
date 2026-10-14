@@ -6,3 +6,13 @@ document.addEventListener('click', function (e) {
     e.target.select();
   }
 });
+
+// Forme sa data-confirm (brisanje boravka, deaktivacija) pitaju pre slanja.
+// hx-confirm radi samo za htmx zahteve, a ovo su obične forme.
+document.addEventListener('submit', function (e) {
+  var form = e.target;
+  var msg = form.getAttribute && form.getAttribute('data-confirm');
+  if (msg && !window.confirm(msg)) {
+    e.preventDefault();
+  }
+});
