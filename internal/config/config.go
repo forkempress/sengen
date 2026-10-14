@@ -1,31 +1,60 @@
 // Package config loads runtime configuration from environment variables.
-// Secrets (Telegram token, webhook secret, session secret) must never be
-// committed to the repo — set them via the environment or a local .env
-// loaded by the process manager (systemd EnvironmentFile=, or a Makefile
-// target for local dev).
+// Secrets (Telegram token, webhook secret) must never be committed to the
+// repo — set them via the environment or a local .env loaded by the process
+// manager (systemd EnvironmentFile=, or the Makefile for local dev).
 package config
 
 import (
+	"fmt"
 	"os"
+	"regexp"
+	"strings"
 )
 
 type Config struct {
-	Port                  string // HTTP listen port, e.g. "8080"
-	DBPath                string // path to the SQLite file
-	InsecureCookies       bool   // set true only for local http:// dev; omits the Secure cookie flag
+	Port            string // HTTP listen port, e.g. "8080"
+	DBPath          string // path to the SQLite file
+	InsecureCookies bool   // set true only for local http:// dev; omits the Secure cookie flag
+
+	// PublicBaseURL is where users reach the app, e.g. https://app.dani90.rs.
+	// When set together with the bot token, the Telegram webhook is
+	// registered automatically at startup.
+	PublicBaseURL string
+
+	// One Telegram bot serves every firm.
 	TelegramBotToken      string
 	TelegramWebhookSecret string // compared against X-Telegram-Bot-Api-Secret-Token
+	TelegramBotUsername   string // optional; enables one-tap t.me links
 }
 
+// Telegram only accepts A-Z, a-z, 0-9, "_" and "-" in a webhook secret, 1–256
+// characters; anything else makes setWebhook fail.
+var webhookSecretRe = regexp.MustCompile(`^[A-Za-z0-9_-]{1,256}$`)
+
 // Load reads configuration from the environment, applying defaults for
-// local development.
+// local development. A half-configured bot is an error: a token without a
+// valid secret would start up fine and then reject every message.
 func Load() (Config, error) {
 	cfg := Config{
 		Port:                  getenv("PORT", "8080"),
 		DBPath:                getenv("DB_PATH", "shengen.db"),
 		InsecureCookies:       getenv("DEV_INSECURE_COOKIES", "") == "true",
-		TelegramBotToken:      os.Getenv("TELEGRAM_BOT_TOKEN"),
-		TelegramWebhookSecret: os.Getenv("TELEGRAM_WEBHOOK_SECRET"),
+		PublicBaseURL:         strings.TrimRight(strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL")), "/"),
+		TelegramBotToken:      strings.TrimSpace(os.Getenv("TELEGRAM_BOT_TOKEN")),
+		TelegramWebhookSecret: strings.TrimSpace(os.Getenv("TELEGRAM_WEBHOOK_SECRET")),
+		TelegramBotUsername:   strings.TrimPrefix(strings.TrimSpace(os.Getenv("TELEGRAM_BOT_USERNAME")), "@"),
+	}
+
+	if cfg.TelegramBotToken != "" {
+		if cfg.TelegramWebhookSecret == "" {
+			return Config{}, fmt.Errorf("TELEGRAM_BOT_TOKEN je postavljen, ali TELEGRAM_WEBHOOK_SECRET nije (napravite ga: openssl rand -hex 32)")
+		}
+		if !webhookSecretRe.MatchString(cfg.TelegramWebhookSecret) {
+			return Config{}, fmt.Errorf("TELEGRAM_WEBHOOK_SECRET sme da sadrži samo slova, cifre, _ i - (najviše 256 znakova)")
+		}
+	}
+	if cfg.PublicBaseURL != "" && !strings.HasPrefix(cfg.PublicBaseURL, "https://") {
+		return Config{}, fmt.Errorf("PUBLIC_BASE_URL mora počinjati sa https:// (Telegram ne prihvata http webhook)")
 	}
 	return cfg, nil
 }

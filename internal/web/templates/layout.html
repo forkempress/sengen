@@ -42,3 +42,19 @@
 </body>
 </html>
 {{end}}
+
+{{/* Shown once, right after a link is generated. The token is not repeated in
+     any URL, so this is the only place to copy it from. */}}
+{{define "telegramLink"}}
+<div class="link-box">
+  <strong>Link za povezivanje — {{.For}}</strong>
+  <span class="muted">Važi 48 sati i može se iskoristiti samo jednom.</span>
+  {{if .URL}}
+    <input type="text" readonly value="{{.URL}}" onclick="this.select()" aria-label="Link za povezivanje">
+    <span class="muted">Pošaljite link (Viber, SMS, Telegram) — dovoljno je da se tapne. <a href="{{.URL}}" target="_blank" rel="noopener">Otvori</a></span>
+  {{else}}
+    <input type="text" readonly value="{{.Command}}" onclick="this.select()" aria-label="Komanda za povezivanje">
+    <span class="muted">U Telegram botu treba poslati ovu komandu.</span>
+  {{end}}
+</div>
+{{end}}

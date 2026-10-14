@@ -7,7 +7,6 @@ import (
 
 	"shengen/internal/auth"
 	"shengen/internal/store"
-	"shengen/internal/tenant"
 )
 
 type loginPageData struct {
@@ -23,20 +22,16 @@ func (s *Server) handleLoginSubmit(w http.ResponseWriter, r *http.Request) {
 	email := strings.TrimSpace(strings.ToLower(r.FormValue("email")))
 	password := r.FormValue("password")
 
-	t, ok := tenant.FromContext(r.Context())
-	if !ok {
-		http.Error(w, "nepoznat domen", http.StatusNotFound)
-		return
-	}
-
 	limitKey := auth.ClientIP(r) + "|" + email
 	if !s.loginLimiter.Allow(limitKey) {
 		s.renderLoginError(w, r, email, "Previše pokušaja prijave. Pokušajte ponovo za nekoliko minuta.")
 		return
 	}
 
-	u, err := s.Store.GetUserByEmail(r.Context(), t.ID, email)
+	// The email alone decides the firm: everyone signs in at the same address.
+	u, err := s.Store.GetUserByEmail(r.Context(), email)
 	if errors.Is(err, store.ErrNotFound) {
+		auth.SpendPasswordCheck(password)
 		s.loginLimiter.RecordFailure(limitKey)
 		s.renderLoginError(w, r, email, "Pogrešan email ili lozinka.")
 		return
@@ -53,7 +48,7 @@ func (s *Server) handleLoginSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.loginLimiter.Reset(limitKey)
-	if err := s.Auth.Login(r.Context(), w, t.ID, u.ID); err != nil {
+	if err := s.Auth.Login(r.Context(), w, u.TenantID, u.ID); err != nil {
 		http.Error(w, "greška servera", http.StatusInternalServerError)
 		return
 	}

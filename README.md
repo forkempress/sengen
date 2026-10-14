@@ -6,8 +6,10 @@ prekoračenje znači deportaciju vozača i zadržavanje vozila — zato je tačn
 računanja prioritet broj jedan.
 
 Jedan Go binary servira web UI, Telegram bota i pozadinske podsetnike.
-Podaci su u SQLite bazi (WAL). Sve tabele imaju `tenant_id`, a firma se
-prepoznaje po domenu, pa se ista instalacija kasnije prodaje i drugim firmama.
+Podaci su u SQLite bazi (WAL). Sve tabele imaju `tenant_id`, pa jedna
+instalacija služi više firmi: svi se prijavljuju na istu adresu, a **email
+naloga određuje firmu**. Jedan zajednički Telegram bot služi sve firme i po
+nalogu koji mu piše zna o kojoj se firmi radi.
 
 > Evidencija služi za internu kontrolu. Zvanično stanje vodi EES sistem na granici.
 
@@ -15,11 +17,15 @@ prepoznaje po domenu, pa se ista instalacija kasnije prodaje i drugim firmama.
 
 ```bash
 cp .env.example .env
-make seed ARGS="-tenant-name 'Moja Firma' -host localhost -email ja@firma.rs -password lozinka -name 'Ime Prezime'"
+make seed ARGS="-tenant-name 'Moja Firma' -email ja@firma.rs -password lozinka -name 'Ime Prezime'"
 make run
 ```
 
 Aplikacija je na `http://localhost:8080/login`.
+
+Svaka sledeća firma je ista komanda sa drugim imenom i emailom — nema DNS-a,
+poddomena ni posebnog bota po firmi. Email mora biti jedinstven u celom
+sistemu, jer on određuje firmu pri prijavi.
 
 ```bash
 make test
@@ -58,7 +64,16 @@ Prekopiraj [deploy/cloudflared.example.yml](deploy/cloudflared.example.yml) u
 `~/.cloudflared/config.yml` i upiši svoj UUID tunela i putanju do credentials
 fajla.
 
-**4. Pokreni aplikaciju**
+**4. Telegram bot (jednom, za sve firme)**
+
+Kod [@BotFather](https://t.me/BotFather) pošalji `/newbot` i zapamti token i
+korisničko ime bota. Napravi secret za webhook:
+
+```bash
+openssl rand -hex 32
+```
+
+**5. Pokreni aplikaciju**
 
 U `.env` postavi:
 
@@ -66,20 +81,26 @@ U `.env` postavi:
 PORT=8080
 DB_PATH=dani90.db
 DEV_INSECURE_COOKIES=false
+PUBLIC_BASE_URL=https://app.dani90.rs
+TELEGRAM_BOT_TOKEN=<token od BotFather-a>
+TELEGRAM_WEBHOOK_SECRET=<izlaz openssl komande>
+TELEGRAM_BOT_USERNAME=<korisničko ime bota, bez @>
 ```
 
 `DEV_INSECURE_COOKIES=false` je obavezno — browser razgovara sa Cloudflare-om
 preko HTTPS-a, pa sesijski kolačić treba da nosi `Secure` zastavicu.
 
 ```bash
-make seed ARGS="-tenant-name 'Moja Firma' -host app.dani90.rs -email ja@firma.rs -password lozinka -name 'Ime Prezime'"
+make seed ARGS="-tenant-name 'Moja Firma' -email ja@firma.rs -password lozinka -name 'Ime Prezime'"
 make run
 ```
 
-Host u `seed` komandi **mora tačno odgovarati** domenu preko kog se pristupa
-(`app.dani90.rs`), jer se firma prepoznaje po `Host` zaglavlju.
+Pri startu aplikacija sama prijavljuje webhook
+(`https://app.dani90.rs/telegram/webhook`) Telegramu i to piše u log. Ako
+token postoji a secret ne (ili sadrži nedozvoljene znakove), aplikacija se ne
+pokreće i kaže zašto.
 
-**5. Pokreni tunel (u drugom terminalu)**
+**6. Pokreni tunel (u drugom terminalu)**
 
 ```bash
 cloudflared tunnel run dani90
@@ -87,16 +108,12 @@ cloudflared tunnel run dani90
 
 Prijavi se na `https://app.dani90.rs/login`.
 
-**6. Telegram bot**
+**7. Povezivanje sa botom**
 
-1. Kod [@BotFather](https://t.me/BotFather) komanda `/newbot` → dobijaš token.
-2. U aplikaciji: **Podešavanja → Telegram** → nalepi token → **Sačuvaj**
-   (webhook secret se generiše sam).
-3. Klikni **Postavi webhook** — aplikacija prijavljuje
-   `https://app.dani90.rs/telegram/webhook` Telegramu.
-4. **Generiši link za povezivanje** da povežeš svoj Telegram kao administratora.
-5. Za vozača: **Vozači → Telegram link**, pa vozač pošalje botu dobijenu
-   `/start` komandu.
+1. **Podešavanja → Telegram → Generiši link za povezivanje** — otvori link i
+   tvoj Telegram postaje administratorski nalog firme.
+2. Za vozača: **Vozači → Telegram link** — pošalji mu link (Viber, SMS); on
+   samo tapne i povezan je. Link važi 48 sati i jednokratan je.
 
 Dok tunel i aplikacija rade, bot je uživo. Kad ugasiš računar, bot prestaje da
 odgovara — zato je ovo privremeno rešenje za test, ne za klijenta.
@@ -127,6 +144,10 @@ već čita pravu adresu klijenta i iza Caddy-ja i iza Cloudflare-a.
 | `PORT` | `8080` | port web servera |
 | `DB_PATH` | `shengen.db` | putanja do SQLite baze |
 | `DEV_INSECURE_COOKIES` | `false` | `true` samo za lokalni HTTP razvoj |
+| `PUBLIC_BASE_URL` | — | npr. `https://app.dani90.rs`; uz token se webhook prijavljuje sam |
+| `TELEGRAM_BOT_TOKEN` | — | token jedinog bota, od @BotFather |
+| `TELEGRAM_WEBHOOK_SECRET` | — | obavezan uz token; `openssl rand -hex 32` |
+| `TELEGRAM_BOT_USERNAME` | — | opciono, za linkove na koje se samo tapne |
 
-Telegram token i webhook secret se čuvaju po firmi u bazi (Podešavanja →
-Telegram), nikada u repou.
+Token i secret idu samo u okruženje (`.env`, systemd), nikada u repo. Firma u
+**Podešavanja → Telegram** bira samo svoj chat za upozorenja i pragove.

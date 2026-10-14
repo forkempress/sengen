@@ -6,16 +6,17 @@ import (
 	"fmt"
 )
 
-// TenantSettings holds the per-tenant configuration that used to be a
-// single global config in a single-customer deploy, but must live per-tenant
-// now that one binary serves many companies: each customer runs their own
-// Telegram bot (their own @BotFather token) pointed at their own subdomain.
+// TenantSettings holds what each firm configures for itself. The Telegram
+// bot is shared by all firms (token and webhook secret come from the
+// environment), so only the firm's own alert chat lives here.
+//
+// Older rows may still carry telegram_bot_token / telegram_webhook_secret
+// from when each firm ran its own bot; encoding/json ignores unknown keys,
+// and the next save drops them.
 type TenantSettings struct {
-	TelegramBotToken      string `json:"telegram_bot_token,omitempty"`
-	TelegramWebhookSecret string `json:"telegram_webhook_secret,omitempty"`
-	TelegramAlertChatID   int64  `json:"telegram_alert_chat_id,omitempty"`
-	ThresholdRedDays      int    `json:"threshold_red_days,omitempty"`    // default 15
-	ThresholdOrangeDays   int    `json:"threshold_orange_days,omitempty"` // default 30
+	TelegramAlertChatID int64 `json:"telegram_alert_chat_id,omitempty"`
+	ThresholdRedDays    int   `json:"threshold_red_days,omitempty"`    // default 15
+	ThresholdOrangeDays int   `json:"threshold_orange_days,omitempty"` // default 30
 }
 
 func (t *Tenant) ParsedSettings() (TenantSettings, error) {

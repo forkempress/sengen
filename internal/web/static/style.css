@@ -202,6 +202,27 @@ form.filters .filters-actions { flex: 0 0 auto; display: flex; gap: 0.5rem; }
   .help-dl dd { margin-bottom: 0.5rem; }
 }
 
+.link-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  background: #e3f3ea;
+  border: 1px solid var(--status-green);
+  border-radius: 6px;
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 1rem;
+  font-size: 0.92rem;
+}
+.link-box input {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--card-border);
+  border-radius: 5px;
+  background: #fff;
+  width: 100%;
+}
+
 .table-wrap { overflow-x: auto; border: 1px solid var(--card-border); border-radius: 8px; background: var(--card-bg); }
 
 table { width: 100%; border-collapse: collapse; min-width: 720px; }

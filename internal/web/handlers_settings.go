@@ -12,16 +12,21 @@ import (
 type settingsDriversData struct {
 	baseData
 	Drivers []store.Driver
+	Link    *telegramLink // set right after generating a driver's link
 }
 
 func (s *Server) handleSettingsDriversPage(w http.ResponseWriter, r *http.Request) {
+	s.renderDriversPage(w, r, nil)
+}
+
+func (s *Server) renderDriversPage(w http.ResponseWriter, r *http.Request, link *telegramLink) {
 	t, _ := tenant.FromContext(r.Context())
 	drivers, err := s.Store.ListDrivers(r.Context(), t.ID, false)
 	if err != nil {
 		http.Error(w, "greška servera", http.StatusInternalServerError)
 		return
 	}
-	data := settingsDriversData{baseData: s.base(r, "vozaci"), Drivers: drivers}
+	data := settingsDriversData{baseData: s.base(r, "vozaci"), Drivers: drivers, Link: link}
 	if msg := r.URL.Query().Get("ok"); msg != "" {
 		data.Flash = msg
 	}

@@ -33,9 +33,14 @@ func SessionFromContext(ctx context.Context) (*store.Session, bool) {
 	return s, ok
 }
 
-// RequireAuth loads the session cookie, verifies it belongs to the current
-// tenant (resolved by tenant.Middleware upstream), loads the user, and
-// redirects to /login otherwise.
+// RequireAuth loads the session cookie, then the firm and the user that
+// session belongs to, and puts all three in the request context; anything
+// else redirects to /login.
+//
+// This is the only place a request's firm is decided, and it comes solely
+// from the server-side session row — never from the URL, a header or a form
+// field — so a signed-in user cannot reach another firm's data by editing a
+// request. Every store query is then scoped by that firm's id.
 func (svc *Service) RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		sess, err := svc.SessionFromRequest(r)
@@ -43,19 +48,21 @@ func (svc *Service) RequireAuth(next http.Handler) http.Handler {
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
-		t, ok := tenant.FromContext(r.Context())
-		if !ok || sess.TenantID != t.ID {
+		t, err := svc.Store.GetTenant(r.Context(), sess.TenantID)
+		if err != nil {
 			svc.Logout(r.Context(), w, r)
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
+		// GetUser is itself scoped by firm, so a session whose user has
+		// since moved or been removed is rejected rather than reattached.
 		user, err := svc.Store.GetUser(r.Context(), t.ID, sess.UserID)
 		if err != nil {
 			svc.Logout(r.Context(), w, r)
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
-		ctx := withUser(withSession(r.Context(), sess), user)
+		ctx := tenant.WithTenant(withUser(withSession(r.Context(), sess), user), t)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

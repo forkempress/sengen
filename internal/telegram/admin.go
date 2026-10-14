@@ -199,7 +199,7 @@ func (b *Bot) cmdLink(ctx context.Context, client *Client, t *store.Tenant, chat
 		client.SendMessage(ctx, chatID, "Greška pri generisanju linka.", nil)
 		return
 	}
-	client.SendMessage(ctx, chatID, linkInstructions(driver.Name, token), nil)
+	client.SendMessage(ctx, chatID, b.linkInstructions(driver.Name, token), nil)
 }
 
 func (b *Bot) cmdIspravi(ctx context.Context, client *Client, t *store.Tenant, chatID int64) {
@@ -257,7 +257,10 @@ func errMsg(err error) string {
 	return err.Error()
 }
 
-func linkInstructions(driverName, token string) string {
+func (b *Bot) linkInstructions(driverName, token string) string {
+	if link := b.StartLink(token); link != "" {
+		return fmt.Sprintf("Link za %s (važi 48h, jednokratan) — pošaljite ga vozaču, on samo tapne:\n%s", driverName, link)
+	}
 	return fmt.Sprintf("Link za %s (važi 48h): pošaljite vozaču da u botu pošalje komandu:\n/start %s", driverName, token)
 }
 

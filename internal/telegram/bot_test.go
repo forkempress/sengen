@@ -16,7 +16,6 @@ import (
 	"shengen/internal/db"
 	"shengen/internal/status"
 	"shengen/internal/store"
-	"shengen/internal/tenant"
 )
 
 // fakeTelegram stands in for api.telegram.org and records what the bot tried
@@ -78,7 +77,7 @@ func TestHandleAdminMessage_RejectsNonAdminRole(t *testing.T) {
 	// A real (empty) store, not nil: if the gate ever regresses, the command
 	// runs for real and the test reports a wrong reply instead of panicking
 	// on a nil store — a clean failure that also lets later tests run.
-	bot, tn := newWebhookTestBot(t, "")
+	bot, tn := newTestBot(t)
 
 	viewer := &store.User{ID: 7, TenantID: tn.ID, Role: "viewer", Name: "Pregledač"}
 	msg := &Message{Chat: Chat{ID: 555}, Text: "/pregled"}
@@ -99,7 +98,7 @@ func TestHandleAdminMessage_RejectsNonAdminRole(t *testing.T) {
 
 func TestHandleAdminCallback_RejectsNonAdminRole(t *testing.T) {
 	fake := newFakeTelegram(t)
-	bot, tn := newWebhookTestBot(t, "")
+	bot, tn := newTestBot(t)
 
 	viewer := &store.User{ID: 7, TenantID: tn.ID, Role: "viewer"}
 	cq := &CallbackQuery{ID: "cb1", Data: "import_confirm", Message: &Message{Chat: Chat{ID: 555}}}
@@ -123,72 +122,74 @@ func TestHandleAdminCallback_RejectsNonAdminRole(t *testing.T) {
 	}
 }
 
-// --- webhook secret ---
+// --- shared bot test setup ---
 
-func newWebhookTestBot(t *testing.T, secret string) (*Bot, *store.Tenant) {
+const testSecret = "pravi-webhook-secret-vrednost"
+
+// newTestDB opens a fresh database with migrations and one firm.
+func newTestDB(t *testing.T) (*store.Store, *store.Tenant) {
 	t.Helper()
-
 	conn, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
 	t.Cleanup(func() { conn.Close() })
-
 	st := store.New(conn)
-	ctx := context.Background()
-	tn, err := st.CreateTenant(ctx, "Test Prevoz", "test.local")
+	tn, err := st.CreateTenant(context.Background(), "Test Prevoz", "test-prevoz")
 	if err != nil {
 		t.Fatalf("create tenant: %v", err)
 	}
-	if secret != "" {
-		settings := store.TenantSettings{TelegramBotToken: "TEST-TOKEN", TelegramWebhookSecret: secret}
-		if err := st.UpdateTenantSettings(ctx, tn.ID, settings); err != nil {
-			t.Fatalf("update settings: %v", err)
-		}
-		tn, err = st.GetTenantByHost(ctx, "test.local")
-		if err != nil {
-			t.Fatalf("reload tenant: %v", err)
-		}
-	}
-	return New(st), tn
+	return st, tn
 }
 
-func postWebhook(t *testing.T, bot *Bot, tn *store.Tenant, headerSecret string) *httptest.ResponseRecorder {
+// newTestBot builds the shared bot over a fresh database with one firm.
+// Call newFakeTelegram first: the bot's client reads the API address when it
+// is constructed.
+func newTestBot(t *testing.T) (*Bot, *store.Tenant) {
 	t.Helper()
-	body := `{"update_id":1,"message":{"message_id":1,"chat":{"id":999,"type":"private"},"date":1,"text":"zdravo"}}`
+	st, tn := newTestDB(t)
+	return New(st, Config{Token: "TEST-TOKEN", WebhookSecret: testSecret}), tn
+}
+
+func postWebhook(t *testing.T, bot *Bot, headerSecret, body string) *httptest.ResponseRecorder {
+	t.Helper()
 	r := httptest.NewRequest(http.MethodPost, "/telegram/webhook", strings.NewReader(body))
 	if headerSecret != "" {
 		r.Header.Set("X-Telegram-Bot-Api-Secret-Token", headerSecret)
-	}
-	if tn != nil {
-		r = r.WithContext(tenant.WithTenant(r.Context(), tn))
 	}
 	w := httptest.NewRecorder()
 	bot.HandleWebhook(w, r)
 	return w
 }
 
+func textUpdate(chatID int64, text string) string {
+	b, _ := json.Marshal(Update{UpdateID: 1, Message: &Message{MessageID: 1, Chat: Chat{ID: chatID, Type: "private"}, Text: text}})
+	return string(b)
+}
+
+// --- webhook secret ---
+
 func TestHandleWebhook_SecretValidation(t *testing.T) {
-	const secret = "pravi-webhook-secret-vrednost"
+	body := textUpdate(999, "zdravo")
 
 	t.Run("correct secret is accepted", func(t *testing.T) {
 		newFakeTelegram(t)
-		bot, tn := newWebhookTestBot(t, secret)
-		if got := postWebhook(t, bot, tn, secret).Code; got != http.StatusOK {
+		bot, _ := newTestBot(t)
+		if got := postWebhook(t, bot, testSecret, body).Code; got != http.StatusOK {
 			t.Errorf("status = %d, want 200", got)
 		}
 	})
 
 	t.Run("wrong secret is rejected", func(t *testing.T) {
 		newFakeTelegram(t)
-		bot, tn := newWebhookTestBot(t, secret)
+		bot, _ := newTestBot(t)
 		for _, wrong := range []string{
 			"pogresan-secret",
-			secret + "x",            // correct prefix, longer
-			secret[:len(secret)-1],  // correct prefix, shorter
-			strings.ToUpper(secret), // same length, different bytes
+			testSecret + "x",               // correct prefix, longer
+			testSecret[:len(testSecret)-1], // correct prefix, shorter
+			strings.ToUpper(testSecret),    // same length, different bytes
 		} {
-			if got := postWebhook(t, bot, tn, wrong).Code; got != http.StatusForbidden {
+			if got := postWebhook(t, bot, wrong, body).Code; got != http.StatusForbidden {
 				t.Errorf("status for %q = %d, want 403", wrong, got)
 			}
 		}
@@ -196,32 +197,184 @@ func TestHandleWebhook_SecretValidation(t *testing.T) {
 
 	t.Run("missing secret header is rejected", func(t *testing.T) {
 		newFakeTelegram(t)
-		bot, tn := newWebhookTestBot(t, secret)
-		if got := postWebhook(t, bot, tn, "").Code; got != http.StatusForbidden {
+		bot, _ := newTestBot(t)
+		if got := postWebhook(t, bot, "", body).Code; got != http.StatusForbidden {
 			t.Errorf("status = %d, want 403", got)
 		}
 	})
 
 	// Without a configured bot the endpoint must not exist as far as the
 	// outside world can tell, and must never accept an empty secret.
-	t.Run("unconfigured tenant returns 404", func(t *testing.T) {
+	t.Run("unconfigured bot returns 404", func(t *testing.T) {
 		newFakeTelegram(t)
-		bot, tn := newWebhookTestBot(t, "")
-		if got := postWebhook(t, bot, tn, "").Code; got != http.StatusNotFound {
-			t.Errorf("status = %d, want 404", got)
-		}
-		if got := postWebhook(t, bot, tn, "bilo-sta").Code; got != http.StatusNotFound {
-			t.Errorf("status with a guessed secret = %d, want 404", got)
+		st, _ := newTestDB(t)
+		for _, cfg := range []Config{{}, {Token: "TEST-TOKEN"}} {
+			bot := New(st, cfg)
+			for _, secret := range []string{"", "bilo-sta"} {
+				if got := postWebhook(t, bot, secret, body).Code; got != http.StatusNotFound {
+					t.Errorf("config %+v, secret %q: status = %d, want 404", cfg, secret, got)
+				}
+			}
 		}
 	})
+}
 
-	t.Run("request without tenant context returns 404", func(t *testing.T) {
-		newFakeTelegram(t)
-		bot, _ := newWebhookTestBot(t, secret)
-		if got := postWebhook(t, bot, nil, secret).Code; got != http.StatusNotFound {
-			t.Errorf("status = %d, want 404", got)
+// --- one shared bot, many firms ---
+
+// twoFirms sets up firms A and B, each with a driver linked to Telegram and
+// a different history, so a reply can be traced back to the firm it came from.
+func twoFirms(t *testing.T) (bot *Bot, a, b *store.Tenant, driverA, driverB *store.Driver) {
+	t.Helper()
+	bot, a = newTestBot(t)
+	ctx := context.Background()
+	var err error
+	if b, err = bot.Store.CreateTenant(ctx, "Druga Firma", "druga-firma"); err != nil {
+		t.Fatal(err)
+	}
+	if driverA, err = bot.Store.CreateDriver(ctx, a.ID, "Ana Prva", ""); err != nil {
+		t.Fatal(err)
+	}
+	if driverB, err = bot.Store.CreateDriver(ctx, b.ID, "Boris Drugi", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := bot.Store.SetDriverTelegramChatID(ctx, a.ID, driverA.ID, 111); err != nil {
+		t.Fatal(err)
+	}
+	if err := bot.Store.SetDriverTelegramChatID(ctx, b.ID, driverB.ID, 222); err != nil {
+		t.Fatal(err)
+	}
+	// A: 5 days used. B: 20 days used.
+	today := clock.Today()
+	stay := func(tenantID, driverID int64, from, to int) {
+		entry, exit := today.AddDate(0, 0, from), today.AddDate(0, 0, to)
+		if _, err := bot.Store.CreateStay(ctx, tenantID, driverID, entry, &exit, "work", "manual", "", nil); err != nil {
+			t.Fatal(err)
 		}
-	})
+	}
+	stay(a.ID, driverA.ID, -30, -26)
+	stay(b.ID, driverB.ID, -40, -21)
+	return bot, a, b, driverA, driverB
+}
+
+// The chat that sends the message decides the firm: each driver must get
+// his own firm's numbers, through the real webhook path.
+func TestWebhook_DriverGetsHisOwnFirmsNumbers(t *testing.T) {
+	fake := newFakeTelegram(t)
+	bot, _, _, _, _ := twoFirms(t)
+
+	postWebhook(t, bot, testSecret, textUpdate(111, BtnMyDays))
+	postWebhook(t, bot, testSecret, textUpdate(222, BtnMyDays))
+
+	texts := fake.texts()
+	if len(texts) != 2 {
+		t.Fatalf("expected two replies, got %d: %v", len(texts), texts)
+	}
+	if !strings.Contains(texts[0], "Iskorišćeno: 5/90") {
+		t.Errorf("driver of firm A got %q, want 5/90", texts[0])
+	}
+	if !strings.Contains(texts[1], "Iskorišćeno: 20/90") {
+		t.Errorf("driver of firm B got %q, want 20/90", texts[1])
+	}
+}
+
+// An owner's /pregled must list only his own firm's drivers.
+func TestWebhook_AdminSeesOnlyHisFirm(t *testing.T) {
+	fake := newFakeTelegram(t)
+	bot, a, _, _, _ := twoFirms(t)
+	ctx := context.Background()
+
+	owner, err := bot.Store.CreateUser(ctx, a.ID, "vlasnik@a.rs", "hash", "owner", "Vlasnik A")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := bot.Store.SetUserTelegramChatID(ctx, a.ID, owner.ID, 333); err != nil {
+		t.Fatal(err)
+	}
+
+	postWebhook(t, bot, testSecret, textUpdate(333, "/pregled"))
+
+	texts := fake.texts()
+	if len(texts) != 1 {
+		t.Fatalf("expected one reply, got %v", texts)
+	}
+	if !strings.Contains(texts[0], "Ana Prva") {
+		t.Errorf("owner of A doesn't see his own driver: %q", texts[0])
+	}
+	if strings.Contains(texts[0], "Boris Drugi") {
+		t.Errorf("owner of A sees a driver of firm B: %q", texts[0])
+	}
+}
+
+// For a chat nobody has linked yet, the one-time token is the only thing that
+// names the firm — it was issued inside that firm.
+func TestStart_LinkTokenDecidesTheFirm(t *testing.T) {
+	fake := newFakeTelegram(t)
+	bot, _, b, _, _ := twoFirms(t)
+	ctx := context.Background()
+
+	newDriver, err := bot.Store.CreateDriver(ctx, b.ID, "Novi Vozač", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := bot.Store.CreateDriverLinkToken(ctx, "tokB", b.ID, newDriver.ID, time.Hour); err != nil {
+		t.Fatal(err)
+	}
+
+	postWebhook(t, bot, testSecret, textUpdate(444, "/start tokB"))
+
+	linked, err := bot.Store.GetDriverByTelegramChat(ctx, 444)
+	if err != nil {
+		t.Fatalf("chat 444 not linked: %v (replies: %v)", err, fake.texts())
+	}
+	if linked.ID != newDriver.ID || linked.TenantID != b.ID {
+		t.Errorf("chat 444 linked to driver %d of firm %d, want driver %d of firm %d", linked.ID, linked.TenantID, newDriver.ID, b.ID)
+	}
+}
+
+// A Telegram account already linked to one driver can't be quietly moved to
+// another (possibly in another firm); the driver is told why.
+func TestStart_AlreadyLinkedChatIsRefusedWithAReason(t *testing.T) {
+	fake := newFakeTelegram(t)
+	bot, _, b, _, driverB := twoFirms(t)
+	ctx := context.Background()
+
+	other, err := bot.Store.CreateDriver(ctx, b.ID, "Treći", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := bot.Store.CreateDriverLinkToken(ctx, "tok3", b.ID, other.ID, time.Hour); err != nil {
+		t.Fatal(err)
+	}
+
+	postWebhook(t, bot, testSecret, textUpdate(111, "/start tok3")) // 111 belongs to firm A's driver
+
+	if texts := fake.texts(); len(texts) != 1 || !strings.Contains(texts[0], "već povezan") {
+		t.Errorf("reply = %v, want an explanation that the account is already linked", texts)
+	}
+	if d, _ := bot.Store.GetDriverByTelegramChat(ctx, 111); d == nil || d.ID == other.ID || d.ID == driverB.ID {
+		t.Errorf("chat 111 was moved to another driver: %+v", d)
+	}
+}
+
+func TestWebhook_UnknownChatIsToldToContactDispatcher(t *testing.T) {
+	fake := newFakeTelegram(t)
+	bot, _, _, _, _ := twoFirms(t)
+
+	postWebhook(t, bot, testSecret, textUpdate(999, BtnMyDays))
+
+	if texts := fake.texts(); len(texts) != 1 || texts[0] != unknownChatMsg {
+		t.Errorf("reply to unknown chat = %v, want %q", texts, unknownChatMsg)
+	}
+}
+
+func TestStartLink(t *testing.T) {
+	st, _ := newTestDB(t)
+	if got := New(st, Config{Username: "@Dani90Bot"}).StartLink("abc"); got != "https://t.me/Dani90Bot?start=abc" {
+		t.Errorf("StartLink = %q", got)
+	}
+	if got := New(st, Config{}).StartLink("abc"); got != "" {
+		t.Errorf("StartLink without username = %q, want empty", got)
+	}
 }
 
 // --- overstay messaging ---
@@ -230,7 +383,7 @@ func TestHandleWebhook_SecretValidation(t *testing.T) {
 // told he may not stay — never handed a date that reads like permission.
 func TestDriverExited_WithNoDaysLeftWarnsInsteadOfGivingADate(t *testing.T) {
 	fake := newFakeTelegram(t)
-	bot, tn := newWebhookTestBot(t, "")
+	bot, tn := newTestBot(t)
 	ctx := context.Background()
 
 	driver, err := bot.Store.CreateDriver(ctx, tn.ID, "Marko", "")
@@ -279,7 +432,7 @@ func TestDriverHelp_ReachableByButtonAndCommand(t *testing.T) {
 	for _, input := range []string{BtnHelp, "/pomoc", "/pomoć", "/help"} {
 		t.Run(input, func(t *testing.T) {
 			fake := newFakeTelegram(t)
-			bot, tn := newWebhookTestBot(t, "")
+			bot, tn := newTestBot(t)
 			driver := &store.Driver{ID: 1, TenantID: tn.ID, Name: "Marko"}
 
 			bot.handleDriverMessage(context.Background(), fake.client(), tn, 555, driver, input)
@@ -334,7 +487,7 @@ func TestAdminHelp_ListsEveryCommand(t *testing.T) {
 
 func TestAdminHelp_ReachableByCommand(t *testing.T) {
 	fake := newFakeTelegram(t)
-	bot, tn := newWebhookTestBot(t, "")
+	bot, tn := newTestBot(t)
 	owner := &store.User{ID: 1, TenantID: tn.ID, Role: "owner"}
 
 	bot.handleAdminMessage(context.Background(), fake.client(), tn, store.TenantSettings{}, 777, owner, &Message{Text: "/pomoc"})
@@ -348,7 +501,7 @@ func TestAdminHelp_ReachableByCommand(t *testing.T) {
 // the welcome message carries the full help, not just "povezani ste".
 func TestStart_DriverWelcomeIncludesHelp(t *testing.T) {
 	fake := newFakeTelegram(t)
-	bot, tn := newWebhookTestBot(t, "")
+	bot, tn := newTestBot(t)
 	ctx := context.Background()
 
 	driver, err := bot.Store.CreateDriver(ctx, tn.ID, "Marko", "")
@@ -359,7 +512,7 @@ func TestStart_DriverWelcomeIncludesHelp(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	bot.handleStart(ctx, fake.client(), tn, 555, "/start tok123")
+	bot.handleStart(ctx, fake.client(), 555, "/start tok123")
 
 	texts := fake.texts()
 	if len(texts) != 1 || !strings.Contains(texts[0], driverHelpText) {

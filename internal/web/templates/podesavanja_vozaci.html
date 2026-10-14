@@ -1,6 +1,8 @@
 {{define "content"}}
 <h1>Podešavanja — Vozači</h1>
 
+{{with .Link}}{{template "telegramLink" .}}{{end}}
+
 <h2>Dodaj vozača</h2>
 <form method="post" action="/podesavanja/vozaci">
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">

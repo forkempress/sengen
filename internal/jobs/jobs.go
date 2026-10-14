@@ -21,10 +21,13 @@ const tickInterval = 5 * time.Minute
 
 type Runner struct {
 	Store *store.Store
+	// Client is the shared bot used to notify every firm; nil when no bot
+	// token is configured, in which case there is nothing to send.
+	Client *telegram.Client
 }
 
-func New(st *store.Store) *Runner {
-	return &Runner{Store: st}
+func New(st *store.Store, client *telegram.Client) *Runner {
+	return &Runner{Store: st, Client: client}
 }
 
 // Start runs the job loop until ctx is canceled. Call it in a goroutine.
@@ -49,6 +52,9 @@ func (r *Runner) tick(ctx context.Context) {
 		}
 	}()
 
+	if r.Client == nil {
+		return
+	}
 	tenants, err := r.Store.ListAllTenants(ctx)
 	if err != nil {
 		log.Printf("jobs: list tenants: %v", err)
@@ -61,10 +67,11 @@ func (r *Runner) tick(ctx context.Context) {
 
 func (r *Runner) processTenant(ctx context.Context, t store.Tenant) {
 	settings, err := t.ParsedSettings()
-	if err != nil || settings.TelegramBotToken == "" {
-		return // bot not configured for this tenant yet
+	if err != nil {
+		log.Printf("jobs: settings for tenant %d: %v", t.ID, err)
+		return
 	}
-	client := telegram.NewClient(settings.TelegramBotToken)
+	client := r.Client
 	today := clock.Today()
 	dateStr := today.Format("2006-01-02")
 

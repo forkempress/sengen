@@ -17,12 +17,14 @@ type User struct {
 	Name         string
 }
 
-func (s *Store) GetUserByEmail(ctx context.Context, tenantID int64, email string) (*User, error) {
+// GetUserByEmail finds the account across all firms: the email alone decides
+// which firm a person signs in to (it is unique system-wide, migration 0013).
+func (s *Store) GetUserByEmail(ctx context.Context, email string) (*User, error) {
 	email = NormalizeEmail(email)
 	var u User
 	err := s.DB.QueryRowContext(ctx,
-		`SELECT id, tenant_id, email, password_hash, role, name FROM users WHERE tenant_id = ? AND email = ?`,
-		tenantID, email,
+		`SELECT id, tenant_id, email, password_hash, role, name FROM users WHERE email = ?`,
+		email,
 	).Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &u.Role, &u.Name)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound

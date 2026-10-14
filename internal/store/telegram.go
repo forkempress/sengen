@@ -85,6 +85,11 @@ func (s *Store) ConsumeLinkToken(ctx context.Context, token string) (*LinkToken,
 func (s *Store) SetDriverTelegramChatID(ctx context.Context, tenantID, driverID, chatID int64) error {
 	_, err := s.DB.ExecContext(ctx,
 		`UPDATE drivers SET telegram_chat_id = ? WHERE tenant_id = ? AND id = ?`, chatID, tenantID, driverID)
+	if isUniqueConstraintErr(err) {
+		// One Telegram account maps to one driver across all firms — the
+		// shared bot relies on that to know whose message it is.
+		return &ValidationError{Msg: "Ovaj Telegram nalog je već povezan sa drugim vozačem."}
+	}
 	if err != nil {
 		return fmt.Errorf("set driver telegram chat id: %w", err)
 	}
@@ -94,21 +99,25 @@ func (s *Store) SetDriverTelegramChatID(ctx context.Context, tenantID, driverID,
 func (s *Store) SetUserTelegramChatID(ctx context.Context, tenantID, userID, chatID int64) error {
 	_, err := s.DB.ExecContext(ctx,
 		`UPDATE users SET telegram_chat_id = ? WHERE tenant_id = ? AND id = ?`, chatID, tenantID, userID)
+	if isUniqueConstraintErr(err) {
+		return &ValidationError{Msg: "Ovaj Telegram nalog je već povezan sa drugim korisnikom."}
+	}
 	if err != nil {
 		return fmt.Errorf("set user telegram chat id: %w", err)
 	}
 	return nil
 }
 
-// GetDriverByTelegramChat resolves a driver by (tenant_id, chat_id) — used by
-// the webhook to recognize a known driver chat. tenant_id is already known
-// from the Host header, chat_id alone isn't tenant-scoped on Telegram's side.
-func (s *Store) GetDriverByTelegramChat(ctx context.Context, tenantID, chatID int64) (*Driver, error) {
+// GetDriverByTelegramChat finds the driver linked to a Telegram chat, in any
+// firm. With one shared bot the chat is what tells us the firm: a Telegram
+// account can be linked to at most one driver system-wide (unique index on
+// drivers.telegram_chat_id), so the answer is never ambiguous.
+func (s *Store) GetDriverByTelegramChat(ctx context.Context, chatID int64) (*Driver, error) {
 	var d Driver
 	var active int
 	err := s.DB.QueryRowContext(ctx,
-		`SELECT id, tenant_id, name, vehicle_label, telegram_chat_id, active FROM drivers WHERE tenant_id = ? AND telegram_chat_id = ?`,
-		tenantID, chatID,
+		`SELECT id, tenant_id, name, vehicle_label, telegram_chat_id, active FROM drivers WHERE telegram_chat_id = ?`,
+		chatID,
 	).Scan(&d.ID, &d.TenantID, &d.Name, &d.VehicleLabel, &d.TelegramChatID, &active)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
@@ -120,11 +129,13 @@ func (s *Store) GetDriverByTelegramChat(ctx context.Context, tenantID, chatID in
 	return &d, nil
 }
 
-func (s *Store) GetUserByTelegramChat(ctx context.Context, tenantID, chatID int64) (*User, error) {
+// GetUserByTelegramChat finds the web user (owner/dispatcher) linked to a
+// Telegram chat, in any firm; unique system-wide like the driver link.
+func (s *Store) GetUserByTelegramChat(ctx context.Context, chatID int64) (*User, error) {
 	var u User
 	err := s.DB.QueryRowContext(ctx,
-		`SELECT id, tenant_id, email, password_hash, role, name FROM users WHERE tenant_id = ? AND telegram_chat_id = ?`,
-		tenantID, chatID,
+		`SELECT id, tenant_id, email, password_hash, role, name FROM users WHERE telegram_chat_id = ?`,
+		chatID,
 	).Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &u.Role, &u.Name)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
