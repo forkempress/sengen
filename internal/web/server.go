@@ -79,7 +79,8 @@ func (s *Server) Routes() http.Handler {
 	protected.HandleFunc("POST /podesavanja/telegram/poveži-nalog", s.handleTelegramLinkSelf)
 
 	protected.Handle("GET /podesavanja/telegram", auth.RequireRole("owner")(http.HandlerFunc(s.handleTelegramSettingsPage)))
-	protected.Handle("POST /podesavanja/telegram", auth.RequireRole("owner")(http.HandlerFunc(s.handleTelegramSettingsUpdate)))
+	protected.Handle("POST /podesavanja/telegram/grupa", auth.RequireRole("owner")(http.HandlerFunc(s.handleAlertGroup)))
+	protected.Handle("POST /podesavanja/telegram/pragovi", auth.RequireRole("owner")(http.HandlerFunc(s.handleThresholds)))
 	protected.Handle("POST /podesavanja/telegram/upozorenja-na-moj", auth.RequireRole("owner")(http.HandlerFunc(s.handleAlertsToMe)))
 
 	protected.Handle("GET /podesavanja/korisnici", auth.RequireRole("owner")(http.HandlerFunc(s.handleUsersPage)))

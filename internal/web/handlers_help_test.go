@@ -44,7 +44,7 @@ func TestHelpPage_SettingsLinkOnlyForOwner(t *testing.T) {
 		baseData: baseData{User: &store.User{Name: "D", Role: "dispatcher"}}, Thresholds: status.DefaultThresholds,
 	})
 
-	const link = `href="/podesavanja/telegram">Podešavanja → Telegram`
+	const link = `href="/podesavanja/telegram">Upozorenja`
 	if !strings.Contains(owner, link) {
 		t.Error("owner should get a link to change the thresholds")
 	}

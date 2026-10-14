@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"regexp"
 	"strings"
 	"sync"
@@ -209,5 +210,55 @@ func TestAlertsToMe_TouchesOnlyOwnFirm(t *testing.T) {
 
 	if got := app.alertChat(b.tenant.ID); got != -100555 {
 		t.Errorf("firm B's alert chat = %d, want its own -100555 untouched", got)
+	}
+}
+
+// Thresholds and the alert destination are separate forms: saving one never
+// changes the other.
+func TestThresholds_DoNotTouchAlertChat(t *testing.T) {
+	app := newAppWithBot(t, &fakeBotAPI{})
+	a := app.addFirm("Prva Firma", "prva", "vlasnik@prva.rs", "Ana", 30)
+	if err := app.st.UpdateTenantSettings(context.Background(), a.tenant.ID, store.TenantSettings{TelegramAlertChatID: -100777}); err != nil {
+		t.Fatal(err)
+	}
+	sa := app.mustLogin(a)
+
+	sa.post("/podesavanja/telegram/pragovi", url.Values{"threshold_red": {"10"}, "threshold_orange": {"20"}})
+
+	if got := app.alertChat(a.tenant.ID); got != -100777 {
+		t.Errorf("alert chat = %d after saving thresholds, want -100777 kept", got)
+	}
+}
+
+func TestAlertGroup_EmptyTurnsAlertsOff(t *testing.T) {
+	app := newAppWithBot(t, &fakeBotAPI{})
+	a := app.addFirm("Prva Firma", "prva", "vlasnik@prva.rs", "Ana", 30)
+	sa := app.mustLogin(a)
+
+	sa.post("/podesavanja/telegram/grupa", url.Values{"alert_chat_id": {"-100123"}})
+	if got := app.alertChat(a.tenant.ID); got != -100123 {
+		t.Fatalf("alert chat = %d, want -100123", got)
+	}
+	sa.post("/podesavanja/telegram/grupa", url.Values{"alert_chat_id": {""}})
+	if got := app.alertChat(a.tenant.ID); got != 0 {
+		t.Errorf("alert chat = %d, want 0 after clearing", got)
+	}
+}
+
+// While alerts go nowhere, the dashboard says so.
+func TestPregled_BannerWhileAlertsHaveNoRecipient(t *testing.T) {
+	app := newAppWithBot(t, &fakeBotAPI{})
+	a := app.addFirm("Prva Firma", "prva", "vlasnik@prva.rs", "Ana", 30)
+	sa := app.mustLogin(a)
+	if _, err := app.st.CreateDriver(context.Background(), a.tenant.ID, "Vozač", ""); err != nil {
+		t.Fatal(err)
+	}
+
+	if body := sa.get("/pregled").Body.String(); !strings.Contains(body, "Upozorenja se ne šalju nikome") {
+		t.Error("no banner while alerts go nowhere")
+	}
+	sa.post("/podesavanja/telegram/grupa", url.Values{"alert_chat_id": {"-100123"}})
+	if body := sa.get("/pregled").Body.String(); strings.Contains(body, "Upozorenja se ne šalju nikome") {
+		t.Error("banner still shown after alerts got a recipient")
 	}
 }

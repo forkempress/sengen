@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"shengen/internal/auth"
@@ -37,6 +38,9 @@ type telegramSettingsData struct {
 	// to know whether they are being sent at all.
 	MyTelegramLinked bool
 	AlertsToMe       bool
+
+	Thresholds                 status.Thresholds
+	ExampleCritical, ExampleOK int
 }
 
 func (s *Server) handleTelegramSettingsPage(w http.ResponseWriter, r *http.Request) {
@@ -51,7 +55,10 @@ func (s *Server) renderTelegramSettings(w http.ResponseWriter, r *http.Request, 
 		Settings:      settings,
 		BotConfigured: s.Bot.Configured(),
 		Link:          link,
+		Thresholds:    status.ThresholdsFor(settings),
 	}
+	data.ExampleCritical = max(data.Thresholds.Red-1, 0)
+	data.ExampleOK = data.Thresholds.Orange + 1
 	if u := data.User; u != nil && u.TelegramChatID != nil {
 		data.MyTelegramLinked = true
 		data.AlertsToMe = settings.TelegramAlertChatID == *u.TelegramChatID
@@ -59,20 +66,37 @@ func (s *Server) renderTelegramSettings(w http.ResponseWriter, r *http.Request, 
 	s.render(w, "podesavanja_telegram.html", data)
 }
 
-func (s *Server) handleTelegramSettingsUpdate(w http.ResponseWriter, r *http.Request) {
+// handleAlertGroup sets (or, when empty, clears) the chat the firm's
+// alerts go to — the manual fallback for a Telegram group.
+func (s *Server) handleAlertGroup(w http.ResponseWriter, r *http.Request) {
 	t, _ := tenant.FromContext(r.Context())
 	settings, _ := t.ParsedSettings()
 
-	if chatIDStr := r.FormValue("alert_chat_id"); chatIDStr != "" {
+	msg := "Upozorenja su isključena."
+	if chatIDStr := strings.TrimSpace(r.FormValue("alert_chat_id")); chatIDStr != "" {
 		id, err := strconv.ParseInt(chatIDStr, 10, 64)
-		if err != nil {
-			s.redirectErr(w, r, "/podesavanja/telegram", "Neispravan chat ID.")
+		if err != nil || id == 0 {
+			s.redirectErr(w, r, "/podesavanja/telegram", "Broj grupe nije ispravan: to je ceo broj, obično počinje sa -100.")
 			return
 		}
 		settings.TelegramAlertChatID = id
+		msg = "Upozorenja će stizati u grupu."
 	} else {
 		settings.TelegramAlertChatID = 0
 	}
+	if err := s.Store.UpdateTenantSettings(r.Context(), t.ID, settings); err != nil {
+		http.Error(w, "greška servera", http.StatusInternalServerError)
+		return
+	}
+	s.redirectOk(w, r, "/podesavanja/telegram", msg)
+}
+
+// handleThresholds saves the status cut-offs; it never touches where the
+// alerts go.
+func (s *Server) handleThresholds(w http.ResponseWriter, r *http.Request) {
+	t, _ := tenant.FromContext(r.Context())
+	settings, _ := t.ParsedSettings()
+
 	if red, err := strconv.Atoi(r.FormValue("threshold_red")); err == nil && red > 0 {
 		settings.ThresholdRedDays = red
 	}
@@ -90,7 +114,7 @@ func (s *Server) handleTelegramSettingsUpdate(w http.ResponseWriter, r *http.Req
 		http.Error(w, "greška servera", http.StatusInternalServerError)
 		return
 	}
-	s.redirectOk(w, r, "/podesavanja/telegram", "Podešavanja sačuvana.")
+	s.redirectOk(w, r, "/podesavanja/telegram", "Pragovi sačuvani.")
 }
 
 func (s *Server) handleTelegramLinkSelf(w http.ResponseWriter, r *http.Request) {
@@ -144,7 +168,7 @@ func (s *Server) handleAlertsToMe(w http.ResponseWriter, r *http.Request) {
 
 	if u.TelegramChatID == nil {
 		s.redirectErr(w, r, "/podesavanja/telegram",
-			"Prvo povežite svoj Telegram (dugme „Generiši link za povezivanje“), pa ponovo kliknite.")
+			"Prvo povežite svoj Telegram (korak 1, dugme „Poveži moj Telegram“), pa ponovo kliknite.")
 		return
 	}
 

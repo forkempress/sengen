@@ -540,3 +540,17 @@ td.wrap { white-space: normal; }
 .link-box-qr { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
 .link-box-text { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 0.35rem; }
 svg.qr { width: 180px; height: 180px; border: 1px solid var(--card-border); }
+
+/* Upozorenja: koraci (UX-19). */
+.lead { font-size: 1.05rem; margin: 0 0 1rem; }
+.step h2 { display: flex; align-items: center; gap: 0.6rem; }
+.step-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.8rem; height: 1.8rem; border-radius: 50%;
+  background: var(--accent); color: #fff; font-family: var(--font-mono); font-size: 0.95rem;
+}
+.step-done .step-num { background: var(--status-green-bg); color: var(--status-green); border: 1px solid var(--status-green); }
+details.advanced { margin-top: 1rem; border-top: 1px solid var(--card-border); padding-top: 0.75rem; }
+details.advanced > summary { cursor: pointer; font-weight: 600; }
+.notice-warn { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.notice-warn .btn { margin-left: auto; }

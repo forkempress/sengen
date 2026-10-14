@@ -23,7 +23,7 @@
       <a href="/import" class="{{if eq .Active "import"}}active{{end}}">Uvoz istorije</a>
       <a href="/pomoc" class="{{if eq .Active "pomoc"}}active{{end}}">Pomoć</a>
       {{if eq .User.Role "owner"}}<a href="/podesavanja/korisnici" class="{{if eq .Active "korisnici"}}active{{end}}">Korisnici</a>
-      <a href="/podesavanja/telegram" class="{{if eq .Active "telegram"}}active{{end}}">Telegram</a>{{end}}
+      <a href="/podesavanja/telegram" class="{{if eq .Active "telegram"}}active{{end}}">Upozorenja</a>{{end}}
     </nav>
     <div class="user-box">
       <span>{{.User.Name}} ({{roleLabel .User.Role}})</span>

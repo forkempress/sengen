@@ -32,6 +32,13 @@
 </section>
 {{end}}
 
+{{if .NoAlertRecipient}}
+<div class="notice notice-warn" role="status">
+  <strong>Upozorenja se ne šalju nikome.</strong> Kad vozaču ističu dani, niko neće dobiti poruku.
+  {{if .IsOwner}}<a href="/podesavanja/telegram" class="btn btn-sm">Podesi upozorenja</a>{{else}}Zamolite vlasnika naloga da ih podesi na stranici Upozorenja.{{end}}
+</div>
+{{end}}
+
 {{if .Setup.HasDrivers}}
 {{if .DateError}}<div class="flash flash-err">{{.DateError}}</div>{{end}}
 {{if not .IsToday}}
