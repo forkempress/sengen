@@ -18,7 +18,8 @@
       <a href="/pregled" class="{{if eq .Active "pregled"}}active{{end}}">Pregled</a>
       <a href="/podesavanja/vozaci" class="{{if eq .Active "vozaci"}}active{{end}}">Vozači</a>
       <a href="/import" class="{{if eq .Active "import"}}active{{end}}">Uvoz istorije</a>
-      {{if eq .User.Role "owner"}}<a href="/podesavanja/telegram" class="{{if eq .Active "telegram"}}active{{end}}">Telegram</a>{{end}}
+      {{if eq .User.Role "owner"}}<a href="/podesavanja/korisnici" class="{{if eq .Active "korisnici"}}active{{end}}">Korisnici</a>
+      <a href="/podesavanja/telegram" class="{{if eq .Active "telegram"}}active{{end}}">Telegram</a>{{end}}
     </nav>
     <div class="user-box">
       <span>{{.User.Name}} ({{.User.Role}})</span>

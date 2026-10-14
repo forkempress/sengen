@@ -76,6 +76,7 @@ var pages = []string{
 	"vozac_detalj.html",
 	"podesavanja_vozaci.html",
 	"podesavanja_telegram.html",
+	"podesavanja_korisnici.html",
 	"import.html",
 }
 
