@@ -27,6 +27,14 @@ Svaka sledeća firma je ista komanda sa drugim imenom i emailom — nema DNS-a,
 poddomena ni posebnog bota po firmi. Email mora biti jedinstven u celom
 sistemu, jer on određuje firmu pri prijavi.
 
+Za prikaz klijentima firma se može popuniti demo vozačima i boravcima
+(datumi su relativni u odnosu na danas, pa podaci uvek deluju sveže; `-dry`
+samo ispisuje šta bi bilo upisano):
+
+```bash
+make demo ARGS="-slug moja-firma"
+```
+
 ```bash
 make test
 ```

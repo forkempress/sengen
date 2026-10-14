@@ -1,4 +1,4 @@
-.PHONY: run test build deploy
+.PHONY: run seed demo test build deploy
 
 run:
 	@set -a; [ -f .env ] && . ./.env; set +a; \
@@ -11,6 +11,11 @@ seed:
 	@set -a; [ -f .env ] && . ./.env; set +a; \
 	DB_PATH=$${DB_PATH:-shengen.db} \
 	go run ./cmd/seed $(ARGS)
+
+demo:
+	@set -a; [ -f .env ] && . ./.env; set +a; \
+	DB_PATH=$${DB_PATH:-shengen.db} \
+	go run ./cmd/demo $(ARGS)
 
 test:
 	go test ./... -v
