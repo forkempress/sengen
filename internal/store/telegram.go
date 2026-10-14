@@ -37,8 +37,8 @@ func (s *Store) CreateDriverLinkToken(ctx context.Context, token string, tenantI
 		return fmt.Errorf("void driver link tokens: %w", err)
 	}
 	_, err := s.DB.ExecContext(ctx,
-		`INSERT INTO telegram_link_tokens (token, tenant_id, driver_id, expires_at) VALUES (?, ?, ?, ?)`,
-		token, tenantID, driverID, time.Now().Add(ttl).UTC().Format(time.RFC3339))
+		`INSERT INTO telegram_link_tokens (token_hash, tenant_id, driver_id, expires_at) VALUES (?, ?, ?, ?)`,
+		hashToken(token), tenantID, driverID, time.Now().Add(ttl).UTC().Format(time.RFC3339))
 	if err != nil {
 		return fmt.Errorf("create driver link token: %w", err)
 	}
@@ -52,8 +52,8 @@ func (s *Store) CreateUserLinkToken(ctx context.Context, token string, tenantID,
 		return fmt.Errorf("void user link tokens: %w", err)
 	}
 	_, err := s.DB.ExecContext(ctx,
-		`INSERT INTO telegram_link_tokens (token, tenant_id, user_id, expires_at) VALUES (?, ?, ?, ?)`,
-		token, tenantID, userID, time.Now().Add(ttl).UTC().Format(time.RFC3339))
+		`INSERT INTO telegram_link_tokens (token_hash, tenant_id, user_id, expires_at) VALUES (?, ?, ?, ?)`,
+		hashToken(token), tenantID, userID, time.Now().Add(ttl).UTC().Format(time.RFC3339))
 	if err != nil {
 		return fmt.Errorf("create user link token: %w", err)
 	}
@@ -69,9 +69,9 @@ func (s *Store) ConsumeLinkToken(ctx context.Context, token string) (*LinkToken,
 	var expiresAt string
 	err := s.DB.QueryRowContext(ctx,
 		`UPDATE telegram_link_tokens SET used_at = ?
-		 WHERE token = ? AND used_at IS NULL AND expires_at > ?
+		 WHERE token_hash = ? AND used_at IS NULL AND expires_at > ?
 		 RETURNING tenant_id, driver_id, user_id, expires_at`,
-		now, token, now,
+		now, hashToken(token), now,
 	).Scan(&lt.TenantID, &lt.DriverID, &lt.UserID, &expiresAt)
 	if err == nil {
 		lt.ExpiresAt, _ = time.Parse(time.RFC3339, expiresAt)
@@ -84,7 +84,7 @@ func (s *Store) ConsumeLinkToken(ctx context.Context, token string) (*LinkToken,
 	// Not claimed: say why.
 	var usedAt sql.NullString
 	err = s.DB.QueryRowContext(ctx,
-		`SELECT used_at FROM telegram_link_tokens WHERE token = ?`, token,
+		`SELECT used_at FROM telegram_link_tokens WHERE token_hash = ?`, hashToken(token),
 	).Scan(&usedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
@@ -96,6 +96,17 @@ func (s *Store) ConsumeLinkToken(ctx context.Context, token string) (*LinkToken,
 		return nil, &ValidationError{Msg: "link je već iskorišćen"}
 	}
 	return nil, &ValidationError{Msg: "link je istekao"}
+}
+
+// DeleteExpiredLinkTokens removes link tokens past their expiry, used or
+// not; a used one has done its job, an expired one can no longer be redeemed.
+func (s *Store) DeleteExpiredLinkTokens(ctx context.Context, now time.Time) (int64, error) {
+	res, err := s.DB.ExecContext(ctx,
+		`DELETE FROM telegram_link_tokens WHERE expires_at < ?`, now.UTC().Format(time.RFC3339))
+	if err != nil {
+		return 0, fmt.Errorf("delete expired link tokens: %w", err)
+	}
+	return res.RowsAffected()
 }
 
 func (s *Store) SetDriverTelegramChatID(ctx context.Context, tenantID, driverID, chatID int64) error {

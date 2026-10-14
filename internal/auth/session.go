@@ -12,6 +12,12 @@ import (
 const (
 	SessionCookieName = "shengen_session"
 	sessionDuration   = 14 * 24 * time.Hour
+	// SessionIdleTimeout ends a session nobody has used for this long, even
+	// within its 14 days: a browser left signed in on a shared office PC
+	// does not stay usable for two weeks.
+	SessionIdleTimeout = 24 * time.Hour
+	// touchInterval limits last-seen writes to one per session per minute.
+	touchInterval = time.Minute
 )
 
 type Service struct {
@@ -77,9 +83,16 @@ func (svc *Service) SessionFromRequest(r *http.Request) (*store.Session, error) 
 	if err != nil {
 		return nil, err
 	}
-	if time.Now().After(sess.ExpiresAt) {
+	now := time.Now()
+	if now.After(sess.ExpiresAt) || now.Sub(sess.LastSeenAt) > SessionIdleTimeout {
 		svc.Store.DeleteSession(r.Context(), c.Value)
 		return nil, store.ErrNotFound
+	}
+	if now.Sub(sess.LastSeenAt) > touchInterval {
+		if err := svc.Store.TouchSession(r.Context(), c.Value, now); err != nil {
+			return nil, err
+		}
+		sess.LastSeenAt = now
 	}
 	return sess, nil
 }

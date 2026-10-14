@@ -11,6 +11,7 @@ import (
 	"log"
 	"time"
 
+	"shengen/internal/auth"
 	"shengen/internal/clock"
 	"shengen/internal/status"
 	"shengen/internal/store"
@@ -24,7 +25,17 @@ type Runner struct {
 	// Client is the shared bot used to notify every firm; nil when no bot
 	// token is configured, in which case there is nothing to send.
 	Client *telegram.Client
+
+	lastCleanup time.Time
 }
+
+// cleanupInterval: expired sessions, link tokens and old update ids are
+// deleted once a day (and at startup).
+const cleanupInterval = 24 * time.Hour
+
+// telegramUpdateRetention: Telegram gives up redelivering an update after
+// 24 hours, so a week of update ids is plenty for dedup.
+const telegramUpdateRetention = 7 * 24 * time.Hour
 
 func New(st *store.Store, client *telegram.Client) *Runner {
 	return &Runner{Store: st, Client: client}
@@ -52,6 +63,11 @@ func (r *Runner) tick(ctx context.Context) {
 		}
 	}()
 
+	if now := time.Now(); now.Sub(r.lastCleanup) >= cleanupInterval {
+		r.Cleanup(ctx, now)
+		r.lastCleanup = now
+	}
+
 	if r.Client == nil {
 		return
 	}
@@ -62,6 +78,25 @@ func (r *Runner) tick(ctx context.Context) {
 	}
 	for _, t := range tenants {
 		r.processTenant(ctx, t)
+	}
+}
+
+// Cleanup deletes what is no longer valid: sessions past their absolute or
+// idle expiry, expired link tokens, and Telegram update ids too old to be
+// redelivered. Failures are logged; the next day tries again.
+func (r *Runner) Cleanup(ctx context.Context, now time.Time) {
+	if n, err := r.Store.DeleteExpiredSessions(ctx, now, now.Add(-auth.SessionIdleTimeout)); err != nil {
+		log.Printf("jobs: cleanup sessions: %v", err)
+	} else if n > 0 {
+		log.Printf("jobs: deleted %d expired sessions", n)
+	}
+	if n, err := r.Store.DeleteExpiredLinkTokens(ctx, now); err != nil {
+		log.Printf("jobs: cleanup link tokens: %v", err)
+	} else if n > 0 {
+		log.Printf("jobs: deleted %d expired link tokens", n)
+	}
+	if _, err := r.Store.DeleteTelegramUpdatesBefore(ctx, now.Add(-telegramUpdateRetention)); err != nil {
+		log.Printf("jobs: cleanup telegram updates: %v", err)
 	}
 }
 
