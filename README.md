@@ -89,6 +89,7 @@ U `.env` postavi:
 PORT=8080
 DB_PATH=dani90.db
 DEV_INSECURE_COOKIES=false
+TRUSTED_PROXY=cloudflare
 PUBLIC_BASE_URL=https://app.dani90.rs
 TELEGRAM_BOT_TOKEN=<token od BotFather-a>
 TELEGRAM_WEBHOOK_SECRET=<izlaz openssl komande>
@@ -97,6 +98,8 @@ TELEGRAM_BOT_USERNAME=<korisničko ime bota, bez @>
 
 `DEV_INSECURE_COOKIES=false` je obavezno — browser razgovara sa Cloudflare-om
 preko HTTPS-a, pa sesijski kolačić treba da nosi `Secure` zastavicu.
+`TRUSTED_PROXY=cloudflare` kaže aplikaciji da pravu adresu posetioca čita iz
+`CF-Connecting-IP`; bez toga svi posetioci dele jedan limit prijava.
 
 ```bash
 make seed ARGS="-tenant-name 'Moja Firma' -email ja@firma.rs -password lozinka -name 'Ime Prezime'"
@@ -130,8 +133,10 @@ odgovara — zato je ovo privremeno rešenje za test, ne za klijenta.
 
 Za produkciju kod ostaje isti, menja se samo okruženje: Hetzner VPS (CX22),
 Caddy ispred za automatski TLS, systemd servis i Litestream backup baze na
-S3-kompatibilan storage (Cloudflare R2 ili Hetzner Object Storage). Aplikacija
-već čita pravu adresu klijenta i iza Caddy-ja i iza Cloudflare-a.
+S3-kompatibilan storage (Cloudflare R2 ili Hetzner Object Storage). Iza
+Caddy-ja postaviti `TRUSTED_PROXY=caddy` (adresa iz `X-Forwarded-For`);
+`cloudflare` tamo ne sme, jer Caddy propušta `CF-Connecting-IP` koji je
+poslao sam klijent.
 
 ## Struktura
 
@@ -152,6 +157,7 @@ već čita pravu adresu klijenta i iza Caddy-ja i iza Cloudflare-a.
 | `PORT` | `8080` | port web servera |
 | `DB_PATH` | `shengen.db` | putanja do SQLite baze |
 | `DEV_INSECURE_COOKIES` | `false` | `true` samo za lokalni HTTP razvoj |
+| `TRUSTED_PROXY` | `none` | `cloudflare` (tunel), `caddy` ili `none`; odakle se čita adresa klijenta za limit prijava |
 | `PUBLIC_BASE_URL` | — | npr. `https://app.dani90.rs`; uz token se webhook prijavljuje sam |
 | `TELEGRAM_BOT_TOKEN` | — | token jedinog bota, od @BotFather |
 | `TELEGRAM_WEBHOOK_SECRET` | — | obavezan uz token; `openssl rand -hex 32` |

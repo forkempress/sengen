@@ -22,9 +22,11 @@ func (s *Server) handleLoginSubmit(w http.ResponseWriter, r *http.Request) {
 	email := strings.TrimSpace(strings.ToLower(r.FormValue("email")))
 	password := r.FormValue("password")
 
-	limitKey := auth.ClientIP(r) + "|" + email
-	if !s.loginLimiter.Allow(limitKey) {
-		s.renderLoginError(w, r, email, "Previše pokušaja prijave. Pokušajte ponovo za nekoliko minuta.")
+	// Both limits are taken before the password is checked: the IP limit
+	// stops one address spraying a password over many accounts, the account
+	// limit stops many addresses guessing one account.
+	if !s.loginIPLimiter.Take(auth.ClientIP(r, s.TrustedProxy)) || !s.loginAccountLimiter.Take(email) {
+		s.renderLoginError(w, r, email, "Previše pokušaja prijave. Pokušajte ponovo za nekoliko minuta.", http.StatusTooManyRequests)
 		return
 	}
 
@@ -32,8 +34,7 @@ func (s *Server) handleLoginSubmit(w http.ResponseWriter, r *http.Request) {
 	u, err := s.Store.GetUserByEmail(r.Context(), email)
 	if errors.Is(err, store.ErrNotFound) {
 		auth.SpendPasswordCheck(password)
-		s.loginLimiter.RecordFailure(limitKey)
-		s.renderLoginError(w, r, email, "Pogrešan email ili lozinka.")
+		s.renderLoginError(w, r, email, "Pogrešan email ili lozinka.", http.StatusUnauthorized)
 		return
 	}
 	if err != nil {
@@ -42,12 +43,11 @@ func (s *Server) handleLoginSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !auth.VerifyPassword(u.PasswordHash, password) {
-		s.loginLimiter.RecordFailure(limitKey)
-		s.renderLoginError(w, r, email, "Pogrešan email ili lozinka.")
+		s.renderLoginError(w, r, email, "Pogrešan email ili lozinka.", http.StatusUnauthorized)
 		return
 	}
 
-	s.loginLimiter.Reset(limitKey)
+	s.loginAccountLimiter.Reset(email)
 	if err := s.Auth.Login(r.Context(), w, u.TenantID, u.ID); err != nil {
 		http.Error(w, "greška servera", http.StatusInternalServerError)
 		return
@@ -55,10 +55,10 @@ func (s *Server) handleLoginSubmit(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/pregled", http.StatusSeeOther)
 }
 
-func (s *Server) renderLoginError(w http.ResponseWriter, r *http.Request, email, msg string) {
+func (s *Server) renderLoginError(w http.ResponseWriter, r *http.Request, email, msg string, status int) {
 	data := loginPageData{baseData: s.base(r, "login"), Email: email}
 	data.FlashErr = msg
-	w.WriteHeader(http.StatusUnauthorized)
+	w.WriteHeader(status)
 	s.render(w, "login.html", data)
 }
 

@@ -9,12 +9,20 @@ import (
 	"os"
 	"regexp"
 	"strings"
+
+	"shengen/internal/auth"
 )
 
 type Config struct {
 	Port            string // HTTP listen port, e.g. "8080"
 	DBPath          string // path to the SQLite file
 	InsecureCookies bool   // set true only for local http:// dev; omits the Secure cookie flag
+
+	// TrustedProxy names the reverse proxy in front of the app
+	// (TRUSTED_PROXY=cloudflare|caddy|none) and so which header holds the
+	// client address. It must match the deploy: behind Caddy, trusting
+	// CF-Connecting-IP lets anyone bypass the login rate limit.
+	TrustedProxy auth.TrustedProxy
 
 	// PublicBaseURL is where users reach the app, e.g. https://app.dani90.rs.
 	// When set together with the bot token, the Telegram webhook is
@@ -44,6 +52,12 @@ func Load() (Config, error) {
 		TelegramWebhookSecret: strings.TrimSpace(os.Getenv("TELEGRAM_WEBHOOK_SECRET")),
 		TelegramBotUsername:   strings.TrimPrefix(strings.TrimSpace(os.Getenv("TELEGRAM_BOT_USERNAME")), "@"),
 	}
+
+	proxy, err := auth.ParseTrustedProxy(os.Getenv("TRUSTED_PROXY"))
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.TrustedProxy = proxy
 
 	if cfg.TelegramBotToken != "" {
 		if cfg.TelegramWebhookSecret == "" {

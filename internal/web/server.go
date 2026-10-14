@@ -5,6 +5,7 @@ package web
 import (
 	"io/fs"
 	"net/http"
+	"time"
 
 	"shengen/internal/auth"
 	"shengen/internal/store"
@@ -12,20 +13,34 @@ import (
 )
 
 type Server struct {
-	Store        *store.Store
-	Auth         *auth.Service
-	Bot          *telegram.Bot
-	templates    templateSet
-	loginLimiter *auth.LoginLimiter
+	Store *store.Store
+	Auth  *auth.Service
+	Bot   *telegram.Bot
+	// TrustedProxy decides which header carries the client address for the
+	// login rate limit; the zero value trusts none.
+	TrustedProxy auth.TrustedProxy
+
+	templates           templateSet
+	loginIPLimiter      *auth.LoginLimiter
+	loginAccountLimiter *auth.LoginLimiter
 }
+
+// Login limits, per 15 minutes. The IP limit is looser because a firm's
+// dispatchers may share one office address.
+const (
+	loginLimitWindow     = 15 * time.Minute
+	loginLimitPerIP      = 20
+	loginLimitPerAccount = 10
+)
 
 func New(st *store.Store, authSvc *auth.Service, bot *telegram.Bot) *Server {
 	return &Server{
-		Store:        st,
-		Auth:         authSvc,
-		Bot:          bot,
-		templates:    loadTemplates(),
-		loginLimiter: auth.NewLoginLimiter(),
+		Store:               st,
+		Auth:                authSvc,
+		Bot:                 bot,
+		templates:           loadTemplates(),
+		loginIPLimiter:      auth.NewLoginLimiter(loginLimitPerIP, loginLimitWindow),
+		loginAccountLimiter: auth.NewLoginLimiter(loginLimitPerAccount, loginLimitWindow),
 	}
 }
 

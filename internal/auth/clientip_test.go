@@ -96,7 +96,7 @@ func TestClientIP(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := ClientIP(requestFrom(tc.remoteAddr, tc.xff)); got != tc.want {
+			if got := ClientIP(requestFrom(tc.remoteAddr, tc.xff), ProxyCaddy); got != tc.want {
 				t.Errorf("ClientIP() = %q, want %q\n  razlog: %s", got, tc.want, tc.why)
 			}
 		})
@@ -107,8 +107,8 @@ func TestClientIP(t *testing.T) {
 // must land in different rate-limit buckets, and one attacker must not be
 // able to escape their bucket by forging the header.
 func TestClientIP_SeparatesClientsBehindProxy(t *testing.T) {
-	first := ClientIP(requestFrom("127.0.0.1:1111", "203.0.113.7"))
-	second := ClientIP(requestFrom("127.0.0.1:2222", "203.0.113.8"))
+	first := ClientIP(requestFrom("127.0.0.1:1111", "203.0.113.7"), ProxyCaddy)
+	second := ClientIP(requestFrom("127.0.0.1:2222", "203.0.113.8"), ProxyCaddy)
 	if first == second {
 		t.Errorf("two different clients behind the proxy share the key %q", first)
 	}
@@ -121,7 +121,7 @@ func TestClientIP_SeparatesClientsBehindProxy(t *testing.T) {
 	}
 	keys := make(map[string]bool)
 	for _, xff := range forged {
-		keys[ClientIP(requestFrom("127.0.0.1:3333", xff))] = true
+		keys[ClientIP(requestFrom("127.0.0.1:3333", xff), ProxyCaddy)] = true
 	}
 	if len(keys) != 1 {
 		t.Errorf("attacker produced %d distinct rate-limit keys (%v), want 1", len(keys), keys)
@@ -164,12 +164,12 @@ func TestClientIP_Cloudflare(t *testing.T) {
 			why:        "only the loopback proxy is trusted to set it",
 		},
 		{
-			name:       "junk CF header falls through to XFF",
+			name:       "junk CF header does not fall through to XFF",
 			remoteAddr: "127.0.0.1:51234",
 			cfIP:       "not-an-ip",
 			xff:        "203.0.113.7",
-			want:       "203.0.113.7",
-			why:        "malformed value must not become a rate-limit key",
+			want:       "127.0.0.1",
+			why:        "Cloudflare does not promise anything about XFF; a malformed value must not become a rate-limit key",
 		},
 		{
 			name:       "junk CF header and no XFF falls back to peer",
@@ -182,9 +182,40 @@ func TestClientIP_Cloudflare(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := ClientIP(requestWithCF(tc.remoteAddr, tc.cfIP, tc.xff)); got != tc.want {
+			if got := ClientIP(requestWithCF(tc.remoteAddr, tc.cfIP, tc.xff), ProxyCloudflare); got != tc.want {
 				t.Errorf("ClientIP() = %q, want %q\n  razlog: %s", got, tc.want, tc.why)
 			}
 		})
+	}
+}
+
+// SEC-06: Caddy passes the client's CF-Connecting-IP through untouched, so
+// behind Caddy that header is attacker input and must not decide the key.
+func TestClientIP_CaddyIgnoresForgedCFHeader(t *testing.T) {
+	keys := make(map[string]bool)
+	for _, forged := range []string{"1.1.1.1", "2.2.2.2", "3.3.3.3"} {
+		keys[ClientIP(requestWithCF("127.0.0.1:1", forged, "203.0.113.7"), ProxyCaddy)] = true
+	}
+	if len(keys) != 1 || !keys["203.0.113.7"] {
+		t.Errorf("behind Caddy forged CF-Connecting-IP produced keys %v, want only the XFF address", keys)
+	}
+}
+
+// With no proxy configured neither header is trusted, even from loopback.
+func TestClientIP_NoProxyTrustsNoHeader(t *testing.T) {
+	r := requestWithCF("127.0.0.1:1", "1.1.1.1", "2.2.2.2")
+	if got := ClientIP(r, ProxyNone); got != "127.0.0.1" {
+		t.Errorf("ClientIP(none) = %q, want the peer 127.0.0.1", got)
+	}
+}
+
+func TestParseTrustedProxy(t *testing.T) {
+	for in, want := range map[string]TrustedProxy{"": ProxyNone, "none": ProxyNone, "Cloudflare": ProxyCloudflare, " caddy ": ProxyCaddy} {
+		if got, err := ParseTrustedProxy(in); err != nil || got != want {
+			t.Errorf("ParseTrustedProxy(%q) = %q, %v; want %q", in, got, err, want)
+		}
+	}
+	if _, err := ParseTrustedProxy("nginx"); err == nil {
+		t.Error("unknown proxy must be rejected")
 	}
 }

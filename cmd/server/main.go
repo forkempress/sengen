@@ -44,6 +44,8 @@ func main() {
 		Username:      cfg.TelegramBotUsername,
 	})
 	webServer := web.New(st, authSvc, bot)
+	webServer.TrustedProxy = cfg.TrustedProxy
+	log.Printf("trusted proxy: %s", cfg.TrustedProxy)
 
 	go jobs.New(st, bot.Client()).Start(ctx)
 	go registerWebhook(ctx, cfg, bot)
