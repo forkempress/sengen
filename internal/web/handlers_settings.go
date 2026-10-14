@@ -33,7 +33,7 @@ func (s *Server) renderDriversPageFlash(w http.ResponseWriter, r *http.Request, 
 	t, _ := tenant.FromContext(r.Context())
 	drivers, err := s.Store.ListDrivers(r.Context(), t.ID, false)
 	if err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 	data := settingsDriversData{baseData: s.base(r, "vozaci"), Drivers: drivers, Link: link}
@@ -66,14 +66,14 @@ func (s *Server) handleSettingsDriverCreate(w http.ResponseWriter, r *http.Reque
 	}
 	driver, err := s.Store.CreateDriver(r.Context(), t.ID, name, vehicle)
 	if err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 	// The link (and QR) come right away, so the dispatcher can connect the
 	// driver while he is still in the office (UX-08).
 	link, err := s.issueDriverLink(r, t.ID, driver)
 	if err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 	s.renderDriversPageFlash(w, r, link, "Vozač dodat. Povežite ga sa Telegram botom linkom ili QR kodom ispod.")
@@ -83,14 +83,14 @@ func (s *Server) setDriverActive(w http.ResponseWriter, r *http.Request, active 
 	t, _ := tenant.FromContext(r.Context())
 	id, err := pathInt64(r, "id")
 	if err != nil {
-		http.NotFound(w, r)
+		s.notFound(w, r)
 		return
 	}
 	if err := s.Store.SetDriverActive(r.Context(), t.ID, id, active); errors.Is(err, store.ErrNotFound) {
-		http.NotFound(w, r)
+		s.notFound(w, r)
 		return
 	} else if err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 	http.Redirect(w, r, "/podesavanja/vozaci", http.StatusSeeOther)

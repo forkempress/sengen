@@ -76,7 +76,7 @@ func (s *Server) renderUsersPage(w http.ResponseWriter, r *http.Request, data us
 	t, _ := tenant.FromContext(r.Context())
 	users, err := s.Store.ListUsers(r.Context(), t.ID)
 	if err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 	// A validation error from this request wins over a waiting flash.
@@ -110,7 +110,7 @@ func (s *Server) handleUserCreate(w http.ResponseWriter, r *http.Request) {
 
 	hash, err := auth.HashPassword(r.FormValue("password"))
 	if err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 	u, err := s.Store.CreateUser(r.Context(), t.ID, email, hash, role, name)
@@ -122,7 +122,7 @@ func (s *Server) handleUserCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 	s.Store.RecordAudit(r.Context(), t.ID, "user", &actor.ID, "user", u.ID, "create", nil, nil)
@@ -140,16 +140,16 @@ func (s *Server) loadUserOr404(w http.ResponseWriter, r *http.Request) (*store.U
 	t, _ := tenant.FromContext(r.Context())
 	userID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
-		http.NotFound(w, r)
+		s.notFound(w, r)
 		return nil, false
 	}
 	u, err := s.Store.GetUser(r.Context(), t.ID, userID)
 	if errors.Is(err, store.ErrNotFound) {
-		http.NotFound(w, r)
+		s.notFound(w, r)
 		return nil, false
 	}
 	if err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return nil, false
 	}
 	return u, true
@@ -232,9 +232,9 @@ func (s *Server) userChangeFailed(w http.ResponseWriter, r *http.Request, err er
 	case errors.As(err, &verr):
 		s.redirectErr(w, r, usersPath, verr.Msg)
 	case errors.Is(err, store.ErrNotFound):
-		http.NotFound(w, r)
+		s.notFound(w, r)
 	default:
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 	}
 	return true
 }

@@ -1,11 +1,31 @@
 {{define "content"}}
 <h1>Uvoz istorije</h1>
-<p class="muted">CSV fajl sa kolonama: vozač, ulaz (dd.mm.gggg), izlaz (prazno = u toku), tip (posao/privatno), napomena (opciono). Prvi red je zaglavlje. Vozači moraju već postojati u <a href="/podesavanja/vozaci">podešavanjima</a>.</p>
+<p>Uvezite boravke iz Excel-a ili CSV fajla. Ništa se ne upisuje dok ne pregledate redove i potvrdite.</p>
 
-<form method="post" action="/import/preview" enctype="multipart/form-data">
+{{if not .HasFile}}
+<section class="panel">
+  <h2>Kako fajl treba da izgleda <a href="/pomoc#uvoz" class="help-q" aria-label="Pomoć: uvoz istorije">?</a></h2>
+  <ul class="import-rules">
+    <li><strong>vozač</strong> — ime tačno kao na stranici <a href="/podesavanja/vozaci">Vozači</a></li>
+    <li><strong>ulaz</strong> i <strong>izlaz</strong> — datum kao 05.10.2026; prazan izlaz znači da je vozač još u Šengenu</li>
+    <li><strong>tip</strong> — posao ili privatno; <strong>napomena</strong> nije obavezna</li>
+    <li>Prvi red je zaglavlje i preskače se. U Excel-u sačuvajte kao „CSV UTF-8 (zarezom razdvojeno)“.</li>
+  </ul>
+  <div class="table-wrap">
+  <table class="sample-table">
+    {{range $i, $row := .Sample}}<tr>{{range $row}}{{if eq $i 0}}<th>{{.}}</th>{{else}}<td>{{.}}</td>{{end}}{{end}}</tr>
+    {{end}}
+  </table>
+  </div>
+  <p><a href="/import/primer.csv" class="btn" download>Preuzmi primer CSV</a></p>
+</section>
+{{end}}
+
+<form method="post" action="/import/preview" enctype="multipart/form-data" class="panel">
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <h2>Izaberite fajl</h2>
   <div class="form-grid">
-    <div><label>CSV fajl</label><input type="file" name="file" accept=".csv" required></div>
+    <div><label for="import-file">CSV fajl</label><input type="file" id="import-file" name="file" accept=".csv,text/csv" required></div>
   </div>
   <button type="submit" class="btn btn-primary">Prikaži pregled</button>
 </form>
@@ -25,7 +45,7 @@
       <td>{{.Type}}</td>
       <td>
         {{if .Valid}}<span class="badge badge-ok">OK</span>
-        {{else}}{{range .Errors}}<div class="muted" style="color:var(--status-urgent);">{{.}}</div>{{end}}
+        {{else}}{{range .Errors}}<div class="row-error">{{.}}</div>{{end}}
         {{end}}
       </td>
     </tr>

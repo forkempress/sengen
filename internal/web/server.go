@@ -62,6 +62,8 @@ func (s *Server) Routes() http.Handler {
 
 	protected := http.NewServeMux()
 	protected.HandleFunc("GET /{$}", s.handleRoot)
+	// Everything no other route claims gets the branded 404.
+	protected.HandleFunc("/", s.notFound)
 	protected.HandleFunc("GET /pregled", s.handlePregled)
 	protected.HandleFunc("GET /pomoc", s.handleHelp)
 
@@ -93,6 +95,7 @@ func (s *Server) Routes() http.Handler {
 	protected.HandleFunc("POST /podesavanja/lozinka", s.handlePasswordChange)
 
 	protected.HandleFunc("GET /import", s.handleImportPage)
+	protected.HandleFunc("GET /import/primer.csv", s.handleImportSample)
 	protected.HandleFunc("POST /import/preview", s.handleImportPreview)
 	protected.HandleFunc("POST /import/potvrdi", s.handleImportConfirm)
 

@@ -102,6 +102,7 @@ var pages = []string{
 	"podesavanja_lozinka.html",
 	"import.html",
 	"pomoc.html",
+	"greska.html",
 }
 
 func loadTemplates() templateSet {

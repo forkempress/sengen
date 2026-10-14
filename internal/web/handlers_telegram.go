@@ -85,7 +85,7 @@ func (s *Server) handleAlertGroup(w http.ResponseWriter, r *http.Request) {
 		settings.TelegramAlertChatID = 0
 	}
 	if err := s.Store.UpdateTenantSettings(r.Context(), t.ID, settings); err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 	s.redirectOk(w, r, "/podesavanja/telegram", msg)
@@ -111,7 +111,7 @@ func (s *Server) handleThresholds(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.Store.UpdateTenantSettings(r.Context(), t.ID, settings); err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 	s.redirectOk(w, r, "/podesavanja/telegram", "Pragovi sačuvani.")
@@ -123,11 +123,11 @@ func (s *Server) handleTelegramLinkSelf(w http.ResponseWriter, r *http.Request) 
 
 	token, err := idgen.RandomToken(24)
 	if err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 	if err := s.Store.CreateUserLinkToken(r.Context(), token, t.ID, u.ID, 48*time.Hour); err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 	s.renderTelegramSettings(w, r, s.newTelegramLink(u.Name, token))
@@ -140,7 +140,7 @@ func (s *Server) handleDriverTelegramLink(w http.ResponseWriter, r *http.Request
 	}
 	link, err := s.issueDriverLink(r, tenantID, driver)
 	if err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 	s.renderDriversPage(w, r, link)
@@ -175,7 +175,7 @@ func (s *Server) handleAlertsToMe(w http.ResponseWriter, r *http.Request) {
 	settings, _ := t.ParsedSettings()
 	settings.TelegramAlertChatID = *u.TelegramChatID
 	if err := s.Store.UpdateTenantSettings(r.Context(), t.ID, settings); err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 

@@ -38,7 +38,7 @@ func (s *Server) handleLoginSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 
@@ -54,7 +54,7 @@ func (s *Server) handleLoginSubmit(w http.ResponseWriter, r *http.Request) {
 
 	s.loginAccountLimiter.Reset(email)
 	if _, err := s.Auth.Login(r.Context(), w, u.TenantID, u.ID); err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 	http.Redirect(w, r, "/pregled", http.StatusSeeOther)

@@ -44,3 +44,27 @@ document.addEventListener('submit', function (e) {
     e.preventDefault();
   }
 });
+
+// Dugme za slanje pokazuje „Čuvam…“ i ne može se kliknuti dvaput (UX-35).
+// Registruje se posle potvrde iznad, pa forma koju je korisnik otkazao
+// ostaje netaknuta.
+document.addEventListener('submit', function (e) {
+  var form = e.target;
+  if (e.defaultPrevented || !form.matches || form.method.toLowerCase() !== 'post') return;
+  var btn = e.submitter || form.querySelector('button[type="submit"], button:not([type])');
+  if (!btn || btn.disabled) return;
+  btn.dataset.label = btn.textContent;
+  btn.textContent = btn.getAttribute('data-busy') || 'Čuvam…';
+  btn.setAttribute('aria-busy', 'true');
+  // Isključuje se tek posle slanja: isključeno dugme ne bi poslalo formu.
+  setTimeout(function () { btn.disabled = true; }, 0);
+});
+
+// Povratak dugmetom „nazad“ vraća stranicu iz keša sa dugmetom „Čuvam…“.
+window.addEventListener('pageshow', function () {
+  document.querySelectorAll('button[aria-busy="true"]').forEach(function (b) {
+    b.disabled = false;
+    b.removeAttribute('aria-busy');
+    if (b.dataset.label) b.textContent = b.dataset.label;
+  });
+});

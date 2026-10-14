@@ -110,12 +110,12 @@ func (s *Server) handlePregled(w http.ResponseWriter, r *http.Request) {
 
 	drivers, err := s.Store.ListDrivers(r.Context(), t.ID, true)
 	if err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 	allStays, err := s.Store.ListStaysForTenant(r.Context(), t.ID)
 	if err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 

@@ -43,16 +43,16 @@ func (s *Server) loadDriverOr404(w http.ResponseWriter, r *http.Request) (*store
 	t, _ := tenant.FromContext(r.Context())
 	id, err := pathInt64(r, "id")
 	if err != nil {
-		http.NotFound(w, r)
+		s.notFound(w, r)
 		return nil, 0, false
 	}
 	driver, err := s.Store.GetDriver(r.Context(), t.ID, id)
 	if errors.Is(err, store.ErrNotFound) {
-		http.NotFound(w, r)
+		s.notFound(w, r)
 		return nil, 0, false
 	}
 	if err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return nil, 0, false
 	}
 	return driver, t.ID, true
@@ -65,7 +65,7 @@ func (s *Server) handleDriverDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	stays, err := s.Store.ListStaysByDriver(r.Context(), tenantID, driver.ID)
 	if err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 	today := clock.Today()
@@ -134,7 +134,7 @@ func (s *Server) handleDriverReturned(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 	s.Store.RecordAudit(r.Context(), tenantID, "user", &u.ID, "stay", closed.ID, "close", nil, nil)
@@ -192,7 +192,7 @@ func (s *Server) handleStayCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 	s.Store.RecordAudit(r.Context(), tenantID, "user", &u.ID, "stay", st.ID, "create", nil, nil)
@@ -206,7 +206,7 @@ func (s *Server) handleStayUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	stayID, err := pathInt64(r, "stay_id")
 	if err != nil {
-		http.NotFound(w, r)
+		s.notFound(w, r)
 		return
 	}
 	u, _ := auth.UserFromContext(r.Context())
@@ -224,11 +224,11 @@ func (s *Server) handleStayUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if errors.Is(err, store.ErrNotFound) {
-		http.NotFound(w, r)
+		s.notFound(w, r)
 		return
 	}
 	if err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 	s.Store.RecordAudit(r.Context(), tenantID, "user", &u.ID, "stay", stayID, "update", nil, nil)
@@ -242,13 +242,13 @@ func (s *Server) handleStayDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	stayID, err := pathInt64(r, "stay_id")
 	if err != nil {
-		http.NotFound(w, r)
+		s.notFound(w, r)
 		return
 	}
 	u, _ := auth.UserFromContext(r.Context())
 
 	if err := s.Store.DeleteStay(r.Context(), tenantID, stayID); err != nil && !errors.Is(err, store.ErrNotFound) {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 	s.Store.RecordAudit(r.Context(), tenantID, "user", &u.ID, "stay", stayID, "delete", nil, nil)

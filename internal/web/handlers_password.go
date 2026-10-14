@@ -60,11 +60,11 @@ func (s *Server) handlePasswordChange(w http.ResponseWriter, r *http.Request) {
 	}
 	hash, err := auth.HashPassword(newPassword)
 	if err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 	if err := s.Store.SetUserPassword(r.Context(), t.ID, u.ID, hash); err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 	s.auditUser(r, t.ID, u.ID, u.ID, "password_change", nil,
@@ -72,7 +72,7 @@ func (s *Server) handlePasswordChange(w http.ResponseWriter, r *http.Request) {
 
 	token, err := s.Auth.Login(r.Context(), w, t.ID, u.ID)
 	if err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 	msg := "Lozinka je promenjena. Odjavljeni ste sa svih drugih uređaja."
@@ -80,7 +80,7 @@ func (s *Server) handlePasswordChange(w http.ResponseWriter, r *http.Request) {
 		msg += " Telegram je otkačen; povežite ga ponovo u podešavanjima."
 	}
 	if err := s.Store.SetSessionFlash(r.Context(), token, msg, ""); err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 	http.Redirect(w, r, "/pregled", http.StatusSeeOther)

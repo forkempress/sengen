@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"shengen/internal/auth"
+	"shengen/internal/clock"
 	"shengen/internal/importer"
 	"shengen/internal/store"
 	"shengen/internal/tenant"
@@ -16,10 +17,12 @@ type importPageData struct {
 	Rows      []importer.Row
 	ValidRows []importer.Row
 	HasFile   bool
+	// Sample is the example file, shown as a table above the upload.
+	Sample [][]string
 }
 
 func (s *Server) handleImportPage(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "import.html", importPageData{baseData: s.base(r, "import")})
+	s.render(w, "import.html", importPageData{baseData: s.base(r, "import"), Sample: sampleCSV(s.sampleNames(r), clock.Today())})
 }
 
 func (s *Server) loadExistingDriversForImport(r *http.Request, tenantID int64) ([]importer.ExistingDriver, error) {
@@ -56,7 +59,7 @@ func (s *Server) handleImportPreview(w http.ResponseWriter, r *http.Request) {
 
 	existing, err := s.loadExistingDriversForImport(r, t.ID)
 	if err != nil {
-		http.Error(w, "greška servera", http.StatusInternalServerError)
+		s.serverError(w, r)
 		return
 	}
 

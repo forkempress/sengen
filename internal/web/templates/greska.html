@@ -1,0 +1,12 @@
+{{define "content"}}
+<section class="error-page">
+  <p class="error-code num" aria-hidden="true">{{.Code}}</p>
+  <h1>{{.Title}}</h1>
+  <p>{{.Message}}</p>
+  <div class="actions-row">
+    {{if .User}}<a href="/pregled" class="btn btn-primary">Na pregled</a>
+    <a href="/pomoc" class="btn">Pomoć</a>
+    {{else}}<a href="/login" class="btn btn-primary">Na prijavu</a>{{end}}
+  </div>
+</section>
+{{end}}
