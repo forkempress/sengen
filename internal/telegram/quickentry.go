@@ -59,38 +59,64 @@ func ParseQuickEntry(text string, today time.Time) (driverName string, ranges []
 	return driverName, ranges, nil
 }
 
+// splitDate reads dd.mm[.yy|.yyyy] into its parts. A trailing dot
+// ("25.10.") counts as no year, the way people often write it; hasYear
+// reports whether a year was given.
+func splitDate(s string) (day, month, year int, hasYear bool, err error) {
+	parts := strings.Split(s, ".")
+	if len(parts) == 3 && parts[2] == "" {
+		parts = parts[:2]
+	}
+	if len(parts) < 2 || len(parts) > 3 {
+		return 0, 0, 0, false, fmt.Errorf("datum %q nije u obliku dd.mm ili dd.mm.gggg", s)
+	}
+	day, err = strconv.Atoi(parts[0])
+	if err != nil || day < 1 || day > 31 {
+		return 0, 0, 0, false, fmt.Errorf("neispravan dan u %q", s)
+	}
+	month, err = strconv.Atoi(parts[1])
+	if err != nil || month < 1 || month > 12 {
+		return 0, 0, 0, false, fmt.Errorf("neispravan mesec u %q", s)
+	}
+	if len(parts) == 2 {
+		return day, month, 0, false, nil
+	}
+	year, err = strconv.Atoi(parts[2])
+	if err != nil {
+		return 0, 0, 0, false, fmt.Errorf("neispravna godina u %q", s)
+	}
+	if len(parts[2]) == 2 {
+		year += 2000
+	}
+	return day, month, year, true, nil
+}
+
+// makeDate builds the date, refusing days the month doesn't have (31.04,
+// 30.02) instead of letting time.Date roll them into the next month.
+func makeDate(year, month, day int, s string) (time.Time, error) {
+	t := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
+	if t.Day() != day {
+		return time.Time{}, fmt.Errorf("datum %q ne postoji", s)
+	}
+	return t, nil
+}
+
 // parseQuickDate accepts dd.mm, dd.mm.yy, and dd.mm.yyyy. When the year is
 // omitted, it picks the most recent year (starting from today's) for which
 // the resulting date is not after today.
 func parseQuickDate(s string, today time.Time) (time.Time, error) {
-	parts := strings.Split(s, ".")
-	day, err := strconv.Atoi(parts[0])
-	if err != nil || day < 1 || day > 31 {
-		return time.Time{}, fmt.Errorf("neispravan dan u %q", s)
-	}
-	month, err := strconv.Atoi(parts[1])
-	if err != nil || month < 1 || month > 12 {
-		return time.Time{}, fmt.Errorf("neispravan mesec u %q", s)
-	}
-
-	if len(parts) == 2 {
-		year := today.Year()
-		t := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
-		if t.After(today) {
-			t = t.AddDate(-1, 0, 0)
-		}
-		return t, nil
-	}
-
-	yearStr := parts[2]
-	year, err := strconv.Atoi(yearStr)
+	day, month, year, hasYear, err := splitDate(s)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("neispravna godina u %q", s)
+		return time.Time{}, err
 	}
-	if len(yearStr) == 2 {
-		year += 2000
+	if hasYear {
+		return makeDate(year, month, day, s)
 	}
-	return time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC), nil
+	year = today.Year()
+	if time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC).After(today) {
+		year--
+	}
+	return makeDate(year, month, day, s)
 }
 
 // resolveFutureDate parses dd.mm[.yyyy] for forward-looking contexts (the
@@ -99,28 +125,16 @@ func parseQuickDate(s string, today time.Time) (time.Time, error) {
 // year — the mirror image of parseQuickDate's backward-looking rule for
 // logging past stays.
 func resolveFutureDate(s string, today time.Time) (time.Time, error) {
-	parts := strings.Split(s, ".")
-	day, err := strconv.Atoi(parts[0])
-	if err != nil || day < 1 || day > 31 {
-		return time.Time{}, fmt.Errorf("neispravan dan u %q", s)
+	day, month, year, hasYear, err := splitDate(s)
+	if err != nil {
+		return time.Time{}, err
 	}
-	month, err := strconv.Atoi(parts[1])
-	if err != nil || month < 1 || month > 12 {
-		return time.Time{}, fmt.Errorf("neispravan mesec u %q", s)
+	if hasYear {
+		return makeDate(year, month, day, s)
 	}
-	if len(parts) >= 3 {
-		year, err := strconv.Atoi(parts[2])
-		if err != nil {
-			return time.Time{}, fmt.Errorf("neispravna godina u %q", s)
-		}
-		if len(parts[2]) == 2 {
-			year += 2000
-		}
-		return time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC), nil
+	year = today.Year()
+	if time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC).Before(today) {
+		year++
 	}
-	t := time.Date(today.Year(), time.Month(month), day, 0, 0, 0, 0, time.UTC)
-	if t.Before(today) {
-		t = t.AddDate(1, 0, 0)
-	}
-	return t, nil
+	return makeDate(year, month, day, s)
 }

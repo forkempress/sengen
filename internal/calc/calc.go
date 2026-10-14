@@ -237,7 +237,7 @@ type FreeUpEvent struct {
 // MaxContinuousUntil answers instead).
 func FreeUpSchedule(stays []Stay, today time.Time, horizon int) []FreeUpEvent {
 	today = normalize(today)
-	closed := closeOpenAt(stays, today)
+	closed := CloseOpenAt(stays, today)
 	var events []FreeUpEvent
 	prevRemaining := Remaining(closed, today)
 	for i := 1; i <= horizon; i++ {
@@ -251,9 +251,9 @@ func FreeUpSchedule(stays []Stay, today time.Time, horizon int) []FreeUpEvent {
 	return events
 }
 
-// closeOpenAt returns a copy of stays with any open stay (Exit == nil) closed on `today`,
+// CloseOpenAt returns a copy of stays with any open stay (Exit == nil) closed on `today`,
 // so that future-dated evaluations don't implicitly keep extending it.
-func closeOpenAt(stays []Stay, today time.Time) []Stay {
+func CloseOpenAt(stays []Stay, today time.Time) []Stay {
 	out := make([]Stay, len(stays))
 	for i, s := range stays {
 		if s.Exit == nil {
