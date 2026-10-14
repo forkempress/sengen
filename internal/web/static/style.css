@@ -362,3 +362,9 @@ footer.app-footer {
   header.app-header { flex-direction: column; align-items: flex-start; }
   .cards-row { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* Provera ture (stranica vozača) */
+.plan-form { margin-bottom: 1rem; }
+.plan-form .form-grid { max-width: 420px; }
+.plan-result { margin-bottom: 1.5rem; }
+.plan-result p { margin: 0.3rem 0; }

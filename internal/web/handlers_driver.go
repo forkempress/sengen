@@ -2,12 +2,15 @@ package web
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"shengen/internal/auth"
+	"shengen/internal/calc"
 	"shengen/internal/clock"
 	"shengen/internal/status"
 	"shengen/internal/store"
@@ -24,6 +27,13 @@ type driverDetailData struct {
 	Status status.DriverStatus
 	Months []MonthGrid
 	Stays  []store.Stay // most recent first
+
+	// "Provera ture": the form's values as entered, and either a result or
+	// an error message once the form has been submitted.
+	PlanStart string
+	PlanDays  string
+	Plan      *status.TripPlan
+	PlanErr   string
 }
 
 func (s *Server) loadDriverOr404(w http.ResponseWriter, r *http.Request) (*store.Driver, int64, bool) {
@@ -75,6 +85,10 @@ func (s *Server) handleDriverDetail(w http.ResponseWriter, r *http.Request) {
 		Months:   months,
 		Stays:    reversed,
 	}
+	data.PlanStart, data.PlanDays = r.URL.Query().Get("polazak"), r.URL.Query().Get("dana")
+	if data.PlanStart != "" || data.PlanDays != "" {
+		data.Plan, data.PlanErr = planFromForm(stays, today, data.PlanStart, data.PlanDays)
+	}
 	if msg := r.URL.Query().Get("ok"); msg != "" {
 		data.Flash = msg
 	}
@@ -82,6 +96,24 @@ func (s *Server) handleDriverDetail(w http.ResponseWriter, r *http.Request) {
 		data.FlashErr = msg
 	}
 	s.render(w, "vozac_detalj.html", data)
+}
+
+// planFromForm validates the "Provera ture" form (a GET, so the result can
+// be bookmarked or sent to a colleague) and evaluates the trip.
+func planFromForm(stays []store.Stay, today time.Time, startStr, daysStr string) (*status.TripPlan, string) {
+	start, err := time.Parse("2006-01-02", startStr)
+	if err != nil {
+		return nil, "Izaberite datum polaska."
+	}
+	if start.Before(today) {
+		return nil, "Polazak ne može biti u prošlosti."
+	}
+	days, err := strconv.Atoi(strings.TrimSpace(daysStr))
+	if err != nil || days < 1 || days > calc.MaxDays {
+		return nil, fmt.Sprintf("Trajanje upišite kao broj dana, od 1 do %d.", calc.MaxDays)
+	}
+	p := status.PlanTrip(stays, today, start, days)
+	return &p, ""
 }
 
 func (s *Server) handleDriverReturned(w http.ResponseWriter, r *http.Request) {

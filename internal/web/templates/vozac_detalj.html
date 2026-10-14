@@ -28,7 +28,34 @@
   </form>
   {{end}}
   <a href="#dodaj-boravak" class="btn">Dodaj boravak</a>
+  <a href="#provera-ture" class="btn">Provera ture</a>
 </div>
+
+<h2 id="provera-ture">Provera ture</h2>
+<form method="get" action="/vozaci/{{.Driver.ID}}#provera-ture" class="plan-form">
+  <div class="form-grid">
+    <div><label for="plan-start">Polazak</label><input id="plan-start" type="date" name="polazak" value="{{.PlanStart}}" required></div>
+    <div><label for="plan-days">Trajanje (dana)</label><input id="plan-days" type="number" name="dana" min="1" max="90" inputmode="numeric" value="{{.PlanDays}}" required></div>
+  </div>
+  <button type="submit" class="btn btn-primary">Proveri</button>
+</form>
+{{if .PlanErr}}
+  <div class="flash flash-err">{{.PlanErr}}</div>
+{{else if .Plan}}{{with .Plan}}
+  {{if .StartsWhileAway}}
+  <div class="flash flash-err">Vozač je trenutno u Šengenu — nova tura može početi tek kad se vrati.{{if .MaxContinuousUntil}} U ovom boravku sme da ostane do <strong>{{fmtDate (deref .MaxContinuousUntil)}}</strong>.{{end}}</div>
+  {{else}}
+  <div class="plan-result">
+    {{if .OK}}
+    <div class="flash flash-ok"><strong>Može.</strong> Tura od {{fmtDate .Start}}, {{.Length}} dana — najviše iskorišćeno tokom ture: {{.PeakUsed}}/90.</div>
+    {{else}}
+    <div class="flash flash-err"><strong>Ne može.</strong> Tura od {{fmtDate .Start}}, {{.Length}} dana prelazi limit {{fmtDate .FirstOverstay}}.{{if not .EarliestStart.IsZero}} Najraniji polazak za {{.Length}} dana: <strong>{{fmtDate .EarliestStart}}</strong>.{{end}}</div>
+    {{end}}
+    <p>Najduža moguća tura sa polaskom {{fmtDate .Start}}: <strong>{{.MaxLength}} dana</strong>.</p>
+    {{if .InSchengen}}<p class="muted">Vozač je sada u Šengenu — računato je kao da se vraća danas. Svaki dan kasnijeg povratka skraćuje ovu turu.</p>{{end}}
+  </div>
+  {{end}}
+{{end}}{{end}}
 
 <h2>Kalendar</h2>
 <div class="legend">

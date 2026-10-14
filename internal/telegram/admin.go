@@ -156,44 +156,28 @@ func (b *Bot) cmdPlaner(ctx context.Context, client *Client, t *store.Tenant, ch
 		client.SendMessage(ctx, chatID, "Greška pri učitavanju.", nil)
 		return
 	}
-	cstays := status.ToCalcStays(stays)
+	p := status.PlanTrip(stays, today, start, length)
 
-	// A driver who is in Schengen now must come back before a new trip can
-	// start. Left open, his current stay would run on through the planned
-	// trip and every day of it would be counted twice. We don't know when he
-	// returns, so the plan assumes today and says so.
-	inSchengen := false
-	for _, s := range cstays {
-		if s.Exit == nil {
-			inSchengen = true
+	if p.StartsWhileAway {
+		msg := driver.Name + " je trenutno u Šengenu — nova tura može početi tek kad se vrati."
+		if p.MaxContinuousUntil != nil {
+			msg += fmt.Sprintf(" U ovom boravku sme da ostane do %s.", p.MaxContinuousUntil.Format("02.01.2006"))
 		}
+		client.SendMessage(ctx, chatID, msg, nil)
+		return
 	}
-	if inSchengen {
-		if !start.After(today) {
-			msg := driver.Name + " je trenutno u Šengenu — nova tura može početi tek kad se vrati."
-			if until, ok := calc.MaxContinuousUntil(cstays, today); ok && !until.Before(today) {
-				msg += fmt.Sprintf(" U ovom boravku sme da ostane do %s.", until.Format("02.01.2006"))
-			}
-			client.SendMessage(ctx, chatID, msg, nil)
-			return
-		}
-		cstays = calc.CloseOpenAt(cstays, today)
-	}
-
-	ok, peak, overstay := calc.CanDoTrip(cstays, start, length)
-	maxLen := calc.MaxTripLength(cstays, start)
 
 	var b2 strings.Builder
-	if ok {
-		fmt.Fprintf(&b2, "%s MOŽE na turu %s, %d dana (najviše iskorišćeno: %d/90).\n", driver.Name, start.Format("02.01.2006"), length, peak)
+	if p.OK {
+		fmt.Fprintf(&b2, "%s MOŽE na turu %s, %d dana (najviše iskorišćeno: %d/90).\n", driver.Name, start.Format("02.01.2006"), length, p.PeakUsed)
 	} else {
-		fmt.Fprintf(&b2, "%s NE MOŽE na turu %s, %d dana — prekoračenje od %s.\n", driver.Name, start.Format("02.01.2006"), length, overstay.Format("02.01.2006"))
-		if earliest := calc.EarliestStart(cstays, length, start); !earliest.IsZero() {
-			fmt.Fprintf(&b2, "Najraniji polazak za %d dana: %s.\n", length, earliest.Format("02.01.2006"))
+		fmt.Fprintf(&b2, "%s NE MOŽE na turu %s, %d dana — prekoračenje od %s.\n", driver.Name, start.Format("02.01.2006"), length, p.FirstOverstay.Format("02.01.2006"))
+		if !p.EarliestStart.IsZero() {
+			fmt.Fprintf(&b2, "Najraniji polazak za %d dana: %s.\n", length, p.EarliestStart.Format("02.01.2006"))
 		}
 	}
-	fmt.Fprintf(&b2, "Najduža moguća tura od %s: %d dana.", start.Format("02.01.2006"), maxLen)
-	if inSchengen {
+	fmt.Fprintf(&b2, "Najduža moguća tura od %s: %d dana.", start.Format("02.01.2006"), p.MaxLength)
+	if p.InSchengen {
 		b2.WriteString("\nVozač je sada u Šengenu — računato je kao da se vraća danas. Svaki dan kasnijeg povratka skraćuje ovu turu.")
 	}
 	client.SendMessage(ctx, chatID, b2.String(), nil)
