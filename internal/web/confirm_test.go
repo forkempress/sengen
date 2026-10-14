@@ -36,7 +36,7 @@ func TestDestructiveFormsAskForConfirmation(t *testing.T) {
 		if !found {
 			t.Errorf("%s: no form posting to %s", tc.page, tc.action)
 		}
-		if !strings.Contains(body, `<script src="/static/app.js"`) {
+		if !strings.Contains(body, `<script src="/static/app.js?v=`) {
 			t.Errorf("%s does not load app.js", tc.page)
 		}
 	}

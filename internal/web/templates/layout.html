@@ -6,10 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Dani90 — Evidencija 90/180</title>
   <meta name="htmx-config" content='{"includeIndicatorStyles":false}'>
-  <link rel="stylesheet" href="/static/fonts.css">
-  <link rel="stylesheet" href="/static/style.css">
-  <script src="/static/htmx-1.9.12.min.js" defer></script>
-  <script src="/static/app.js" defer></script>
+  <link rel="stylesheet" href="{{asset "fonts.css"}}">
+  <link rel="stylesheet" href="{{asset "style.css"}}">
+  <script src="{{asset "htmx-1.9.12.min.js"}}" defer></script>
+  <script src="{{asset "app.js"}}" defer></script>
 </head>
 <body>
   {{if .User}}

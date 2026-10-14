@@ -3,7 +3,6 @@
 package web
 
 import (
-	"io/fs"
 	"net/http"
 	"time"
 
@@ -54,11 +53,7 @@ func (s *Server) Routes() http.Handler {
 	mux.Handle("POST /login", http.NewCrossOriginProtection().Handler(http.HandlerFunc(s.handleLoginSubmit)))
 	mux.HandleFunc("POST /logout", s.handleLogout)
 	mux.HandleFunc("POST /telegram/webhook", s.Bot.HandleWebhook)
-	staticSub, err := fs.Sub(staticFS, "static")
-	if err != nil {
-		panic(err) // embedded at build time; a failure here means the binary is broken
-	}
-	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServerFS(staticSub)))
+	mux.Handle("GET /static/", staticHandler())
 
 	protected := http.NewServeMux()
 	protected.HandleFunc("GET /{$}", s.handleRoot)
