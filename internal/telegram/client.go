@@ -6,16 +6,17 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
-// Client talks to the Bot API for one tenant's bot (each tenant runs its own
-// @BotFather bot, so a Client is constructed per-request from that tenant's
-// stored token — see internal/store.TenantSettings).
+// Client talks to the Bot API for the one bot shared by every firm; its token
+// comes from the environment (see internal/config).
 type Client struct {
 	BaseURL string // overridable in tests to point at a fake server
 	Token   string
@@ -39,7 +40,23 @@ type apiResponse struct {
 	Result      json.RawMessage `json:"result,omitempty"`
 }
 
+// call performs an API request. Every error leaving the client goes through
+// scrub: a failed HTTP request's error embeds the full request URL, and the
+// Bot API puts the bot token in that URL — without scrubbing, the token would
+// end up in logs and on screen.
 func (c *Client) call(ctx context.Context, method string, payload any, out any) error {
+	return c.scrub(c.doCall(ctx, method, payload, out))
+}
+
+// scrub removes the bot token from an error message.
+func (c *Client) scrub(err error) error {
+	if err == nil || c.Token == "" || !strings.Contains(err.Error(), c.Token) {
+		return err
+	}
+	return errors.New(strings.ReplaceAll(err.Error(), c.Token, "<token>"))
+}
+
+func (c *Client) doCall(ctx context.Context, method string, payload any, out any) error {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("marshal %s payload: %w", method, err)
@@ -104,6 +121,11 @@ type tgFile struct {
 // DownloadDocument resolves a file_id to its bytes via getFile + the file
 // download endpoint — used for the admin CSV upload.
 func (c *Client) DownloadDocument(ctx context.Context, fileID string) ([]byte, error) {
+	data, err := c.downloadDocument(ctx, fileID)
+	return data, c.scrub(err)
+}
+
+func (c *Client) downloadDocument(ctx context.Context, fileID string) ([]byte, error) {
 	var f tgFile
 	if err := c.call(ctx, "getFile", map[string]any{"file_id": fileID}, &f); err != nil {
 		return nil, err
