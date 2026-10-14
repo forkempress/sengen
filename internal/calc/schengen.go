@@ -42,6 +42,18 @@ var SchengenCountries = map[string]string{
 // (AL), Kosovo (XK), Turkey (TR), United Kingdom (GB) — these are EU or
 // Balkan neighbors but do not count toward the 90/180 rule.
 func IsSchengen(countryCode string) bool {
-	_, ok := SchengenCountries[countryCode]
+	if _, ok := SchengenCountries[countryCode]; ok {
+		return true
+	}
+	_, ok := deFactoSchengen[countryCode]
 	return ok
+}
+
+// deFactoSchengen are microstates with no border control towards their
+// Schengen neighbours: they are not members, but a day spent there is a day
+// inside the zone. Andorra is left out — it keeps controls with ES and FR.
+var deFactoSchengen = map[string]string{
+	"MC": "Monako",
+	"SM": "San Marino",
+	"VA": "Vatikan",
 }

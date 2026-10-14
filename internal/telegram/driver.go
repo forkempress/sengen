@@ -43,16 +43,44 @@ func (b *Bot) driverExited(ctx context.Context, client *Client, t *store.Tenant,
 	}
 
 	today := clock.Today()
+	stays, err := b.Store.ListStaysByDriver(ctx, t.ID, driver.ID)
+	if err != nil {
+		client.SendMessage(ctx, chatID, "Greška pri evidentiranju, pokušajte ponovo ili se javite dispečeru.", nil)
+		return
+	}
+	// Back into Schengen on the same date he left it: today is already a
+	// Schengen day, so continue that stay instead of opening a new one that
+	// would overlap it on today's date.
+	if n := len(stays); n > 0 && stays[n-1].Exit != nil && stays[n-1].Exit.Equal(today) {
+		last := stays[n-1]
+		if err := b.Store.UpdateStay(ctx, t.ID, last.ID, last.Entry, nil, last.Type, last.Note); err != nil {
+			client.SendMessage(ctx, chatID, "Greška pri evidentiranju, pokušajte ponovo ili se javite dispečeru.", nil)
+			return
+		}
+		b.Store.RecordAudit(ctx, t.ID, "telegram_driver", &driver.ID, "stay", last.ID, "reopen", nil, nil)
+		b.replyExited(ctx, client, t, chatID, driver, today,
+			fmt.Sprintf("Zabeleženo: ponovo u Šengenu od danas, nastavak boravka od %s.", last.Entry.Format("02.01.2006")),
+			undoCallback(last.ID, "reopen"))
+		return
+	}
+
 	st, err := b.Store.CreateStay(ctx, t.ID, driver.ID, today, nil, "work", "telegram_button", "", nil)
 	if err != nil {
 		client.SendMessage(ctx, chatID, "Greška pri evidentiranju, pokušajte ponovo ili se javite dispečeru.", nil)
 		return
 	}
 	b.Store.RecordAudit(ctx, t.ID, "telegram_driver", &driver.ID, "stay", st.ID, "create", nil, nil)
+	b.replyExited(ctx, client, t, chatID, driver, today,
+		fmt.Sprintf("Zabeleženo: izlazak iz Srbije %s.", today.Format("02.01.2006")),
+		undoCallback(st.ID, "create"))
+}
+
+// replyExited confirms an entry into Schengen with how long the driver may
+// stay, or a warning when he has no days left.
+func (b *Bot) replyExited(ctx context.Context, client *Client, t *store.Tenant, chatID int64, driver *store.Driver, today time.Time, msg, undo string) {
 
 	stays, _ := b.Store.ListStaysByDriver(ctx, t.ID, driver.ID)
 	ds := status.Compute(*driver, stays, today)
-	msg := fmt.Sprintf("Zabeleženo: izlazak iz Srbije %s.", today.Format("02.01.2006"))
 	switch {
 	case ds.OverBy > 0:
 		// Entering with the allowance already used up: never phrase this
@@ -61,7 +89,7 @@ func (b *Bot) driverExited(ctx context.Context, client *Client, t *store.Tenant,
 	case ds.MaxContinuousUntil != nil:
 		msg += fmt.Sprintf(" Možeš ostati najduže do %s.", ds.MaxContinuousUntil.Format("02.01.2006"))
 	}
-	client.SendMessage(ctx, chatID, msg, InlineKeyboard(InlineRow(InlineButton("Poništi", undoCallback(st.ID, "create")))))
+	client.SendMessage(ctx, chatID, msg, InlineKeyboard(InlineRow(InlineButton("Poništi", undo))))
 }
 
 func (b *Bot) driverReturned(ctx context.Context, client *Client, t *store.Tenant, chatID int64, driver *store.Driver) {
@@ -170,7 +198,7 @@ func (b *Bot) handleUndo(ctx context.Context, client *Client, t *store.Tenant, c
 	switch kind {
 	case "create":
 		elapsed = time.Since(st.CreatedAt)
-	case "close":
+	case "close", "reopen":
 		elapsed = time.Since(st.UpdatedAt)
 	}
 	if elapsed > undoWindow {

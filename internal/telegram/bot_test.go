@@ -519,3 +519,34 @@ func TestStart_DriverWelcomeIncludesHelp(t *testing.T) {
 		t.Fatalf("welcome = %v, want it to contain the driver help", texts)
 	}
 }
+
+// A driver who leaves Schengen and comes back on the same calendar date
+// (Neum corridor, a quick turnaround at the border) presses "Vratio se" and
+// then "Izašao" again on the same day. The second press must be recorded,
+// not rejected as an overlap with the stay that just closed today.
+func TestDriverExited_AgainOnTheDayHeReturned(t *testing.T) {
+	fake := newFakeTelegram(t)
+	bot, tn := newTestBot(t)
+	ctx := context.Background()
+
+	driver, err := bot.Store.CreateDriver(ctx, tn.ID, "Marko", "")
+	if err != nil {
+		t.Fatalf("create driver: %v", err)
+	}
+	today := clock.Today()
+	if _, err := bot.Store.CreateStay(ctx, tn.ID, driver.ID, today.AddDate(0, 0, -5), nil, "work", "telegram_button", "", nil); err != nil {
+		t.Fatalf("seed open stay: %v", err)
+	}
+
+	bot.driverReturned(ctx, fake.client(), tn, 555, driver)
+	bot.driverExited(ctx, fake.client(), tn, 555, driver)
+
+	if _, err := bot.Store.OpenStayForDriver(ctx, tn.ID, driver.ID); err != nil {
+		texts := fake.texts()
+		t.Fatalf("no open stay after re-entering the same day; last reply: %q", texts[len(texts)-1])
+	}
+	stays, _ := bot.Store.ListStaysByDriver(ctx, tn.ID, driver.ID)
+	if got := status.Compute(*driver, stays, today).UsedDays; got != 6 {
+		t.Errorf("UsedDays = %d, want 6 (today counted once)", got)
+	}
+}

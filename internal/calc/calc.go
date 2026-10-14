@@ -73,13 +73,35 @@ func overlapDays(s Stay, today, winStart, winEnd time.Time) int {
 func UsedDays(stays []Stay, d time.Time) int {
 	d = normalize(d)
 	winStart := addDays(d, -(WindowDays - 1))
-	total := 0
+	// A day is in Schengen or it isn't: stays that touch or overlap (two
+	// crossings on one date, an import on top of button presses) must not
+	// count a shared date twice, so mark days instead of summing lengths.
+	var inWindow [WindowDays]bool
 	for _, s := range stays {
 		// A stay that starts after d cannot contribute (defensive; callers should not pass such data).
 		if normalize(s.Entry).After(d) {
 			continue
 		}
-		total += overlapDays(s, d, winStart, d)
+		if overlapDays(s, d, winStart, d) == 0 {
+			continue
+		}
+		start := normalize(s.Entry)
+		if start.Before(winStart) {
+			start = winStart
+		}
+		end := effectiveExit(s, d)
+		if end.After(d) {
+			end = d
+		}
+		for i := daysBetween(winStart, start); i <= daysBetween(winStart, end); i++ {
+			inWindow[i] = true
+		}
+	}
+	total := 0
+	for _, in := range inWindow {
+		if in {
+			total++
+		}
 	}
 	return total
 }

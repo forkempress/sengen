@@ -12,17 +12,21 @@
   var LIMIT = 3650; // sigurnosni ventil za petlje, kao u Go kodu
 
   // usedDays: broj dana u Šengenu u prozoru [d-179, d].
+  // Dan se broji jednom i kad se boravci dodiruju ili preklapaju (dva
+  // prelaza istog dana), pa se dani obeležavaju umesto da se sabiraju.
   function usedDays(stays, d) {
     var winStart = d - (WINDOW_DAYS - 1);
-    var total = 0;
+    var inWindow = new Array(WINDOW_DAYS);
     for (var i = 0; i < stays.length; i++) {
       var s = stays[i];
       if (s.entry > d) continue;
       var exit = s.exit === null ? d : s.exit;
       var start = Math.max(s.entry, winStart);
       var end = Math.min(exit, d);
-      if (end >= start) total += end - start + 1;
+      for (var x = start; x <= end; x++) inWindow[x - winStart] = true;
     }
+    var total = 0;
+    for (var j = 0; j < WINDOW_DAYS; j++) if (inWindow[j]) total++;
     return total;
   }
 

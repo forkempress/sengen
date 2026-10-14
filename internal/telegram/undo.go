@@ -3,6 +3,8 @@ package telegram
 import (
 	"context"
 	"errors"
+
+	"shengen/internal/clock"
 )
 
 // performUndo reverses a stay create/close action — shared by the driver's
@@ -27,6 +29,15 @@ func (b *Bot) performUndo(ctx context.Context, tenantID, stayID int64, kind, act
 		}
 		b.Store.RecordAudit(ctx, tenantID, actorType, actorID, "stay", st.ID, "reopen", nil, nil)
 		return "Poništen je povratak u Srbiju — unos je ponovo otvoren.", nil
+	case "reopen":
+		// Only offered right after a same-day re-entry, so the stay closes
+		// again on today's date.
+		today := clock.Today()
+		if err := b.Store.UpdateStay(ctx, tenantID, st.ID, st.Entry, &today, st.Type, st.Note); err != nil {
+			return "", err
+		}
+		b.Store.RecordAudit(ctx, tenantID, actorType, actorID, "stay", st.ID, "close", nil, nil)
+		return "Poništen je ponovni ulazak — boravak je zatvoren danas.", nil
 	default:
 		return "", errors.New("nepoznata akcija")
 	}
