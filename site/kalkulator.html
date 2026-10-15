@@ -18,7 +18,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preload" href="/fonts/ibm-plex-sans-400-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/css/fonts.css">
-  <link rel="stylesheet" href="/css/style.css?v=20261015">
+  <link rel="stylesheet" href="/css/style.css?v=20261015b">
 
   <script type="application/ld+json">
   {
@@ -219,8 +219,7 @@
       <a href="https://app.dani90.rs/obrada-podataka">Obrada podataka</a>
     </nav>
     <div>
-      <!-- TODO-KONTAKT -->
-      <p><span class="todo">kontakt — upisati pre objave</span></p>
+      <p><a href="https://app.dani90.rs/kontakt">Pišite nam email</a></p>
       <!-- TODO-FIRMA: naziv firme / preduzetnika i PIB, ako treba da stoji u podnožju. -->
       <p class="small">© <span id="year">2026</span> Dani90 · <span class="todo">naziv firme i PIB</span></p>
     </div>
@@ -229,17 +228,16 @@
 </footer>
 
 <!-- Plutajući CTA: na telefonu traka za registraciju + email, na računaru samo
-     email dugme. KONTAKT_EMAIL zameniti pravom adresom; dok stoji, CSS skriva
-     email dugme. -->
+     email dugme. /kontakt u aplikaciji otvara email na MAIL_REPLY_TO. -->
 <div class="float-cta" id="float-cta">
   <a href="https://app.dani90.rs/registracija" class="btn btn-yellow float-cta-signup">Probajte 30 dana besplatno</a>
-  <a href="mailto:KONTAKT_EMAIL?subject=Dani90%20%E2%80%94%20pitanje&amp;body=Firma%3A%0D%0ABroj%20voza%C4%8Da%3A%0D%0ATelefon%20%28ako%20%C5%BEelite%20da%20vas%20pozovemo%29%3A%0D%0A%0D%0APitanje%3A%0D%0A" class="float-cta-mail" aria-label="Pišite nam email">
+  <a href="https://app.dani90.rs/kontakt" class="float-cta-mail" aria-label="Pišite nam email">
     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M3 6h18v12H3z M3 6l9 7 9-7"/></svg>
     <span class="float-cta-mail-text">Pišite nam</span>
   </a>
 </div>
 
-<script src="/js/main.js?v=20261015" defer></script>
+<script src="/js/main.js?v=20261015b" defer></script>
 <script src="/js/calc90.js" defer></script>
 <script src="/js/kalkulator.js" defer></script>
 </body>

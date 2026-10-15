@@ -424,8 +424,6 @@ h3 { font-size: 1.1rem; }
 }
 .float-cta-mail:hover { background: var(--accent-dark); color: #fff; }
 .float-cta-mail:focus-visible, .float-cta-signup:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
-/* until the real address is filled in, never show a broken mailto */
-.float-cta-mail[href^="mailto:KONTAKT_EMAIL"] { display: none; }
 
 @media (max-width: 860px) {
   .float-cta {

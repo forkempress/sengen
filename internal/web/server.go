@@ -117,6 +117,7 @@ func (s *Server) Routes() http.Handler {
 	mux.Handle("POST /nova-lozinka", http.NewCrossOriginProtection().Handler(http.HandlerFunc(s.handleResetSubmit)))
 	mux.HandleFunc("POST /telegram/webhook", s.Bot.HandleWebhook)
 	mux.Handle("GET /static/", staticHandler())
+	mux.HandleFunc("GET /kontakt", s.handleContact)
 	mux.HandleFunc("GET /privatnost", s.handlePrivacyPage)
 	mux.HandleFunc("GET /uslovi", s.handleTermsPage)
 	mux.HandleFunc("GET /obrada-podataka", s.handleDPAPage)

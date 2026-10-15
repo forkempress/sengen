@@ -375,3 +375,21 @@ func TestFeedbackLink(t *testing.T) {
 		t.Error("feedback link shown without an address")
 	}
 }
+
+// The public site's email button goes through /kontakt to MAIL_REPLY_TO.
+func TestContactRedirect(t *testing.T) {
+	a := newResetApp(t)
+	a.srv.FeedbackEmail = "utisci@dani90.rs"
+	w := a.request(http.MethodGet, "/kontakt", nil, nil)
+	loc := w.Header().Get("Location")
+	if w.Code != http.StatusFound || !strings.HasPrefix(loc, "mailto:utisci@dani90.rs?subject=Dani90%20%E2%80%94%20pitanje&body=Firma%3A") {
+		t.Errorf("/kontakt = %d to %q", w.Code, loc)
+	}
+	if strings.Contains(loc, "+") {
+		t.Errorf("mailto uses + for spaces: %q", loc)
+	}
+	a.srv.FeedbackEmail = ""
+	if w := a.request(http.MethodGet, "/kontakt", nil, nil); w.Code != http.StatusNotFound {
+		t.Errorf("/kontakt without an address = %d, want 404", w.Code)
+	}
+}
