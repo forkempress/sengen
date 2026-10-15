@@ -285,6 +285,7 @@ func TestCommands_OutputAndPrivacy(t *testing.T) {
 			"Vozači: 6 aktivnih, 2 povezanih sa botom",
 			"U Šengenu sada: 1 vozača",
 			"Boravci: 5 ukupno, 2 unetih u poslednjih 7 dana",
+			"Registracije (7 dana): 0 započeto, 0 potvrđeno",
 		}, nil},
 		{"/firme", "", []string{
 			fmt.Sprintf("#%d Alfa Prevoz — plaćena, 3 vozača", f.alfa.ID),
@@ -633,6 +634,88 @@ func TestNotifier_DailyDigestAt8Belgrade(t *testing.T) {
 	if strings.Contains(joinTexts(fake.take()), "Dnevni pregled") {
 		t.Error("digest sent twice the same day")
 	}
+}
+
+// addSignup starts a sign-up whose form was sent `age` before fixedNow.
+func (f *fixture) addSignup(t *testing.T, token, email, firm, name string, age time.Duration) {
+	t.Helper()
+	ctx := context.Background()
+	form := store.SignupForm{FirmName: firm, Name: name, PasswordHash: "TAJNI-HES-LOZINKE", TermsVersion: "1"}
+	if err := f.st.CreateSignup(ctx, token, "123456", "browser-"+token, email, form, day); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.st.DB.ExecContext(ctx, `UPDATE email_tokens SET created_at = ? WHERE purpose = 'signup' AND email = ?`, ago(age), email); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestNotifier_SignupStartedOnceWithContact(t *testing.T) {
+	f := newFixture(t)
+	f.addSignup(t, "tok-zeta", "pera@zeta.rs", "Zeta Prevoz", "Pera Perić", time.Hour)
+	f.addSignup(t, "tok-omega", "staro@omega.rs", "Omega Stara", "Stari Pokušaj", 30*time.Hour)
+	n, fake := newNotifier(t, f, freshBackup(t))
+	ctx := context.Background()
+
+	n.Tick(ctx)
+	all := joinTexts(fake.take())
+	assertContains(t, "signup push", all, "📝 Započeta registracija: Zeta Prevoz — Pera Perić <pera@zeta.rs>, 14.10.2026 11:00. Čeka potvrdu mejla.")
+	if c := strings.Count(all, "Započeta registracija"); c != 2 {
+		t.Errorf("signup pushes = %d, want one per operator (2):\n%s", c, all)
+	}
+	for _, unwanted := range []string{"Omega", "TAJNI-HES-LOZINKE", "123456"} {
+		if strings.Contains(all, unwanted) {
+			t.Errorf("unexpected %q in:\n%s", unwanted, all)
+		}
+	}
+
+	n.Tick(ctx)
+	if again := joinTexts(fake.take()); strings.Contains(again, "Započeta registracija") {
+		t.Errorf("signup reported twice: %s", again)
+	}
+}
+
+func TestSignupCounts_StatsAndDigest(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	exec := func(q string, args ...any) {
+		t.Helper()
+		if _, err := f.st.DB.ExecContext(ctx, q, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mail := func(tag, to string, age time.Duration) {
+		t.Helper()
+		if err := f.st.RecordEmail(ctx, tag, nil, to, store.EmailSent, ""); err != nil {
+			t.Fatal(err)
+		}
+		exec(`UPDATE email_log SET created_at = ? WHERE id = (SELECT MAX(id) FROM email_log)`, ago(age))
+	}
+	confirmed := func(tn *store.Tenant, age time.Duration) {
+		t.Helper()
+		if err := f.st.RecordAudit(ctx, tn.ID, "system", nil, "tenant", tn.ID, "signup", nil, nil); err != nil {
+			t.Fatal(err)
+		}
+		exec(`UPDATE audit_log SET occurred_at = ? WHERE id = (SELECT MAX(id) FROM audit_log)`, ago(age))
+	}
+	mail("signup", "pera@zeta.rs", 3*time.Hour)
+	mail("signup", "pera@zeta.rs", 2*time.Hour) // the form sent again: one sign-up
+	mail("signup", "vlasnik@epsilon.rs", 2*time.Hour)
+	mail("signup_exists", "vlasnik@beta.rs", time.Hour) // not a new firm
+	mail("reset", "vlasnik@alfa.rs", time.Hour)
+	mail("signup", "staro@omega.rs", 10*day) // outside the week
+	confirmed(f.epsilon, 2*time.Hour)
+	confirmed(f.beta, 5*day)
+
+	out, err := f.svc().Run(ctx, nil, "/stats", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertContains(t, "/stats", out, "Registracije (7 dana): 2 započeto, 2 potvrđeno")
+
+	n, fake := newNotifier(t, f, freshBackup(t))
+	setNow(t, time.Date(2026, 10, 15, 8, 5, 0, 0, fixedNow.Location()))
+	n.Tick(ctx)
+	assertContains(t, "digest", joinTexts(fake.take()), "Registracije juče: 2 započeto, 1 potvrđeno")
 }
 
 func TestNotifier_NoOperatorsSendsNothing(t *testing.T) {

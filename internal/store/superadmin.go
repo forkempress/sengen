@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -10,7 +11,9 @@ import (
 // Queries for the superadmin bot. Unlike the rest of the store they cross
 // every firm, so they only ever return counts and firm-level fields — never a
 // driver's name, stay dates or locations. Keep it that way: the superadmin
-// commands print whatever these return.
+// commands print whatever these return. The one exception is a firm owner's
+// contact while signing up (ListSignupsSince), which the operators need to
+// follow up on a registration.
 
 // Plans a firm can be on (tenants.plan).
 const (
@@ -296,4 +299,66 @@ func (s *Store) DatabaseSize(ctx context.Context) (int64, error) {
 func (s *Store) Ping(ctx context.Context) error {
 	var one int
 	return s.DB.QueryRowContext(ctx, `SELECT 1`).Scan(&one)
+}
+
+// SignupCounts are sign-ups in a period. Started counts the addresses a
+// confirmation email went to (a form sent again counts once); Confirmed
+// counts the firms a confirmed sign-up opened.
+type SignupCounts struct {
+	Started, Confirmed int
+}
+
+// CountSignupsBetween counts sign-ups in [from, to). Both sources outlive
+// the sign-up tokens, which are deleted once they expire: email_log is kept
+// 90 days, audit_log for good.
+func (s *Store) CountSignupsBetween(ctx context.Context, from, to time.Time) (SignupCounts, error) {
+	var c SignupCounts
+	f, t := formatTimestamp(from), formatTimestamp(to)
+	err := s.DB.QueryRowContext(ctx, `SELECT
+		(SELECT COUNT(DISTINCT recipient) FROM email_log WHERE tag = 'signup' AND created_at >= ? AND created_at < ?),
+		(SELECT COUNT(*) FROM audit_log WHERE entity = 'tenant' AND action = 'signup' AND occurred_at >= ? AND occurred_at < ?)`,
+		f, t, f, t).Scan(&c.Started, &c.Confirmed)
+	if err != nil {
+		return c, fmt.Errorf("count signups: %w", err)
+	}
+	return c, nil
+}
+
+// StartedSignup is a sign-up as the operators hear about it: who is
+// registering which firm. The password hash in the form never leaves here.
+type StartedSignup struct {
+	Ref       string // stable id of the sign-up, for notification dedup
+	Email     string
+	FirmName  string
+	Name      string
+	CreatedAt time.Time
+}
+
+// ListSignupsSince returns sign-ups started at or after since, confirmed or
+// not, oldest first.
+func (s *Store) ListSignupsSince(ctx context.Context, since time.Time) ([]StartedSignup, error) {
+	rows, err := s.DB.QueryContext(ctx,
+		`SELECT token_hash, email, payload, created_at FROM email_tokens
+		 WHERE purpose = ? AND created_at >= ? ORDER BY created_at, token_hash`,
+		EmailTokenSignup, formatTimestamp(since))
+	if err != nil {
+		return nil, fmt.Errorf("list signups: %w", err)
+	}
+	defer rows.Close()
+	var out []StartedSignup
+	for rows.Next() {
+		var su StartedSignup
+		var payload, created string
+		if err := rows.Scan(&su.Ref, &su.Email, &payload, &created); err != nil {
+			return nil, fmt.Errorf("scan signup: %w", err)
+		}
+		var form SignupForm
+		if err := json.Unmarshal([]byte(payload), &form); err != nil {
+			return nil, fmt.Errorf("signup payload: %w", err)
+		}
+		su.FirmName, su.Name = form.FirmName, form.Name
+		su.CreatedAt, _ = parseTimestamp(created)
+		out = append(out, su)
+	}
+	return out, rows.Err()
 }

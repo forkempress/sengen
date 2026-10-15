@@ -149,7 +149,7 @@ func (s *Service) Run(ctx context.Context, client *telegram.Client, cmd, args st
 }
 
 const helpText = `Superadmin komande (samo čitanje):
-/stats — firme, korisnici, vozači, boravci (zbirno)
+/stats — firme, korisnici, vozači, boravci, registracije (zbirno)
 /mrr — mesečni prihod
 /firme — spisak firmi
 /firma <id> — detalji jedne firme

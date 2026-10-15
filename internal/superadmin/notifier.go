@@ -36,6 +36,7 @@ const (
 	TrialWarnDays = 3
 
 	newTenantWindow     = 24 * time.Hour      // a firm this young counts as a new registration
+	newSignupWindow     = 24 * time.Hour      // a sign-up started this recently is reported
 	firstActivityWindow = 24 * time.Hour      // the first stay must be this recent to report
 	newFirmAge          = 30 * 24 * time.Hour // "first activity" is reported for firms this young only
 	webhookCheckEvery   = 15 * time.Minute
@@ -49,6 +50,7 @@ func (n *Notifier) Tick(ctx context.Context) {
 	}
 	now := clock.Now()
 
+	n.checkSignups(ctx, now)
 	firms, err := n.Store.ListTenantOverviews(ctx)
 	if err != nil {
 		log.Printf("superadmin: list firms: %v", err)
@@ -82,6 +84,21 @@ func (n *Notifier) checkFirm(ctx context.Context, f store.TenantOverview, now ti
 	if f.FirstStayAt != nil && now.Sub(f.CreatedAt) <= newFirmAge && now.Sub(*f.FirstStayAt) <= firstActivityWindow {
 		n.notify(ctx, "first_activity", id,
 			fmt.Sprintf("✅ Prva aktivnost: #%d %s je uneo prvi boravak (%s)", f.ID, f.Name, belgrade(*f.FirstStayAt).Format("02.01.2006 15:04")))
+	}
+}
+
+// checkSignups reports each sign-up when its form is sent, before the email
+// is confirmed; the firm itself is reported as new_tenant once it is.
+func (n *Notifier) checkSignups(ctx context.Context, now time.Time) {
+	signups, err := n.Store.ListSignupsSince(ctx, now.Add(-newSignupWindow))
+	if err != nil {
+		log.Printf("superadmin: list signups: %v", err)
+		return
+	}
+	for _, su := range signups {
+		n.notify(ctx, "signup_started", su.Ref,
+			fmt.Sprintf("📝 Započeta registracija: %s — %s <%s>, %s. Čeka potvrdu mejla.",
+				su.FirmName, su.Name, su.Email, belgrade(su.CreatedAt).Format("02.01.2006 15:04")))
 	}
 }
 
@@ -170,11 +187,16 @@ func (n *Notifier) Digest(ctx context.Context, firms []store.TenantOverview, now
 	if err != nil {
 		return "", err
 	}
+	signups, err := n.Store.CountSignupsBetween(ctx, yesterday, today)
+	if err != nil {
+		return "", err
+	}
 	inactive := len(Inactive(firms, now))
 
 	var b strings.Builder
 	fmt.Fprintf(&b, "☀️ Dnevni pregled — %s\n\n", now.Format("02.01.2006"))
 	fmt.Fprintf(&b, "Juče: %d novih firmi, %d unetih boravaka\n", newFirms, newStays)
+	fmt.Fprintf(&b, "Registracije juče: %s\n", signupsLine(signups))
 	fmt.Fprintf(&b, "MRR: %s (%d plaćenih firmi), trial potencijal %s\n", formatEUR(m.PaidCents), m.PaidTenants, formatEUR(m.TrialCents))
 	fmt.Fprintf(&b, "Neaktivne 14+ dana: %d\n", inactive)
 	fmt.Fprintf(&b, "Greške (24h): %s\n\n", errorsLine(health.ErrorsSince(now.Add(-24*time.Hour))))

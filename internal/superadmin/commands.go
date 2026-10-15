@@ -112,8 +112,17 @@ func (s *Service) cmdStats(ctx context.Context) (string, error) {
 	fmt.Fprintf(&b, ", na Telegramu %d\n", p.UsersOnTelegram)
 	fmt.Fprintf(&b, "Vozači: %d aktivnih, %d povezanih sa botom\n", p.DriversActive, p.DriversLinked)
 	fmt.Fprintf(&b, "U Šengenu sada: %d vozača\n", p.DriversInSchengen)
-	fmt.Fprintf(&b, "Boravci: %d ukupno, %d unetih u poslednjih 7 dana", p.Stays, p.StaysSince)
+	fmt.Fprintf(&b, "Boravci: %d ukupno, %d unetih u poslednjih 7 dana\n", p.Stays, p.StaysSince)
+	signups, err := s.Store.CountSignupsBetween(ctx, now.Add(-7*24*time.Hour), now)
+	if err != nil {
+		return "", err
+	}
+	fmt.Fprintf(&b, "Registracije (7 dana): %s", signupsLine(signups))
 	return b.String(), nil
+}
+
+func signupsLine(c store.SignupCounts) string {
+	return fmt.Sprintf("%d započeto, %d potvrđeno", c.Started, c.Confirmed)
 }
 
 // MRR sums what firms pay per month: active drivers × the firm's price.
