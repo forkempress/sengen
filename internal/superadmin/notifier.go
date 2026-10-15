@@ -63,6 +63,7 @@ func (n *Notifier) Tick(ctx context.Context) {
 	n.checkErrors(ctx, now)
 	n.checkWebhook(ctx, now)
 	n.checkBackup(ctx, now)
+	n.checkAnthropicKey(ctx, now)
 	n.checkDigest(ctx, firms, now)
 }
 

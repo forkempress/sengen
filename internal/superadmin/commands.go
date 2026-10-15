@@ -496,6 +496,9 @@ func (s *Service) cmdZdravlje(ctx context.Context, client *telegram.Client) stri
 
 	text, _ := backupStatus(s.BackupHeartbeatFile, now)
 	fmt.Fprintf(&b, "Backup: %s\n", text)
+	if s.AnthropicKeyExpires != nil {
+		fmt.Fprintf(&b, "Claude ključ: %s\n", keyExpiryText(*s.AnthropicKeyExpires))
+	}
 	fmt.Fprintf(&b, "Greške (24h): %s", errorsLine(health.ErrorsSince(now.Add(-24*time.Hour))))
 	return b.String()
 }

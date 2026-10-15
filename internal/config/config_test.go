@@ -144,3 +144,18 @@ func TestLoad_AdminTelegramIDs(t *testing.T) {
 		}
 	}
 }
+
+func TestLoad_AnthropicKeyExpires(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY_EXPIRES", "2026-11-14")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.AnthropicKeyExpires == nil || cfg.AnthropicKeyExpires.Format("02.01.2006") != "14.11.2026" {
+		t.Errorf("expiry %v, want 14.11.2026", cfg.AnthropicKeyExpires)
+	}
+	t.Setenv("ANTHROPIC_API_KEY_EXPIRES", "14.11.2026")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "ANTHROPIC_API_KEY_EXPIRES") {
+		t.Errorf("bad date: err %v", err)
+	}
+}

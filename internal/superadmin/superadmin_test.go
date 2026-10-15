@@ -811,3 +811,52 @@ func TestPlural(t *testing.T) {
 		}
 	}
 }
+
+func TestNotifier_AnthropicKeyReminderDailyFromFiveDays(t *testing.T) {
+	f := newFixture(t)
+	n, fake := newNotifier(t, f, freshBackup(t))
+	ctx := context.Background()
+	exp := time.Date(2026, 10, 20, 0, 0, 0, 0, time.UTC)
+	n.AnthropicKeyExpires = &exp
+	keyMsgs := func() string {
+		var out []string
+		for _, m := range fake.take() {
+			if strings.Contains(m.Text, "Claude API ključ") {
+				out = append(out, m.Text)
+			}
+		}
+		return strings.Join(out, "\n")
+	}
+
+	setNow(t, time.Date(2026, 10, 14, 12, 0, 0, 0, fixedNow.Location())) // 6 days before
+	n.Tick(ctx)
+	if got := keyMsgs(); got != "" {
+		t.Fatalf("reminder 6 days early: %s", got)
+	}
+
+	setNow(t, time.Date(2026, 10, 15, 7, 0, 0, 0, fixedNow.Location())) // 5 days, before 08:00
+	n.Tick(ctx)
+	if got := keyMsgs(); got != "" {
+		t.Fatalf("reminder before 08:00: %s", got)
+	}
+	setNow(t, time.Date(2026, 10, 15, 8, 5, 0, 0, fixedNow.Location()))
+	n.Tick(ctx)
+	assertContains(t, "5 days", keyMsgs(), "🔑 Claude API ključ ističe za 5 dana (20.10.2026)", "ANTHROPIC_API_KEY_EXPIRES")
+	setNow(t, time.Date(2026, 10, 15, 9, 0, 0, 0, fixedNow.Location()))
+	n.Tick(ctx)
+	if got := keyMsgs(); got != "" {
+		t.Errorf("reminder twice the same day: %s", got)
+	}
+
+	setNow(t, time.Date(2026, 10, 19, 8, 5, 0, 0, fixedNow.Location()))
+	n.Tick(ctx)
+	assertContains(t, "1 day", keyMsgs(), "ističe sutra (20.10.2026)")
+
+	setNow(t, time.Date(2026, 10, 22, 8, 5, 0, 0, fixedNow.Location()))
+	n.Tick(ctx)
+	assertContains(t, "expired", keyMsgs(), "je istekao 20.10.2026 — uvoz dokumenata ne radi")
+
+	if got, _ := n.Run(ctx, nil, "/zdravlje", ""); !strings.Contains(got, "Claude ključ: je istekao") {
+		t.Errorf("/zdravlje without key line:\n%s", got)
+	}
+}

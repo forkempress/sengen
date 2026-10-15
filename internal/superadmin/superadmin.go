@@ -17,6 +17,7 @@ import (
 	"context"
 	"log"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"shengen/internal/store"
@@ -32,6 +33,10 @@ type Service struct {
 	// BackupHeartbeatFile is touched by the backup job after each
 	// successful run; "" means no backup is set up.
 	BackupHeartbeatFile string
+
+	// AnthropicKeyExpires is the last day the Claude API key works
+	// (ANTHROPIC_API_KEY_EXPIRES); nil when no expiry is set.
+	AnthropicKeyExpires *time.Time
 }
 
 func New(st *store.Store, adminIDs []int64, backupHeartbeatFile string) *Service {
@@ -155,4 +160,4 @@ const helpText = `Superadmin komande (samo čitanje):
 /firma <id> — detalji jedne firme
 /trial — firme u trialu, po isteku
 /neaktivne — firme bez aktivnosti 14+ dana
-/zdravlje — stanje servera, bota i backupa`
+/zdravlje — stanje servera, bota, backupa i Claude ključa`

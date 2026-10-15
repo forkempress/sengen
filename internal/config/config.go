@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"shengen/internal/auth"
 )
@@ -67,6 +68,10 @@ type Config struct {
 	// AnthropicAPIKey turns on reading scanned histories (PDF, photo) on
 	// the import page (ANTHROPIC_API_KEY); empty hides that option.
 	AnthropicAPIKey string
+	// AnthropicKeyExpires is the key's last valid day
+	// (ANTHROPIC_API_KEY_EXPIRES, YYYY-MM-DD); the superadmins are reminded
+	// before it. nil when not set.
+	AnthropicKeyExpires *time.Time
 
 	// Cloudflare Turnstile on the public forms; both keys or neither.
 	TurnstileSiteKey   string
@@ -125,6 +130,13 @@ func Load() (Config, error) {
 	}
 	if err := loadMail(&cfg); err != nil {
 		return Config{}, err
+	}
+	if raw := strings.TrimSpace(os.Getenv("ANTHROPIC_API_KEY_EXPIRES")); raw != "" {
+		d, err := time.Parse("2006-01-02", raw) // a date, kept as UTC midnight like every date in the app
+		if err != nil {
+			return Config{}, fmt.Errorf("ANTHROPIC_API_KEY_EXPIRES: %q nije datum (primer: 2026-11-14)", raw)
+		}
+		cfg.AnthropicKeyExpires = &d
 	}
 	if (cfg.TurnstileSiteKey == "") != (cfg.TurnstileSecretKey == "") {
 		return Config{}, fmt.Errorf("TURNSTILE_SITE_KEY i TURNSTILE_SECRET_KEY se postavljaju zajedno")

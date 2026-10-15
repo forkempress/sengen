@@ -69,6 +69,37 @@ func docImportReadMsg(d store.DocumentImport, month store.DocumentImportSpend) s
 	return b.String()
 }
 
+// KeyWarnDays: operators are reminded daily from this many days before
+// the Claude API key expires.
+const KeyWarnDays = 5
+
+// checkAnthropicKey reminds the operators, once a day from the digest hour
+// on, that the Claude API key is about to expire or has expired.
+func (n *Notifier) checkAnthropicKey(ctx context.Context, now time.Time) {
+	exp := n.AnthropicKeyExpires
+	if exp == nil || now.Hour() < DigestHour || daysUntil(*exp) > KeyWarnDays {
+		return
+	}
+	n.notify(ctx, "anthropic_key", exp.Format("2006-01-02")+":"+now.Format("2006-01-02"),
+		"🔑 Claude API ključ "+keyExpiryText(*exp)+". Napravi novi na console.anthropic.com, pa u /etc/dani90/dani90.env "+
+			"zameni ANTHROPIC_API_KEY i ANTHROPIC_API_KEY_EXPIRES i restartuj servis dani90.")
+}
+
+// keyExpiryText describes the key's expiry relative to today.
+func keyExpiryText(exp time.Time) string {
+	date := exp.Format("02.01.2006")
+	switch d := daysUntil(exp); {
+	case d < 0:
+		return "je istekao " + date + " — uvoz dokumenata ne radi"
+	case d == 0:
+		return "ističe danas (" + date + ")"
+	case d == 1:
+		return "ističe sutra (" + date + ")"
+	default:
+		return fmt.Sprintf("ističe za %d dana (%s)", d, date)
+	}
+}
+
 // monthStart is the first day of now's month, at midnight in now's zone.
 func monthStart(now time.Time) time.Time {
 	return time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())

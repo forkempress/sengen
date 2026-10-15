@@ -49,6 +49,7 @@ func main() {
 		Username:      cfg.TelegramBotUsername,
 	})
 	admins := superadmin.New(st, cfg.AdminTelegramIDs, cfg.BackupHeartbeatFile)
+	admins.AnthropicKeyExpires = cfg.AnthropicKeyExpires
 	if len(cfg.AdminTelegramIDs) > 0 {
 		bot.SuperAdmin = admins
 		log.Printf("superadmin: %d operatora", len(cfg.AdminTelegramIDs))
