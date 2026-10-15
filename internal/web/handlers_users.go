@@ -57,6 +57,9 @@ type usersPageData struct {
 	FormName  string
 	FormEmail string
 	FormRole  string
+	// FormErr is the reason the "add user" form was refused; the form's
+	// dialog opens again with it.
+	FormErr string
 }
 
 func (s *Server) handleUsersPage(w http.ResponseWriter, r *http.Request) {
@@ -93,7 +96,7 @@ func (s *Server) handleUserCreate(w http.ResponseWriter, r *http.Request) {
 
 	name, email, err := validateNewUser(rawName, rawEmail, r.FormValue("password"), role)
 	if err != nil {
-		retry.FlashErr = err.Error()
+		retry.FormErr = err.Error()
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		s.renderUsersPage(w, r, retry)
 		return
@@ -107,7 +110,7 @@ func (s *Server) handleUserCreate(w http.ResponseWriter, r *http.Request) {
 	u, err := s.Store.CreateUser(r.Context(), t.ID, email, hash, role, name)
 	var verr *store.ValidationError
 	if errors.As(err, &verr) {
-		retry.FlashErr = "Korisnik sa tim emailom već postoji."
+		retry.FormErr = "Korisnik sa tim emailom već postoji."
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		s.renderUsersPage(w, r, retry)
 		return

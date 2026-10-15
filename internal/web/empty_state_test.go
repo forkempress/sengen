@@ -26,7 +26,7 @@ func TestPregled_NewFirmSeesChecklistInsteadOfZeros(t *testing.T) {
 		Thresholds: status.DefaultThresholds,
 		IsToday:    true,
 	})
-	for _, want := range []string{"Još 3 koraka do prvog pregleda", `href="/podesavanja/vozaci"`, `href="/import"`} {
+	for _, want := range []string{"Još 3 koraka do prvog pregleda", `href="/podesavanja/vozaci#dodaj-vozaca"`, `href="/import"`} {
 		if !strings.Contains(html, want) {
 			t.Errorf("empty dashboard does not contain %q", want)
 		}

@@ -15,9 +15,9 @@
     </div>
     <div class="field">
       <label for="password">Lozinka</label>
-      <div class="password-row">
+      <div class="password-field">
         <input type="password" id="password" name="password" required autocomplete="current-password"{{if .Err}} aria-invalid="true" aria-describedby="login-err"{{end}}>
-        <button type="button" class="btn btn-sm password-toggle" data-toggle-password="password" aria-controls="password" aria-pressed="false">Prikaži</button>
+        {{template "passwordEye" "password"}}
       </div>
       {{if .Err}}<p class="field-error" id="login-err" role="alert">{{.Err}}</p>{{end}}
     </div>

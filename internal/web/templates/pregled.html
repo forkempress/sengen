@@ -24,7 +24,7 @@
     <li{{if .Setup.HasLinked}} class="done"{{end}}><span class="check" aria-hidden="true">{{if .Setup.HasLinked}}✓{{else}}4{{end}}</span> Povežite vozače sa Telegram botom, da sami javljaju granicu</li>
   </ol>
   <div class="actions-row">
-    {{if not .Setup.HasDrivers}}<a href="/podesavanja/vozaci" class="btn btn-primary">Dodaj vozača</a>
+    {{if not .Setup.HasDrivers}}<a href="/podesavanja/vozaci#dodaj-vozaca" class="btn btn-primary">Dodaj vozača</a>
     {{else}}<a href="/import" class="btn btn-primary">Uvezi CSV</a>{{end}}
     {{if not .Setup.HasDrivers}}<a href="/import" class="btn">Uvezi CSV</a>{{end}}
     <a href="/pomoc" class="btn">Kako se broji</a>

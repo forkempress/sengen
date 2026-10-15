@@ -3,18 +3,30 @@
 
 {{with .Link}}{{template "telegramLink" .}}{{end}}
 
-<section class="panel">
-<h2>Dodaj vozača</h2>
-<form method="post" action="/podesavanja/vozaci">
-  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-  <div class="form-grid">
-    <div><label for="d-name">Ime i prezime</label><input type="text" id="d-name" name="name" required maxlength="120" autocomplete="off"></div>
-    <div><label for="d-vehicle">Vozilo</label><input type="text" id="d-vehicle" name="vehicle_label" maxlength="60" placeholder="npr. BG-123-AB" autocomplete="off"></div>
+<div class="actions-row">
+  <button type="button" class="btn btn-primary" data-dialog-open="dodaj-vozaca" aria-haspopup="dialog">+ Dodaj vozača</button>
+</div>
+
+<dialog class="add-dialog" id="dodaj-vozaca" aria-labelledby="dodaj-vozaca-naslov">
+<div class="dialog-body">
+  <div class="dialog-head">
+    <h2 id="dodaj-vozaca-naslov">Dodaj vozača</h2>
+    <button type="button" class="dialog-close" data-dialog-close aria-label="Zatvori">×</button>
   </div>
-  <button type="submit" class="btn btn-primary">Dodaj vozača</button>
-  <span class="muted">Posle dodavanja odmah dobijate link i QR kod za Telegram.</span>
-</form>
-</section>
+  <form method="post" action="/podesavanja/vozaci">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="form-grid">
+      <div><label for="d-name">Ime i prezime</label><input type="text" id="d-name" name="name" required maxlength="120" autocomplete="off"></div>
+      <div><label for="d-vehicle">Vozilo</label><input type="text" id="d-vehicle" name="vehicle_label" maxlength="60" placeholder="npr. BG-123-AB" autocomplete="off"></div>
+    </div>
+    <p class="muted">Posle dodavanja odmah dobijate link i QR kod za Telegram.</p>
+    <div class="dialog-actions">
+      <button type="submit" class="btn btn-primary">Dodaj vozača</button>
+      <button type="button" class="btn" data-dialog-close>Odustani</button>
+    </div>
+  </form>
+</div>
+</dialog>
 
 <h2>Svi vozači</h2>
 {{if .ActiveCount}}<p class="muted">Sa Telegram botom povezano: <span class="num">{{.Linked}}</span> od <span class="num">{{.ActiveCount}}</span> aktivnih vozača.</p>{{end}}
@@ -48,7 +60,7 @@
       </div></td>
     </tr>
     {{else}}
-    <tr><td colspan="5" class="muted">Još nema vozača. Dodajte prvog formom iznad — ime je dovoljno.</td></tr>
+    <tr><td colspan="5" class="muted">Još nema vozača. Dodajte prvog dugmetom „Dodaj vozača“ — ime je dovoljno.</td></tr>
     {{end}}
   </tbody>
 </table>

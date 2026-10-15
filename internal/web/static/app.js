@@ -69,7 +69,8 @@ window.addEventListener('pageshow', function () {
   });
 });
 
-// „Prikaži lozinku“ na prijavi.
+// Oko u polju za lozinku: prikaže ili sakrije lozinku. Ikonica se menja
+// preko aria-pressed (CSS), fokus ostaje u polju.
 document.addEventListener('click', function (e) {
   var btn = e.target.closest && e.target.closest('[data-toggle-password]');
   if (!btn) return;
@@ -77,6 +78,48 @@ document.addEventListener('click', function (e) {
   if (!input) return;
   var show = input.type === 'password';
   input.type = show ? 'text' : 'password';
-  btn.textContent = show ? 'Sakrij' : 'Prikaži';
+  var label = show ? 'Sakrij lozinku' : 'Prikaži lozinku';
+  btn.setAttribute('aria-label', label);
+  btn.setAttribute('title', label);
   btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+  input.focus();
+});
+
+// Forme „Dodaj …“ stoje u dijalogu koji se otvara dugmetom. Bez JS-a
+// (klasa no-js) dijalog je obična otvorena forma na stranici.
+function openDialog(d) {
+  if (!d || typeof d.showModal !== 'function' || d.open) return;
+  d.showModal();
+  var first = d.querySelector('input:not([type=hidden]), select, textarea');
+  if (first) first.focus();
+}
+
+document.addEventListener('click', function (e) {
+  var opener = e.target.closest && e.target.closest('[data-dialog-open]');
+  if (opener) {
+    var d = document.getElementById(opener.getAttribute('data-dialog-open'));
+    if (d && typeof d.showModal === 'function') {
+      e.preventDefault();
+      openDialog(d);
+    }
+    return;
+  }
+  var closer = e.target.closest && e.target.closest('[data-dialog-close]');
+  if (closer) {
+    var dlg = closer.closest('dialog');
+    if (dlg) dlg.close();
+    return;
+  }
+  // Klik na zatamnjenu pozadinu zatvara dijalog (sadržaj je u .dialog-body).
+  if (e.target.tagName === 'DIALOG' && e.target.open) e.target.close();
+});
+
+// Dijalog se otvara sam posle greške u formi, ili kad link vodi na njega
+// (npr. /podesavanja/vozaci#dodaj-vozaca sa Pregleda).
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('dialog[data-open-on-load]').forEach(openDialog);
+  if (location.hash.length > 1) {
+    var d = document.getElementById(location.hash.slice(1));
+    if (d && d.tagName === 'DIALOG') openDialog(d);
+  }
 });

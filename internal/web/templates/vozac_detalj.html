@@ -36,11 +36,16 @@
     <button type="submit" class="btn btn-primary">Vratio se danas</button>
   </form>
   {{end}}
+  <button type="button" class="btn{{if not .Status.InSchengen}} btn-primary{{end}}" data-dialog-open="dodaj-boravak" aria-haspopup="dialog">+ Dodaj boravak</button>
   <a href="#planovi" class="btn" data-open-details>Planiraj turu</a>
 </div>
 
-<section class="panel" id="dodaj-boravak">
-<h2>Dodaj boravak</h2>
+<dialog class="add-dialog" id="dodaj-boravak" aria-labelledby="dodaj-boravak-naslov">
+<div class="dialog-body">
+<div class="dialog-head">
+  <h2 id="dodaj-boravak-naslov">Dodaj boravak — {{.Driver.Name}}</h2>
+  <button type="button" class="dialog-close" data-dialog-close aria-label="Zatvori">×</button>
+</div>
 <form method="post" action="/vozaci/{{.Driver.ID}}/boravci">
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
   <div class="form-grid">
@@ -54,9 +59,13 @@
     </div>
     <div><label for="new-note">Napomena</label><input id="new-note" type="text" name="note" maxlength="200"></div>
   </div>
-  <button type="submit" class="btn btn-primary">Dodaj</button>
+  <div class="dialog-actions">
+    <button type="submit" class="btn btn-primary">Dodaj boravak</button>
+    <button type="button" class="btn" data-dialog-close>Odustani</button>
+  </div>
 </form>
-</section>
+</div>
+</dialog>
 
 
 {{if not .Stays}}
@@ -64,7 +73,7 @@
   <h2>Još nema unetih boravaka</h2>
   <p>Unesite boravke iz poslednjih 180 dana da bi brojanje bilo tačno. Dok ih nema, aplikacija računa kao da vozač nije bio u Šengenu.</p>
   <div class="actions-row">
-    <a href="#dodaj-boravak" class="btn btn-primary">Dodaj boravak</a>
+    <a href="#dodaj-boravak" class="btn btn-primary" data-dialog-open="dodaj-boravak">Dodaj boravak</a>
     <a href="/import" class="btn">Uvezi CSV</a>
   </div>
 </section>

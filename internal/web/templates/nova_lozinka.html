@@ -17,9 +17,9 @@
     <input type="text" name="username" value="{{.Email}}" autocomplete="username" hidden>
     <div class="field">
       <label for="p-new">Nova lozinka (najmanje 10 znakova)</label>
-      <div class="password-row">
+      <div class="password-field">
         <input type="password" id="p-new" name="new_password" required minlength="10" autofocus autocomplete="new-password"{{if .Err}} aria-invalid="true" aria-describedby="reset-err"{{end}}>
-        <button type="button" class="btn btn-sm password-toggle" data-toggle-password="p-new" aria-controls="p-new" aria-pressed="false">Prikaži</button>
+        {{template "passwordEye" "p-new"}}
       </div>
     </div>
     <div class="field">

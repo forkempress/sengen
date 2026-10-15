@@ -400,9 +400,21 @@ h2 { font-size: 1.125rem; font-weight: 600; margin: 1.75rem 0 0.75rem; }
   font: inherit; font-size: 1rem; background: #fff;
 }
 .field input[aria-invalid="true"] { border-color: var(--status-red); border-width: 2px; }
-.password-row { display: flex; gap: 0.5rem; }
-.password-row input { flex: 1; min-width: 0; }
-.password-toggle { min-height: 44px; }
+.password-field { position: relative; }
+.password-field input { padding-right: 3rem; }
+.password-eye {
+  position: absolute; top: 0; right: 0; width: 44px; height: 100%; min-height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: 0; border-radius: 0 5px 5px 0; cursor: pointer; color: var(--text-muted);
+}
+.password-eye:hover { color: var(--accent); }
+.password-eye:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.password-eye svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.password-eye .eye-hide, .password-eye[aria-pressed="true"] .eye-show { display: none; }
+.password-eye[aria-pressed="true"] .eye-hide { display: block; }
+/* Without JS the button would do nothing. */
+.no-js .password-eye { display: none; }
+.no-js .password-field input { padding-right: 0.6rem; }
 .field-error { color: var(--status-red); font-size: 0.875rem; margin: 0.35rem 0 0; font-weight: 600; }
 .btn-block { width: 100%; }
 .login-help { margin: 1.25rem 0 0; text-align: center; }
@@ -659,3 +671,33 @@ table.sample-table td { font-family: var(--font-mono); font-size: 0.875rem; }
 .check-row { display: flex; gap: 0.6rem; align-items: flex-start; margin: 1rem 0; }
 .check-row input { width: 1.25rem; height: 1.25rem; margin-top: 0.15rem; flex: 0 0 auto; }
 .danger-zone { border-color: var(--status-red); }
+
+/* Forme „Dodaj …“ u dijalogu */
+.add-dialog {
+  width: min(560px, calc(100vw - 2rem)); max-height: calc(100vh - 2rem);
+  padding: 0; border: 1px solid var(--card-border); border-radius: 10px;
+  background: var(--card-bg); color: inherit;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.25);
+}
+.add-dialog::backdrop { background: rgba(15, 23, 42, 0.45); }
+.dialog-body { padding: 0.75rem 1.25rem 1.25rem; }
+.dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.5rem; }
+.dialog-head h2 { margin: 0; font-size: 1.15rem; }
+.dialog-close {
+  flex: 0 0 auto; width: 44px; height: 44px; margin-right: -0.5rem;
+  border: 0; border-radius: 6px; background: none; cursor: pointer;
+  font-size: 1.6rem; line-height: 1; color: var(--text-muted);
+}
+.dialog-close:hover { color: var(--text); background: var(--card-border); }
+.add-dialog .form-grid { grid-template-columns: 1fr; }
+.dialog-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+@media (max-width: 700px) {
+  .add-dialog { width: calc(100vw - 1rem); }
+  .dialog-actions .btn { flex: 1 1 auto; }
+}
+/* Bez JS-a: forma je otvorena na stranici, dugmad za dijalog se ne vide. */
+.no-js .add-dialog {
+  display: block; position: static; width: auto; max-width: none; margin: 0 0 1rem;
+  box-shadow: none; border-radius: 6px;
+}
+.no-js button[data-dialog-open], .no-js [data-dialog-close] { display: none; }

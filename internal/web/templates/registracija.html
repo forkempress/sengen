@@ -25,9 +25,9 @@
     </div>
     <div class="field">
       <label for="password">Lozinka (najmanje 10 znakova)</label>
-      <div class="password-row">
+      <div class="password-field">
         <input type="password" id="password" name="password" required minlength="10" autocomplete="new-password"{{if eq .ErrField "password"}} aria-invalid="true" aria-describedby="signup-err" autofocus{{end}}>
-        <button type="button" class="btn btn-sm password-toggle" data-toggle-password="password" aria-controls="password" aria-pressed="false">Prikaži</button>
+        {{template "passwordEye" "password"}}
       </div>
     </div>
     <div class="check-row"><input id="terms" type="checkbox" name="terms" value="da"{{if eq .ErrField "terms"}} aria-invalid="true" aria-describedby="signup-err"{{end}}> <label for="terms">Prihvatam <a href="/uslovi" target="_blank" rel="noopener">uslove korišćenja</a> i <a href="/obrada-podataka" target="_blank" rel="noopener">ugovor o obradi podataka</a> u ime firme; pročitao sam <a href="/privatnost" target="_blank" rel="noopener">politiku privatnosti</a>.</label></div>

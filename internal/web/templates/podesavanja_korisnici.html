@@ -2,22 +2,37 @@
 <h1>Podešavanja — Korisnici</h1>
 <p class="muted">Korisnici se prijavljuju na web. <strong>Vlasnik</strong> može sve, uključujući korisnike i Telegram podešavanja. <strong>Dispečer</strong> radi sa vozačima i boravcima.</p>
 
-<h2>Dodaj korisnika</h2>
-<form method="post" action="/podesavanja/korisnici" autocomplete="off">
-  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-  <div class="form-grid">
-    <div><label for="u-name">Ime i prezime</label><input type="text" id="u-name" name="name" required maxlength="120" value="{{.FormName}}"></div>
-    <div><label for="u-email">Email</label><input type="email" id="u-email" name="email" required maxlength="254" value="{{.FormEmail}}"></div>
-    <div><label for="u-pass">Početna lozinka (najmanje 10 znakova)</label><input type="password" id="u-pass" name="password" required minlength="10" autocomplete="new-password"></div>
-    <div><label for="u-role">Uloga</label>
-      <select id="u-role" name="role">
-        <option value="dispatcher" {{if eq .FormRole "dispatcher"}}selected{{end}}>dispečer</option>
-        <option value="owner" {{if eq .FormRole "owner"}}selected{{end}}>vlasnik</option>
-      </select>
-    </div>
+<div class="actions-row">
+  <button type="button" class="btn btn-primary" data-dialog-open="dodaj-korisnika" aria-haspopup="dialog">+ Dodaj korisnika</button>
+</div>
+
+<dialog class="add-dialog" id="dodaj-korisnika" aria-labelledby="dodaj-korisnika-naslov"{{if .FormErr}} data-open-on-load{{end}}>
+<div class="dialog-body">
+  <div class="dialog-head">
+    <h2 id="dodaj-korisnika-naslov">Dodaj korisnika</h2>
+    <button type="button" class="dialog-close" data-dialog-close aria-label="Zatvori">×</button>
   </div>
-  <button type="submit" class="btn btn-primary">Dodaj korisnika</button>
-</form>
+  <form method="post" action="/podesavanja/korisnici" autocomplete="off">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="form-grid">
+      <div><label for="u-name">Ime i prezime</label><input type="text" id="u-name" name="name" required maxlength="120" value="{{.FormName}}"></div>
+      <div><label for="u-email">Email</label><input type="email" id="u-email" name="email" required maxlength="254" value="{{.FormEmail}}"></div>
+      <div><label for="u-pass">Početna lozinka (najmanje 10 znakova)</label><input type="password" id="u-pass" name="password" required minlength="10" autocomplete="new-password"></div>
+      <div><label for="u-role">Uloga</label>
+        <select id="u-role" name="role">
+          <option value="dispatcher" {{if eq .FormRole "dispatcher"}}selected{{end}}>dispečer</option>
+          <option value="owner" {{if eq .FormRole "owner"}}selected{{end}}>vlasnik</option>
+        </select>
+      </div>
+    </div>
+    {{if .FormErr}}<p class="field-error" role="alert">{{.FormErr}}</p>{{end}}
+    <div class="dialog-actions">
+      <button type="submit" class="btn btn-primary">Dodaj korisnika</button>
+      <button type="button" class="btn" data-dialog-close>Odustani</button>
+    </div>
+  </form>
+</div>
+</dialog>
 
 <h2>Svi korisnici</h2>
 <p class="muted">Deaktiviran korisnik se ne može prijaviti, odjavljen je sa svih uređaja, a bot ne prima njegove komande. Njegovi unosi i istorija ostaju.</p>

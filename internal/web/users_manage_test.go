@@ -245,3 +245,29 @@ func TestPassword_Change(t *testing.T) {
 		t.Errorf("audit = %q", got)
 	}
 }
+
+// The "add" forms live in dialogs; a refused form opens its dialog again
+// with the reason and the typed values.
+func TestAddForms_InDialogs(t *testing.T) {
+	a := newTestApp(t)
+	f := a.addFirm("Prva Firma", "prva", "vlasnik@prva.rs", "Ana", 30)
+	s := a.mustLogin(f)
+	for path, id := range map[string]string{
+		"/podesavanja/vozaci":        "dodaj-vozaca",
+		"/podesavanja/korisnici":     "dodaj-korisnika",
+		"/vozaci/" + id(f.driver.ID): "dodaj-boravak",
+	} {
+		body := s.get(path).Body.String()
+		if !strings.Contains(body, `<dialog class="add-dialog" id="`+id+`"`) || !strings.Contains(body, `data-dialog-open="`+id+`"`) {
+			t.Errorf("%s: no dialog %s with its button", path, id)
+		}
+		if strings.Contains(body, "data-open-on-load") {
+			t.Errorf("%s: dialog opens by itself without an error", path)
+		}
+	}
+	w := s.post("/podesavanja/korisnici", url.Values{"name": {"Mika"}, "email": {"mika@prva.rs"}, "password": {"kratka"}, "role": {"dispatcher"}})
+	body := w.Body.String()
+	if w.Code != http.StatusUnprocessableEntity || !strings.Contains(body, "data-open-on-load") || !strings.Contains(body, "najmanje 10 znakova") || !strings.Contains(body, `value="mika@prva.rs"`) {
+		t.Errorf("refused user form: %d, dialog not reopened with the error and values", w.Code)
+	}
+}
