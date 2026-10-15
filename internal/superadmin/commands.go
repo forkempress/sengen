@@ -38,13 +38,13 @@ func planLabel(p string) string {
 
 var roleLabels = map[string]string{"owner": "vlasnici", "dispatcher": "dispečeri"}
 
-// formatEUR renders cents as "€1.234,50".
-func formatEUR(cents int) string {
+// formatRSD renders whole dinars as "1.234 din".
+func formatRSD(rsd int) string {
 	sign := ""
-	if cents < 0 {
-		sign, cents = "-", -cents
+	if rsd < 0 {
+		sign, rsd = "-", -rsd
 	}
-	whole := strconv.Itoa(cents / 100)
+	whole := strconv.Itoa(rsd)
 	var b strings.Builder
 	for i, r := range whole {
 		if i > 0 && (len(whole)-i)%3 == 0 {
@@ -52,7 +52,7 @@ func formatEUR(cents int) string {
 		}
 		b.WriteRune(r)
 	}
-	return fmt.Sprintf("%s€%s,%02d", sign, b.String(), cents%100)
+	return fmt.Sprintf("%s%s din", sign, b.String())
 }
 
 func belgrade(t time.Time) time.Time { return t.In(clock.Now().Location()) }
@@ -127,8 +127,8 @@ func signupsLine(c store.SignupCounts) string {
 
 // MRR sums what firms pay per month: active drivers × the firm's price.
 type MRR struct {
-	PaidCents, PaidTenants, PaidDrivers    int
-	TrialCents, TrialTenants, TrialDrivers int
+	PaidRSD, PaidTenants, PaidDrivers    int
+	TrialRSD, TrialTenants, TrialDrivers int
 }
 
 func ComputeMRR(firms []store.TenantOverview) MRR {
@@ -136,11 +136,11 @@ func ComputeMRR(firms []store.TenantOverview) MRR {
 	for _, f := range firms {
 		switch f.Plan {
 		case store.PlanPaid:
-			m.PaidCents += f.MonthlyCents()
+			m.PaidRSD += f.MonthlyRSD()
 			m.PaidTenants++
 			m.PaidDrivers += f.ActiveDrivers
 		case store.PlanTrial:
-			m.TrialCents += f.MonthlyCents()
+			m.TrialRSD += f.MonthlyRSD()
 			m.TrialTenants++
 			m.TrialDrivers += f.ActiveDrivers
 		}
@@ -155,12 +155,12 @@ func (s *Service) cmdMRR(ctx context.Context) (string, error) {
 	}
 	m := ComputeMRR(firms)
 	var b strings.Builder
-	fmt.Fprintf(&b, "💶 MRR: %s\n", formatEUR(m.PaidCents))
+	fmt.Fprintf(&b, "💶 MRR: %s\n", formatRSD(m.PaidRSD))
 	fmt.Fprintf(&b, "Plaćene firme: %d, vozača %d", m.PaidTenants, m.PaidDrivers)
 	if m.PaidTenants > 0 {
-		fmt.Fprintf(&b, ", prosek %s po firmi", formatEUR(m.PaidCents/m.PaidTenants))
+		fmt.Fprintf(&b, ", prosek %s po firmi", formatRSD(m.PaidRSD/m.PaidTenants))
 	}
-	fmt.Fprintf(&b, "\nTrial (potencijal): %s iz %d firmi, %d vozača", formatEUR(m.TrialCents), m.TrialTenants, m.TrialDrivers)
+	fmt.Fprintf(&b, "\nTrial (potencijal): %s iz %d firmi, %d vozača", formatRSD(m.TrialRSD), m.TrialTenants, m.TrialDrivers)
 	return b.String(), nil
 }
 
@@ -278,7 +278,7 @@ func (s *Service) cmdFirma(ctx context.Context, args string) (string, error) {
 	default:
 		fmt.Fprintf(&b, "Plan: %s\n", planLabel(f.Plan))
 	}
-	fmt.Fprintf(&b, "Cena: %s po vozaču, mesečno %s\n", formatEUR(f.PricePerDriverCents), formatEUR(f.MonthlyCents()))
+	fmt.Fprintf(&b, "Cena: %s po vozaču, mesečno %s\n", formatRSD(f.PricePerDriverRSD), formatRSD(f.MonthlyRSD()))
 	fmt.Fprintf(&b, "Korisnici: %d", f.Users)
 	if line := countsLine(roles, []string{"owner", "dispatcher"}, roleLabel); line != "" {
 		fmt.Fprintf(&b, " (%s)", line)

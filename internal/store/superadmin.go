@@ -104,7 +104,7 @@ type TenantOverview struct {
 	Slug                string
 	Plan                string
 	TrialUntil          *time.Time // date only, UTC midnight
-	PricePerDriverCents int
+	PricePerDriverRSD   int // whole dinars per active driver per month
 	CreatedAt           time.Time
 	ActiveDrivers       int
 	LinkedDrivers       int
@@ -114,10 +114,10 @@ type TenantOverview struct {
 	FirstStayAt         *time.Time
 }
 
-// MonthlyCents is what the firm pays per month at its current driver count.
-func (t TenantOverview) MonthlyCents() int { return t.ActiveDrivers * t.PricePerDriverCents }
+// MonthlyRSD is what the firm pays per month at its current driver count.
+func (t TenantOverview) MonthlyRSD() int { return t.ActiveDrivers * t.PricePerDriverRSD }
 
-const tenantOverviewQuery = `SELECT t.id, t.name, t.slug, t.plan, t.trial_until, t.price_per_driver_cents, t.created_at,
+const tenantOverviewQuery = `SELECT t.id, t.name, t.slug, t.plan, t.trial_until, t.price_per_driver_rsd, t.created_at,
 	(SELECT COUNT(*) FROM drivers WHERE tenant_id = t.id AND active = 1),
 	(SELECT COUNT(*) FROM drivers WHERE tenant_id = t.id AND active = 1 AND telegram_chat_id IS NOT NULL),
 	(SELECT COUNT(*) FROM users WHERE tenant_id = t.id),
@@ -133,7 +133,7 @@ func scanTenantOverview(sc interface{ Scan(...any) error }) (TenantOverview, err
 	var o TenantOverview
 	var trialUntil, lastActivity, firstStay sql.NullString
 	var createdAt string
-	err := sc.Scan(&o.ID, &o.Name, &o.Slug, &o.Plan, &trialUntil, &o.PricePerDriverCents, &createdAt,
+	err := sc.Scan(&o.ID, &o.Name, &o.Slug, &o.Plan, &trialUntil, &o.PricePerDriverRSD, &createdAt,
 		&o.ActiveDrivers, &o.LinkedDrivers, &o.Users, &o.Stays, &lastActivity, &firstStay)
 	if err != nil {
 		return o, err
@@ -205,13 +205,13 @@ func (s *Store) CountStaysCreatedBetween(ctx context.Context, from, to time.Time
 }
 
 // SetTenantBilling sets a firm's plan, trial end and price (cmd/seed).
-func (s *Store) SetTenantBilling(ctx context.Context, tenantID int64, plan string, trialUntil *time.Time, pricePerDriverCents int) error {
+func (s *Store) SetTenantBilling(ctx context.Context, tenantID int64, plan string, trialUntil *time.Time, pricePerDriverRSD int) error {
 	switch plan {
 	case PlanTrial, PlanPaid, PlanPaused:
 	default:
 		return &ValidationError{Msg: fmt.Sprintf("nepoznat plan %q (trial, paid ili paused)", plan)}
 	}
-	if pricePerDriverCents < 0 {
+	if pricePerDriverRSD < 0 {
 		return &ValidationError{Msg: "cena ne može biti negativna"}
 	}
 	var trial any
@@ -219,8 +219,8 @@ func (s *Store) SetTenantBilling(ctx context.Context, tenantID int64, plan strin
 		trial = trialUntil.Format(dateLayout)
 	}
 	_, err := s.DB.ExecContext(ctx,
-		`UPDATE tenants SET plan = ?, trial_until = ?, price_per_driver_cents = ? WHERE id = ?`,
-		plan, trial, pricePerDriverCents, tenantID)
+		`UPDATE tenants SET plan = ?, trial_until = ?, price_per_driver_rsd = ? WHERE id = ?`,
+		plan, trial, pricePerDriverRSD, tenantID)
 	if err != nil {
 		return fmt.Errorf("set tenant billing: %w", err)
 	}

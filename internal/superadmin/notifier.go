@@ -211,7 +211,7 @@ func (n *Notifier) Digest(ctx context.Context, firms []store.TenantOverview, now
 	fmt.Fprintf(&b, "☀️ Dnevni pregled — %s\n\n", now.Format("02.01.2006"))
 	fmt.Fprintf(&b, "Juče: %d novih firmi, %d unetih boravaka\n", newFirms, newStays)
 	fmt.Fprintf(&b, "Registracije juče: %s\n", signupsLine(signups))
-	fmt.Fprintf(&b, "MRR: %s (%d plaćenih firmi), trial potencijal %s\n", formatEUR(m.PaidCents), m.PaidTenants, formatEUR(m.TrialCents))
+	fmt.Fprintf(&b, "MRR: %s (%d plaćenih firmi), trial potencijal %s\n", formatRSD(m.PaidRSD), m.PaidTenants, formatRSD(m.TrialRSD))
 	fmt.Fprintf(&b, "Uvoz dokumenata juče: %d (%s), ovog meseca %s\n",
 		docsYesterday.Count-docsToday.Count, formatUSD(docsYesterday.CostMicroUSD-docsToday.CostMicroUSD), formatUSD(docsMonth.CostMicroUSD))
 	fmt.Fprintf(&b, "Neaktivne 14+ dana: %d\n", inactive)

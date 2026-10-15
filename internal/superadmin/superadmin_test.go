@@ -106,11 +106,11 @@ type fixture struct {
 
 // newFixture builds five firms with known counts:
 //
-//	Alfa    paid   €2,00  3 active drivers (2 on Telegram) + 1 inactive; owner+dispatcher on Telegram
-//	Beta    trial  €3,50  2 active drivers, trial ends in 2 days, first stay 2h ago, created 5 days ago
-//	Cezar   paused €2,00  1 active driver, no activity
-//	Delta   trial  €2,00  no drivers, created 30 days ago, never active, trial ends in 20 days
-//	Epsilon trial  €2,00  created 2 hours ago, trial ends in 30 days
+//	Alfa    paid   300 din 3 active drivers (2 on Telegram) + 1 inactive; owner+dispatcher on Telegram
+//	Beta    trial  350 din 2 active drivers, trial ends in 2 days, first stay 2h ago, created 5 days ago
+//	Cezar   paused 300 din 1 active driver, no activity
+//	Delta   trial  300 din no drivers, created 30 days ago, never active, trial ends in 20 days
+//	Epsilon trial  300 din created 2 hours ago, trial ends in 30 days
 func newFixture(t *testing.T) *fixture {
 	t.Helper()
 	setNow(t, fixedNow)
@@ -160,7 +160,7 @@ func newFixture(t *testing.T) *fixture {
 	}
 
 	f := &fixture{st: st}
-	f.alfa = tenant("Alfa Prevoz", "alfa", store.PlanPaid, nil, 200, 60*day)
+	f.alfa = tenant("Alfa Prevoz", "alfa", store.PlanPaid, nil, 300, 60*day)
 	owner, err := st.CreateUser(ctx, f.alfa.ID, "vlasnik@alfa.rs", "h", "owner", "Vlasnik Alfa")
 	must(err)
 	disp, err := st.CreateUser(ctx, f.alfa.ID, "dispecer@alfa.rs", "h", "dispatcher", "Dispečer Alfa")
@@ -186,13 +186,13 @@ func newFixture(t *testing.T) *fixture {
 	driver(f.beta, "Mila Privatna", 5*day)
 	stay(f.beta, ana, 3, 2, false, 2*time.Hour)
 
-	f.cezar = tenant("Cezar Logistika", "cezar", store.PlanPaused, nil, 200, 100*day)
+	f.cezar = tenant("Cezar Logistika", "cezar", store.PlanPaused, nil, 300, 100*day)
 	_, err = st.CreateUser(ctx, f.cezar.ID, "vlasnik@cezar.rs", "h", "owner", "Vlasnik Cezar")
 	must(err)
 	driver(f.cezar, "Zoran Povuceni", 100*day)
 
-	f.delta = tenant("Delta Kamioni", "delta", store.PlanTrial, dateIn(20), 200, 30*day)
-	f.epsilon = tenant("Epsilon Cargo", "epsilon", store.PlanTrial, dateIn(30), 200, 2*time.Hour)
+	f.delta = tenant("Delta Kamioni", "delta", store.PlanTrial, dateIn(20), 300, 30*day)
+	f.epsilon = tenant("Epsilon Cargo", "epsilon", store.PlanTrial, dateIn(30), 300, 2*time.Hour)
 	return f
 }
 
@@ -254,8 +254,8 @@ func TestMRR_ExactAmounts(t *testing.T) {
 		t.Fatal(err)
 	}
 	m := ComputeMRR(firms)
-	// Alfa: 3 active × €2 = €6. Trial: Beta 2 × €3,50 = €7; Delta and Epsilon have no drivers.
-	want := MRR{PaidCents: 600, PaidTenants: 1, PaidDrivers: 3, TrialCents: 700, TrialTenants: 3, TrialDrivers: 2}
+	// Alfa: 3 active × 300 = 900 din. Trial: Beta 2 × 350 = 700 din; Delta and Epsilon have no drivers.
+	want := MRR{PaidRSD: 900, PaidTenants: 1, PaidDrivers: 3, TrialRSD: 700, TrialTenants: 3, TrialDrivers: 2}
 	if m != want {
 		t.Errorf("MRR = %+v, want %+v", m, want)
 	}
@@ -264,7 +264,7 @@ func TestMRR_ExactAmounts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertContains(t, "/mrr", out, "MRR: €6,00", "Plaćene firme: 1, vozača 3", "prosek €6,00", "€7,00 iz 3 firmi, 2 vozača")
+	assertContains(t, "/mrr", out, "MRR: 900 din", "Plaćene firme: 1, vozača 3", "prosek 900 din", "700 din iz 3 firmi, 2 vozača")
 }
 
 func (f *fixture) svc() *Service { return New(f.st, []int64{adminID}, "") }
@@ -294,7 +294,7 @@ func TestCommands_OutputAndPrivacy(t *testing.T) {
 		{"/firma", fmt.Sprint(f.alfa.ID), []string{
 			"Alfa Prevoz (oznaka alfa)",
 			"Plan: plaćena",
-			"Cena: €2,00 po vozaču, mesečno €6,00",
+			"Cena: 300 din po vozaču, mesečno 900 din",
 			"Korisnici: 2 (vlasnici 1, dispečeri 1)",
 			"Vozači: 3 aktivnih, 2 povezanih sa botom",
 			"Boravci: 4",
@@ -337,10 +337,10 @@ func TestCommands_OutputAndPrivacy(t *testing.T) {
 	}
 }
 
-func TestFormatEUR(t *testing.T) {
-	for cents, want := range map[int]string{0: "€0,00", 5: "€0,05", 600: "€6,00", 123456: "€1.234,56", 100000000: "€1.000.000,00"} {
-		if got := formatEUR(cents); got != want {
-			t.Errorf("formatEUR(%d) = %q, want %q", cents, got, want)
+func TestFormatRSD(t *testing.T) {
+	for rsd, want := range map[int]string{0: "0 din", 300: "300 din", 1234: "1.234 din", 1000000: "1.000.000 din", -4500: "-4.500 din"} {
+		if got := formatRSD(rsd); got != want {
+			t.Errorf("formatRSD(%d) = %q, want %q", rsd, got, want)
 		}
 	}
 }
@@ -621,7 +621,7 @@ func TestNotifier_DailyDigestAt8Belgrade(t *testing.T) {
 	assertContains(t, "digest", got,
 		"Dnevni pregled — 15.10.2026",
 		"Juče: 1 novih firmi, 1 unetih boravaka", // Epsilon and Beta's stay, both on 14.10.
-		"MRR: €6,00 (1 plaćenih firmi), trial potencijal €7,00",
+		"MRR: 900 din (1 plaćenih firmi), trial potencijal 700 din",
 		"Firme: 5",
 	)
 	assertNoDriverNames(t, "digest", got)
