@@ -245,21 +245,3 @@ func TestAlertGroup_EmptyTurnsAlertsOff(t *testing.T) {
 		t.Errorf("alert chat = %d, want 0 after clearing", got)
 	}
 }
-
-// While alerts go nowhere, the dashboard says so.
-func TestPregled_BannerWhileAlertsHaveNoRecipient(t *testing.T) {
-	app := newAppWithBot(t, &fakeBotAPI{})
-	a := app.addFirm("Prva Firma", "prva", "vlasnik@prva.rs", "Ana", 30)
-	sa := app.mustLogin(a)
-	if _, err := app.st.CreateDriver(context.Background(), a.tenant.ID, "Vozač", ""); err != nil {
-		t.Fatal(err)
-	}
-
-	if body := sa.get("/pregled").Body.String(); !strings.Contains(body, "Upozorenja se ne šalju nikome") {
-		t.Error("no banner while alerts go nowhere")
-	}
-	sa.post("/podesavanja/telegram/grupa", url.Values{"alert_chat_id": {"-100123"}})
-	if body := sa.get("/pregled").Body.String(); strings.Contains(body, "Upozorenja se ne šalju nikome") {
-		t.Error("banner still shown after alerts got a recipient")
-	}
-}

@@ -37,11 +37,6 @@ type pregledData struct {
 	// Onboarding: a new firm sees its first steps instead of zeros (UX-06).
 	Setup setupSteps
 
-	// NoAlertRecipient is set while the firm's alerts go to nobody, so the
-	// dashboard can say so instead of failing silently (UX-19, PO-14).
-	NoAlertRecipient bool
-	IsOwner          bool
-
 	// BackURL brings a crossing entered from a row back to this same view.
 	BackURL string
 
@@ -156,8 +151,6 @@ func (s *Server) handlePregled(w http.ResponseWriter, r *http.Request) {
 			data.PlanProblems++
 		}
 	}
-	data.NoAlertRecipient = len(drivers) > 0 && settings.TelegramAlertChatID == 0
-	data.IsOwner = data.User != nil && data.User.Role == "owner"
 	data.Setup = setupSteps{HasDrivers: len(drivers) > 0, HasStays: len(allStays) > 0}
 	for _, d := range drivers {
 		if d.TelegramChatID != nil {
