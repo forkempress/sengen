@@ -43,6 +43,8 @@ type Server struct {
 	loginAccountLimiter *auth.LoginLimiter
 	resetIPLimiter      *auth.LoginLimiter
 	resetEmailLimiter   *auth.LoginLimiter
+	signupIPLimiter     *auth.LoginLimiter
+	signupEmailLimiter  *auth.LoginLimiter
 
 	// mailWG tracks messages still being sent in the background.
 	mailWG sync.WaitGroup
@@ -75,6 +77,8 @@ func New(st *store.Store, authSvc *auth.Service, bot *telegram.Bot) *Server {
 		loginAccountLimiter: auth.NewLoginLimiter(loginLimitPerAccount, loginLimitWindow),
 		resetIPLimiter:      auth.NewLoginLimiter(resetLimitPerIP, resetLimitWindow),
 		resetEmailLimiter:   auth.NewLoginLimiter(resetLimitPerEmail, resetLimitWindow),
+		signupIPLimiter:     auth.NewLoginLimiter(signupLimitPerIP, signupLimitWindow),
+		signupEmailLimiter:  auth.NewLoginLimiter(signupLimitPerEmail, signupLimitWindow),
 		Mailer:              mail.LogMailer{},
 		MailReady:           true,
 		MailDailyLimit:      defaultMailDailyLimit,
@@ -95,6 +99,12 @@ func (s *Server) Routes() http.Handler {
 	// Sec-Fetch-Site instead of a session's CSRF token.
 	mux.HandleFunc("GET /zaboravljena-lozinka", s.handleForgotPage)
 	mux.Handle("POST /zaboravljena-lozinka", http.NewCrossOriginProtection().Handler(http.HandlerFunc(s.handleForgotSubmit)))
+	// Sign-up, public like the reset.
+	mux.HandleFunc("GET /registracija", s.handleSignupPage)
+	mux.Handle("POST /registracija", http.NewCrossOriginProtection().Handler(http.HandlerFunc(s.handleSignupSubmit)))
+	mux.Handle("POST /registracija/kod", http.NewCrossOriginProtection().Handler(http.HandlerFunc(s.handleSignupCode)))
+	mux.HandleFunc("GET /registracija/potvrdi", s.handleSignupLinkPage)
+	mux.Handle("POST /registracija/potvrdi", http.NewCrossOriginProtection().Handler(http.HandlerFunc(s.handleSignupLinkConfirm)))
 	mux.HandleFunc("GET /nova-lozinka", s.handleResetPage)
 	mux.Handle("POST /nova-lozinka", http.NewCrossOriginProtection().Handler(http.HandlerFunc(s.handleResetSubmit)))
 	mux.HandleFunc("POST /telegram/webhook", s.Bot.HandleWebhook)

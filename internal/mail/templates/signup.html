@@ -1,0 +1,8 @@
+{{define "signup.html"}}
+<p>Zdravo {{.Name}},</p>
+<p>kod za potvrdu naloga firme <strong>{{.Firm}}</strong>:</p>
+<p style="margin:20px 0;font-family:'Courier New',monospace;font-size:32px;font-weight:bold;letter-spacing:6px;color:#14213d;">{{.Code}}</p>
+<p>Upišite ga na stranici na kojoj ste se registrovali, ili kliknite na dugme:</p>
+<p style="margin:24px 0;"><a href="{{.URL}}" style="display:inline-block;background:#1d4ed8;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:4px;font-weight:bold;">Potvrdi nalog</a></p>
+<p style="font-size:14px;color:#4b5563;">Kod i link važe {{.ValidFor}} i mogu se iskoristiti jednom. Niste se registrovali na Dani90? Ignorišite ovaj mejl, nalog se neće otvoriti.</p>
+{{end}}

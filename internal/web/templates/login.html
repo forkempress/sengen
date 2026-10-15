@@ -25,6 +25,7 @@
   </form>
   {{if .ResetEnabled}}<p class="login-help"><a href="/zaboravljena-lozinka">Zaboravili ste lozinku?</a></p>
   {{else}}<p class="login-help muted">Zaboravili ste lozinku? Pišite nam i postavićemo vam novu.</p>{{end}}
-  <p class="login-help muted">Nemate nalog? <a href="https://dani90.rs/#demo">Javite nam se</a>.</p>
+  {{if .ResetEnabled}}<p class="login-help">Nemate nalog? <a href="/registracija">Registrujte firmu besplatno</a> — 30 dana probno.</p>
+  {{else}}<p class="login-help muted">Nemate nalog? <a href="https://dani90.rs/#demo">Javite nam se</a>.</p>{{end}}
 </div>
 {{end}}

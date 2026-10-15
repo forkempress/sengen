@@ -501,7 +501,16 @@ preskače; server van lokalnog razvoja bez SMTP-a ne ispisuje mejlove u log
   emailu; globalni dnevni limit; Turnstile odbijen → 4xx bez slanja; česta lozinka
   odbijena; `LogMailer` hvata sadržaj u testu.
 
-### PR 2 — Registracija i potvrda (≈ 4 dana)
+### PR 2 — Registracija i potvrda (≈ 4 dana) — jednostavna verzija urađena, grana `signup-2-registracija`
+
+Urađeno: forma (firma, ime, email, lozinka, čekboks), kod od 6 cifara koji
+radi samo u pregledaču koji je poslao formu (5 pokušaja), link sa potvrdom
+dugmetom (GET ga ne troši), link iz drugog pregledača potvrđuje bez sesije,
+isti odgovor i jedan mejl za nov i zauzet email, firma i vlasnik tek posle
+potvrde (trial 30 dana po Beogradu, uslovi upisani), limiti po IP i emailu,
+Turnstile kad su ključevi podešeni; superadmin dobija postojeći push „Nova
+firma“. Odloženo: UTM i izvor, telefon, „pošalji ponovo“ (forma se šalje
+ponovo), CTA na sajtu, izmena politike privatnosti za kolačić `d90_signup`.
 
 - Rute (javne, iza CrossOriginProtection): `GET/POST /registracija`,
   `GET /registracija/proverite-mejl`, `POST /registracija/kod`,

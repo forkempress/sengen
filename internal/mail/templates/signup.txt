@@ -1,0 +1,17 @@
+{{define "signup.subject"}}Vaš kod za Dani90: {{.Code}}{{end}}
+{{define "signup.text"}}
+Zdravo {{.Name}},
+
+kod za potvrdu naloga firme {{.Firm}}:
+
+    {{.Code}}
+
+Upišite ga na stranici na kojoj ste se registrovali, ili otvorite link:
+
+{{.URL}}
+
+Kod i link važe {{.ValidFor}} i mogu se iskoristiti jednom.
+Niste se registrovali na Dani90? Ignorišite ovaj mejl, nalog se neće otvoriti.
+
+Dani90 · app.dani90.rs
+{{end}}

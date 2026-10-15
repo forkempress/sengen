@@ -16,3 +16,18 @@ type ResetDoneData struct {
 	When     string // "15.10.2026. u 14:05"
 	ResetURL string
 }
+
+// SignupData: the code and link that confirm a new firm's email.
+type SignupData struct {
+	Name     string
+	Firm     string
+	Code     string
+	URL      string
+	ValidFor string // "24 sata"
+}
+
+// SignupExistsData: someone signed up with an address that has an account.
+type SignupExistsData struct {
+	LoginURL string
+	ResetURL string
+}

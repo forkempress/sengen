@@ -1,0 +1,43 @@
+{{define "content"}}
+<div class="login-wrap">
+  <div class="login-brand">
+    <span class="logo logo-lg" aria-hidden="true">90</span>
+    <span class="login-name">Dani90</span>
+  </div>
+
+  {{if .Invalid}}
+  <h1>Potvrda naloga</h1>
+  <div class="flash flash-err" role="alert">{{.Invalid}}</div>
+  <p class="login-help"><a href="/registracija" class="btn btn-primary btn-block">Registracija</a></p>
+  <p class="login-help"><a href="/login">Prijava</a></p>
+
+  {{else if .Done}}
+  <h1>Nalog je potvrđen</h1>
+  <div class="flash flash-ok" role="status">Firma je otvorena. Prijavite se sa <strong>{{.Email}}</strong> i lozinkom koju ste izabrali pri registraciji.</div>
+  <p class="login-help"><a href="/login" class="btn btn-primary btn-block">Prijavi se</a></p>
+
+  {{else if .Confirm}}
+  <h1>Potvrda naloga</h1>
+  <p>Otvarate nalog za firmu <strong>{{.Confirm.Form.FirmName}}</strong> ({{.Confirm.Form.Name}}, {{.Confirm.Email}}).</p>
+  <form method="post" action="/registracija/potvrdi">
+    <input type="hidden" name="t" value="{{.Token}}">
+    <button type="submit" class="btn btn-primary btn-block" data-busy="Otvaram…">Potvrdi i otvori nalog</button>
+  </form>
+  <p class="muted">Niste se vi registrovali? Ne potvrđujte; bez potvrde nalog se ne otvara.</p>
+
+  {{else}}
+  <h1>Proverite mejl</h1>
+  <p>Poslali smo kod na <strong>{{.Email}}</strong>. Upišite ga ovde, ili otvorite link iz mejla.</p>
+  <form method="post" action="/registracija/kod" novalidate>
+    <input type="hidden" name="email" value="{{.Email}}">
+    <div class="field">
+      <label for="code">Kod iz mejla (6 cifara)</label>
+      <input type="text" id="code" name="code" required autofocus inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]*" maxlength="9"{{if .Err}} aria-invalid="true" aria-describedby="code-err"{{end}}>
+      {{if .Err}}<p class="field-error" id="code-err" role="alert">{{.Err}}</p>{{end}}
+    </div>
+    <button type="submit" class="btn btn-primary btn-block" data-busy="Proveravam…">Potvrdi</button>
+  </form>
+  <p class="muted">Mejl ne stiže za nekoliko minuta? Proverite folder za neželjenu poštu. Kod važi 24 sata. Pogrešna adresa? <a href="/registracija">Registrujte se ponovo</a> — važi samo kod iz poslednjeg mejla.</p>
+  {{end}}
+</div>
+{{end}}

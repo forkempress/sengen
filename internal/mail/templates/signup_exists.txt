@@ -1,0 +1,13 @@
+{{define "signup_exists.subject"}}Prijava na Dani90{{end}}
+{{define "signup_exists.text"}}
+Zdravo,
+
+neko je pokušao da otvori nov Dani90 nalog sa ovom adresom, ali ona već ima nalog.
+
+Prijava: {{.LoginURL}}
+Zaboravili ste lozinku? {{.ResetURL}}
+
+Ako to niste bili vi, ne morate ništa da radite.
+
+Dani90 · app.dani90.rs
+{{end}}

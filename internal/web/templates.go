@@ -75,6 +75,8 @@ var pages = []string{
 	"login.html",
 	"zaboravljena_lozinka.html",
 	"nova_lozinka.html",
+	"registracija.html",
+	"registracija_potvrda.html",
 	"pregled.html",
 	"vozac_detalj.html",
 	"planer.html",

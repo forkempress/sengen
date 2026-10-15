@@ -35,8 +35,10 @@ func TestRender_Reset(t *testing.T) {
 
 func TestRender_EveryTemplate(t *testing.T) {
 	cases := map[string]any{
-		"reset":      ResetData{Name: "A", URL: "https://x", ValidFor: "1 sat"},
-		"reset_done": ResetDoneData{Name: "A", When: "15.10.2026. u 14:05", ResetURL: "https://x"},
+		"reset":         ResetData{Name: "A", URL: "https://x", ValidFor: "1 sat"},
+		"reset_done":    ResetDoneData{Name: "A", When: "15.10.2026. u 14:05", ResetURL: "https://x"},
+		"signup":        SignupData{Name: "A", Firm: "F", Code: "123456", URL: "https://x", ValidFor: "24 sata"},
+		"signup_exists": SignupExistsData{LoginURL: "https://x", ResetURL: "https://y"},
 	}
 	for name, data := range cases {
 		m, err := Render(name, "a@b.rs", data)

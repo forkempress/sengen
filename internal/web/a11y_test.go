@@ -91,7 +91,7 @@ func templateFS_files(t *testing.T) map[string]bool {
 func TestLogin_AutocompleteAndErrorByTheField(t *testing.T) {
 	app, _, _ := twoFirmApp(t)
 	page := app.request(http.MethodGet, "/login", nil, nil).Body.String()
-	for _, want := range []string{`autocomplete="email"`, `autocomplete="current-password"`, "Javite nam se", `href="/zaboravljena-lozinka"`, "Prikaži", "Koliko dana vaši vozači još smeju u Šengenu."} {
+	for _, want := range []string{`autocomplete="email"`, `autocomplete="current-password"`, `href="/registracija"`, `href="/zaboravljena-lozinka"`, "Prikaži", "Koliko dana vaši vozači još smeju u Šengenu."} {
 		if !strings.Contains(page, want) {
 			t.Errorf("login page is missing %q", want)
 		}
