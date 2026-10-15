@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"time"
 
+	"shengen/internal/clock"
 	"shengen/internal/legal"
 	"shengen/internal/status"
 )
@@ -39,6 +40,11 @@ var funcMap = template.FuncMap{
 		}
 		return t.Format("2006-01-02")
 	},
+	// today is the Belgrade date: the default in date fields, so a dispatcher
+	// only changes the day and month. latestToday is the last date a stay may
+	// have (an EET crossing after 23:00 is already tomorrow there).
+	"today":       clock.Today,
+	"latestToday": clock.LatestToday,
 	"fmtDayMonth": func(t time.Time) string { return t.Format("02.01.") },
 	// lastTripDay is the last day of a trip of n days starting on start.
 	"lastTripDay": func(start time.Time, n int) time.Time {

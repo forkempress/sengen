@@ -50,8 +50,8 @@
 <form method="post" action="/vozaci/{{.Driver.ID}}/boravci">
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
   <div class="form-grid">
-    <div><label for="new-entry">Ulazak</label><input id="new-entry" type="date" name="entry_date" required></div>
-    <div><label for="new-exit">Izlazak (prazno = u toku)</label><input id="new-exit" type="date" name="exit_date"></div>
+    <div><label for="new-entry">Ulazak</label><input id="new-entry" type="date" name="entry_date" value="{{fmtDateInput today}}" max="{{fmtDateInput latestToday}}" required></div>
+    <div><label for="new-exit">Izlazak (prazno = u toku)</label><input id="new-exit" type="date" name="exit_date" max="{{fmtDateInput latestToday}}" data-after="new-entry"></div>
     <div><label for="new-type">Tip</label>
       <select id="new-type" name="type">
         <option value="work">Posao</option>
@@ -126,8 +126,8 @@
           <form method="post" action="/vozaci/{{$driverID}}/boravci/{{.ID}}" class="edit-form">
             <input type="hidden" name="csrf_token" value="{{$csrf}}">
             <div class="form-grid">
-              <div><label for="e{{.ID}}-entry">Ulazak</label><input id="e{{.ID}}-entry" type="date" name="entry_date" value="{{fmtDateInput .Entry}}" required></div>
-              <div><label for="e{{.ID}}-exit">Izlazak</label><input id="e{{.ID}}-exit" type="date" name="exit_date" value="{{if .Exit}}{{fmtDateInput (deref .Exit)}}{{end}}"></div>
+              <div><label for="e{{.ID}}-entry">Ulazak</label><input id="e{{.ID}}-entry" type="date" name="entry_date" value="{{fmtDateInput .Entry}}" max="{{fmtDateInput latestToday}}" required></div>
+              <div><label for="e{{.ID}}-exit">Izlazak</label><input id="e{{.ID}}-exit" type="date" name="exit_date" value="{{if .Exit}}{{fmtDateInput (deref .Exit)}}{{end}}" min="{{fmtDateInput .Entry}}" max="{{fmtDateInput latestToday}}" data-after="e{{.ID}}-entry"></div>
               <div><label for="e{{.ID}}-type">Tip</label>
                 <select id="e{{.ID}}-type" name="type">
                   <option value="work" {{if eq .Type "work"}}selected{{end}}>Posao</option>
@@ -179,7 +179,7 @@
             <input type="hidden" name="csrf_token" value="{{$csrf}}">
             <div class="form-grid">
               <div><label for="p{{.ID}}-from">Polazak</label><input id="p{{.ID}}-from" type="date" name="od" value="{{fmtDateInput .From}}" required></div>
-              <div><label for="p{{.ID}}-to">Povratak</label><input id="p{{.ID}}-to" type="date" name="do" value="{{fmtDateInput .To}}" required></div>
+              <div><label for="p{{.ID}}-to">Povratak</label><input id="p{{.ID}}-to" type="date" name="do" value="{{fmtDateInput .To}}" min="{{fmtDateInput .From}}" data-after="p{{.ID}}-from" required></div>
               <div><label for="p{{.ID}}-note">Napomena</label><input id="p{{.ID}}-note" type="text" name="napomena" value="{{.Note}}" maxlength="500"></div>
             </div>
             <button type="submit" class="btn btn-primary btn-sm">Sačuvaj</button>
@@ -202,8 +202,8 @@
 <h3>Proveri turu</h3>
 <form method="get" action="/vozaci/{{.Driver.ID}}#planovi" class="plan-form">
   <div class="form-grid">
-    <div><label for="plan-from">Polazak (ulazak u Šengen)</label><input id="plan-from" type="date" name="od" value="{{.Trip.From}}" required></div>
-    <div><label for="plan-to">Povratak (izlazak)</label><input id="plan-to" type="date" name="do" value="{{.Trip.To}}" required></div>
+    <div><label for="plan-from">Polazak (ulazak u Šengen)</label><input id="plan-from" type="date" name="od" value="{{or .Trip.From (fmtDateInput today)}}" required></div>
+    <div><label for="plan-to">Povratak (izlazak)</label><input id="plan-to" type="date" name="do" value="{{.Trip.To}}" data-after="plan-from" required></div>
   </div>
   <button type="submit" class="btn btn-primary">Proveri</button>
 </form>

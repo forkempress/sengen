@@ -128,3 +128,42 @@ document.addEventListener('DOMContentLoaded', function () {
 document.addEventListener('click', function (e) {
   if (e.target.closest && e.target.closest('[data-print]')) window.print();
 });
+
+// Prekidač uloge u tabeli korisnika: izbor se čuva odmah, posle potvrde.
+// Ako korisnik odustane, prekidač se vraća na staru ulogu.
+document.addEventListener('change', function (e) {
+  var form = e.target.closest && e.target.closest('form[data-role-autosubmit]');
+  if (!form || e.target.name !== 'role') return;
+  var label = e.target.value === 'owner' ? 'Vlasnik' : 'Dispečer';
+  var msg = form.hasAttribute('data-self')
+    ? 'Promeniti vašu ulogu u „' + label + '“?' +
+      (e.target.value === 'dispatcher' ? ' Više nećete moći da menjate korisnike i upozorenja.' : '')
+    : 'Promeniti ulogu korisnika ' + form.getAttribute('data-user-name') + ' u „' + label + '“?';
+  if (!window.confirm(msg)) {
+    form.querySelectorAll('input[name="role"]').forEach(function (r) { r.checked = r.defaultChecked; });
+    return;
+  }
+  form.setAttribute('aria-busy', 'true');
+  form.submit();
+});
+
+// Datum „do“ (izlazak, povratak) ne može pre datuma „od“: kalendar se
+// otvara od tog meseca, a prazno polje dobija godinu i mesec polaska, pa se
+// ručno kuca samo dan. Prazan izlazak boravka (data-after bez required)
+// ostaje prazan — to znači da je boravak u toku.
+function syncAfter(to) {
+  var from = document.getElementById(to.getAttribute('data-after'));
+  if (!from || !from.value) return;
+  to.min = from.value;
+  if (to.required && (!to.value || to.value < from.value)) to.value = from.value;
+}
+document.addEventListener('change', function (e) {
+  if (!e.target.id) return;
+  document.querySelectorAll('input[data-after="' + e.target.id + '"]').forEach(syncAfter);
+});
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('input[data-after]').forEach(function (to) {
+    var from = document.getElementById(to.getAttribute('data-after'));
+    if (from && from.value) to.min = from.value;
+  });
+});

@@ -22,8 +22,8 @@
         {{end}}
       </select>
     </div>
-    <div><label for="pl-from">Polazak (ulazak u Šengen)</label><input id="pl-from" type="date" name="od" value="{{.Trip.From}}" required></div>
-    <div><label for="pl-to">Povratak (izlazak)</label><input id="pl-to" type="date" name="do" value="{{.Trip.To}}" required></div>
+    <div><label for="pl-from">Polazak (ulazak u Šengen)</label><input id="pl-from" type="date" name="od" value="{{or .Trip.From (fmtDateInput today)}}" required></div>
+    <div><label for="pl-to">Povratak (izlazak)</label><input id="pl-to" type="date" name="do" value="{{.Trip.To}}" data-after="pl-from" required></div>
   </div>
   <button type="submit" class="btn btn-primary">Proveri</button>
 </form>
