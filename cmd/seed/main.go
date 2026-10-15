@@ -6,7 +6,9 @@
 // superadmin bot reports on. With -slug and only billing flags it changes an
 // existing firm without creating an owner:
 //
-//	make seed ARGS="-slug prevoz-djuric -plan paid -price-rsd 300"
+//	make seed ARGS="-slug prevoz-djuric -plan paid -price 3,50 -currency EUR"
+//
+// Without -price and -currency a firm pays 300 RSD per active driver.
 //
 // The owner's password is never a command-line argument (it would stay in
 // the shell history and show in ps): it is typed at the prompt without echo,
@@ -22,6 +24,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -41,7 +44,8 @@ func main() {
 	ownerName := flag.String("name", "", "ime vlasnika")
 	plan := flag.String("plan", "", "plan firme: trial, paid ili paused")
 	trialUntil := flag.String("trial-until", "", "poslednji dan triala, YYYY-MM-DD")
-	priceRSD := flag.Int("price-rsd", -1, "mesečna cena po aktivnom vozaču, u dinarima (podrazumevano 300)")
+	price := flag.String("price", "", "mesečna cena po aktivnom vozaču, npr. 300 ili 3,50 (podrazumevano 300)")
+	currency := flag.String("currency", "", "valuta cene: RSD ili EUR (podrazumevano RSD)")
 	flag.Parse()
 
 	if *passwordArg != "" {
@@ -49,10 +53,10 @@ func main() {
 			"Pokrenite bez njega i ukucajte lozinku na upit, ili je prosledite kroz SEED_PASSWORD.")
 	}
 	billingOnly := *email == "" && *ownerName == "" && *slug != "" &&
-		(*plan != "" || *trialUntil != "" || *priceRSD >= 0)
+		(*plan != "" || *trialUntil != "" || *price != "" || *currency != "")
 	if !billingOnly && (*tenantName == "" || *email == "" || *ownerName == "") {
-		log.Fatal("obavezni parametri: -tenant-name -email -name (opciono: -slug, -plan, -trial-until, -price-rsd)\n" +
-			"ili samo naplata postojeće firme: -slug uz -plan / -trial-until / -price-rsd")
+		log.Fatal("obavezni parametri: -tenant-name -email -name (opciono: -slug, -plan, -trial-until, -price, -currency)\n" +
+			"ili samo naplata postojeće firme: -slug uz -plan / -trial-until / -price / -currency")
 	}
 	if *slug == "" {
 		*slug = store.SlugFromName(*tenantName)
@@ -79,7 +83,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("firma %q: %v", *slug, err)
 		}
-		setBilling(ctx, st, t.ID, *plan, *trialUntil, *priceRSD)
+		setBilling(ctx, st, t.ID, *plan, *trialUntil, *price, *currency)
 		return
 	}
 	if errors.Is(err, store.ErrNotFound) {
@@ -120,13 +124,13 @@ func main() {
 	}
 	fmt.Printf("Kreiran vlasnik #%d (%s) — prijava %s\n", u.ID, u.Email, where)
 
-	if *plan != "" || *trialUntil != "" || *priceRSD >= 0 {
-		setBilling(ctx, st, t.ID, *plan, *trialUntil, *priceRSD)
+	if *plan != "" || *trialUntil != "" || *price != "" || *currency != "" {
+		setBilling(ctx, st, t.ID, *plan, *trialUntil, *price, *currency)
 	}
 }
 
 // setBilling changes only the billing fields that were passed.
-func setBilling(ctx context.Context, st *store.Store, tenantID int64, plan, trialUntil string, priceRSD int) {
+func setBilling(ctx context.Context, st *store.Store, tenantID int64, plan, trialUntil, price, currency string) {
 	cur, err := st.GetTenantOverview(ctx, tenantID)
 	if err != nil {
 		log.Fatalf("učitavanje firme: %v", err)
@@ -142,17 +146,44 @@ func setBilling(ctx context.Context, st *store.Store, tenantID int64, plan, tria
 		}
 		trial = &d
 	}
-	if priceRSD < 0 {
-		priceRSD = cur.PricePerDriverRSD
+	// A new currency without a new price would turn 300 din into €300.
+	if currency != "" && price == "" && strings.ToUpper(currency) != cur.PriceCurrency {
+		log.Fatal("uz -currency navedite i -price")
 	}
-	if err := st.SetTenantBilling(ctx, tenantID, plan, trial, priceRSD); err != nil {
+	if currency == "" {
+		currency = cur.PriceCurrency
+	}
+	currency = strings.ToUpper(currency)
+	minor := cur.PricePerDriver
+	if price != "" {
+		var err error
+		if minor, err = parsePrice(price); err != nil {
+			log.Fatalf("-price: %v", err)
+		}
+	}
+	if err := st.SetTenantBilling(ctx, tenantID, plan, trial, minor, currency); err != nil {
 		log.Fatalf("naplata: %v", err)
 	}
 	until := "-"
 	if trial != nil {
 		until = trial.Format("02.01.2006")
 	}
-	fmt.Printf("Firma #%d: plan %s, trial do %s, %d din po vozaču\n", tenantID, plan, until, priceRSD)
+	fmt.Printf("Firma #%d: plan %s, trial do %s, %d,%02d %s po vozaču\n", tenantID, plan, until, minor/100, minor%100, currency)
+}
+
+// parsePrice reads "300", "3,50" or "3.50" into the minor unit (para, cent).
+func parsePrice(s string) (int, error) {
+	whole, frac, _ := strings.Cut(strings.ReplaceAll(strings.TrimSpace(s), ",", "."), ".")
+	if len(frac) > 2 {
+		return 0, fmt.Errorf("najviše dve decimale: %q", s)
+	}
+	frac += strings.Repeat("0", 2-len(frac))
+	w, err1 := strconv.Atoi(whole)
+	f, err2 := strconv.Atoi(frac)
+	if whole == "" || err1 != nil || err2 != nil || w < 0 || f < 0 {
+		return 0, fmt.Errorf("neispravan iznos %q (npr. 300 ili 3,50)", s)
+	}
+	return w*100 + f, nil
 }
 
 // readPassword takes the owner's password from SEED_PASSWORD if set, else

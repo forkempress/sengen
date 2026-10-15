@@ -22,6 +22,13 @@ const (
 	PlanPaused = "paused"
 )
 
+// Currencies a firm's price can be in (tenants.price_currency). New firms
+// pay 300 RSD per driver.
+const (
+	CurrencyRSD = "RSD"
+	CurrencyEUR = "EUR"
+)
+
 const timestampLayout = "2006-01-02T15:04:05.000Z"
 
 func formatTimestamp(t time.Time) string { return t.UTC().Format(timestampLayout) }
@@ -99,25 +106,27 @@ func (s *Store) countGroups(ctx context.Context, query string, into map[string]i
 // counts. LastActivity is the latest of: a driver added, a stay created or
 // changed, an audit entry. FirstStayAt is when the firm entered its first stay.
 type TenantOverview struct {
-	ID                  int64
-	Name                string
-	Slug                string
-	Plan                string
-	TrialUntil          *time.Time // date only, UTC midnight
-	PricePerDriverRSD   int // whole dinars per active driver per month
-	CreatedAt           time.Time
-	ActiveDrivers       int
-	LinkedDrivers       int
-	Users               int
-	Stays               int
-	LastActivity        *time.Time
-	FirstStayAt         *time.Time
+	ID             int64
+	Name           string
+	Slug           string
+	Plan           string
+	TrialUntil     *time.Time // date only, UTC midnight
+	PricePerDriver int        // per active driver per month, in the minor unit (para, cent)
+	PriceCurrency  string     // CurrencyRSD or CurrencyEUR
+	CreatedAt      time.Time
+	ActiveDrivers  int
+	LinkedDrivers  int
+	Users          int
+	Stays          int
+	LastActivity   *time.Time
+	FirstStayAt    *time.Time
 }
 
-// MonthlyRSD is what the firm pays per month at its current driver count.
-func (t TenantOverview) MonthlyRSD() int { return t.ActiveDrivers * t.PricePerDriverRSD }
+// Monthly is what the firm pays per month at its current driver count, in
+// PriceCurrency's minor unit.
+func (t TenantOverview) Monthly() int { return t.ActiveDrivers * t.PricePerDriver }
 
-const tenantOverviewQuery = `SELECT t.id, t.name, t.slug, t.plan, t.trial_until, t.price_per_driver_rsd, t.created_at,
+const tenantOverviewQuery = `SELECT t.id, t.name, t.slug, t.plan, t.trial_until, t.price_per_driver_minor, t.price_currency, t.created_at,
 	(SELECT COUNT(*) FROM drivers WHERE tenant_id = t.id AND active = 1),
 	(SELECT COUNT(*) FROM drivers WHERE tenant_id = t.id AND active = 1 AND telegram_chat_id IS NOT NULL),
 	(SELECT COUNT(*) FROM users WHERE tenant_id = t.id),
@@ -133,7 +142,7 @@ func scanTenantOverview(sc interface{ Scan(...any) error }) (TenantOverview, err
 	var o TenantOverview
 	var trialUntil, lastActivity, firstStay sql.NullString
 	var createdAt string
-	err := sc.Scan(&o.ID, &o.Name, &o.Slug, &o.Plan, &trialUntil, &o.PricePerDriverRSD, &createdAt,
+	err := sc.Scan(&o.ID, &o.Name, &o.Slug, &o.Plan, &trialUntil, &o.PricePerDriver, &o.PriceCurrency, &createdAt,
 		&o.ActiveDrivers, &o.LinkedDrivers, &o.Users, &o.Stays, &lastActivity, &firstStay)
 	if err != nil {
 		return o, err
@@ -204,23 +213,29 @@ func (s *Store) CountStaysCreatedBetween(ctx context.Context, from, to time.Time
 	return n, nil
 }
 
-// SetTenantBilling sets a firm's plan, trial end and price (cmd/seed).
-func (s *Store) SetTenantBilling(ctx context.Context, tenantID int64, plan string, trialUntil *time.Time, pricePerDriverRSD int) error {
+// SetTenantBilling sets a firm's plan, trial end and price (cmd/seed). The
+// price is per active driver per month, in currency's minor unit.
+func (s *Store) SetTenantBilling(ctx context.Context, tenantID int64, plan string, trialUntil *time.Time, pricePerDriver int, currency string) error {
 	switch plan {
 	case PlanTrial, PlanPaid, PlanPaused:
 	default:
 		return &ValidationError{Msg: fmt.Sprintf("nepoznat plan %q (trial, paid ili paused)", plan)}
 	}
-	if pricePerDriverRSD < 0 {
+	if pricePerDriver < 0 {
 		return &ValidationError{Msg: "cena ne može biti negativna"}
+	}
+	switch currency {
+	case CurrencyRSD, CurrencyEUR:
+	default:
+		return &ValidationError{Msg: fmt.Sprintf("nepoznata valuta %q (RSD ili EUR)", currency)}
 	}
 	var trial any
 	if trialUntil != nil {
 		trial = trialUntil.Format(dateLayout)
 	}
 	_, err := s.DB.ExecContext(ctx,
-		`UPDATE tenants SET plan = ?, trial_until = ?, price_per_driver_rsd = ? WHERE id = ?`,
-		plan, trial, pricePerDriverRSD, tenantID)
+		`UPDATE tenants SET plan = ?, trial_until = ?, price_per_driver_minor = ?, price_currency = ? WHERE id = ?`,
+		plan, trial, pricePerDriver, currency, tenantID)
 	if err != nil {
 		return fmt.Errorf("set tenant billing: %w", err)
 	}

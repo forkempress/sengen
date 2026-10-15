@@ -34,3 +34,16 @@ func TestReadPassword(t *testing.T) {
 		t.Error("empty stdin accepted")
 	}
 }
+
+func TestParsePrice(t *testing.T) {
+	for in, want := range map[string]int{"300": 30000, "3,50": 350, "3.5": 350, " 2 ": 200, "0,05": 5} {
+		if got, err := parsePrice(in); err != nil || got != want {
+			t.Errorf("parsePrice(%q) = %d, %v; want %d", in, got, err, want)
+		}
+	}
+	for _, in := range []string{"", "abc", "3,505", "-3", "3,-5", ",50"} {
+		if _, err := parsePrice(in); err == nil {
+			t.Errorf("parsePrice(%q) accepted", in)
+		}
+	}
+}

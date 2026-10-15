@@ -38,13 +38,14 @@ func planLabel(p string) string {
 
 var roleLabels = map[string]string{"owner": "vlasnici", "dispatcher": "dispečeri"}
 
-// formatRSD renders whole dinars as "1.234 din".
-func formatRSD(rsd int) string {
+// formatMoney renders an amount in the currency's minor unit: "1.234 din"
+// (para only when there are any: "1.234,50 din") or "€1.234,50".
+func formatMoney(minor int, currency string) string {
 	sign := ""
-	if rsd < 0 {
-		sign, rsd = "-", -rsd
+	if minor < 0 {
+		sign, minor = "-", -minor
 	}
-	whole := strconv.Itoa(rsd)
+	whole := strconv.Itoa(minor / 100)
 	var b strings.Builder
 	for i, r := range whole {
 		if i > 0 && (len(whole)-i)%3 == 0 {
@@ -52,7 +53,30 @@ func formatRSD(rsd int) string {
 		}
 		b.WriteRune(r)
 	}
+	if currency == store.CurrencyEUR {
+		return fmt.Sprintf("%s€%s,%02d", sign, b.String(), minor%100)
+	}
+	if minor%100 != 0 {
+		return fmt.Sprintf("%s%s,%02d din", sign, b.String(), minor%100)
+	}
 	return fmt.Sprintf("%s%s din", sign, b.String())
+}
+
+// Amounts sums money per currency, since firms can pay in different ones.
+type Amounts map[string]int
+
+// String is "900 din + €7,00", dinars first; nothing at all is "0 din".
+func (a Amounts) String() string {
+	var parts []string
+	for _, c := range []string{store.CurrencyRSD, store.CurrencyEUR} {
+		if a[c] != 0 {
+			parts = append(parts, formatMoney(a[c], c))
+		}
+	}
+	if len(parts) == 0 {
+		return formatMoney(0, store.CurrencyRSD)
+	}
+	return strings.Join(parts, " + ")
 }
 
 func belgrade(t time.Time) time.Time { return t.In(clock.Now().Location()) }
@@ -127,20 +151,21 @@ func signupsLine(c store.SignupCounts) string {
 
 // MRR sums what firms pay per month: active drivers × the firm's price.
 type MRR struct {
-	PaidRSD, PaidTenants, PaidDrivers    int
-	TrialRSD, TrialTenants, TrialDrivers int
+	Paid, Trial                Amounts
+	PaidTenants, PaidDrivers   int
+	TrialTenants, TrialDrivers int
 }
 
 func ComputeMRR(firms []store.TenantOverview) MRR {
-	var m MRR
+	m := MRR{Paid: Amounts{}, Trial: Amounts{}}
 	for _, f := range firms {
 		switch f.Plan {
 		case store.PlanPaid:
-			m.PaidRSD += f.MonthlyRSD()
+			m.Paid[f.PriceCurrency] += f.Monthly()
 			m.PaidTenants++
 			m.PaidDrivers += f.ActiveDrivers
 		case store.PlanTrial:
-			m.TrialRSD += f.MonthlyRSD()
+			m.Trial[f.PriceCurrency] += f.Monthly()
 			m.TrialTenants++
 			m.TrialDrivers += f.ActiveDrivers
 		}
@@ -155,12 +180,15 @@ func (s *Service) cmdMRR(ctx context.Context) (string, error) {
 	}
 	m := ComputeMRR(firms)
 	var b strings.Builder
-	fmt.Fprintf(&b, "💶 MRR: %s\n", formatRSD(m.PaidRSD))
+	fmt.Fprintf(&b, "💶 MRR: %s\n", m.Paid)
 	fmt.Fprintf(&b, "Plaćene firme: %d, vozača %d", m.PaidTenants, m.PaidDrivers)
-	if m.PaidTenants > 0 {
-		fmt.Fprintf(&b, ", prosek %s po firmi", formatRSD(m.PaidRSD/m.PaidTenants))
+	// An average across currencies would mean nothing.
+	if m.PaidTenants > 0 && len(m.Paid) == 1 {
+		for c, sum := range m.Paid {
+			fmt.Fprintf(&b, ", prosek %s po firmi", formatMoney(sum/m.PaidTenants, c))
+		}
 	}
-	fmt.Fprintf(&b, "\nTrial (potencijal): %s iz %d firmi, %d vozača", formatRSD(m.TrialRSD), m.TrialTenants, m.TrialDrivers)
+	fmt.Fprintf(&b, "\nTrial (potencijal): %s iz %d firmi, %d vozača", m.Trial, m.TrialTenants, m.TrialDrivers)
 	return b.String(), nil
 }
 
@@ -278,7 +306,7 @@ func (s *Service) cmdFirma(ctx context.Context, args string) (string, error) {
 	default:
 		fmt.Fprintf(&b, "Plan: %s\n", planLabel(f.Plan))
 	}
-	fmt.Fprintf(&b, "Cena: %s po vozaču, mesečno %s\n", formatRSD(f.PricePerDriverRSD), formatRSD(f.MonthlyRSD()))
+	fmt.Fprintf(&b, "Cena: %s po vozaču, mesečno %s\n", formatMoney(f.PricePerDriver, f.PriceCurrency), formatMoney(f.Monthly(), f.PriceCurrency))
 	fmt.Fprintf(&b, "Korisnici: %d", f.Users)
 	if line := countsLine(roles, []string{"owner", "dispatcher"}, roleLabel); line != "" {
 		fmt.Fprintf(&b, " (%s)", line)
