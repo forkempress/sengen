@@ -13,7 +13,7 @@ Web aplikacija i Telegram bot za evidenciju dana koje vozači Firme provode u Š
 
 ## 3. Probni period i cena
 - Probni period [30] dana, bez obaveze plaćanja. Posle isteka nalog prelazi u režim samo za čitanje; ako se pretplata ne aktivira u roku od [15] dana, podaci se brišu po pravilima iz tačke 8.
-- Cena: [IZNOS] po aktivnom vozaču mesečno, [bez PDV-a / PDV nije obračunat jer pružalac nije u sistemu PDV-a]. Fakturiše se [mesečno unapred] na osnovu broja aktivnih vozača. Rok plaćanja [8] dana.
+- Cena: 300 dinara po aktivnom vozaču mesečno, [bez PDV-a / PDV nije obračunat jer pružalac nije u sistemu PDV-a]. Fakturiše se [mesečno unapred] na osnovu broja aktivnih vozača. Rok plaćanja [8] dana.
 - Kašnjenje duže od [15] dana: pravo na ograničenje pristupa uz prethodnu najavu emailom.
 - Promena cene: najava najmanje [30] dana unapred; Firma može da raskine pre stupanja na snagu.
 

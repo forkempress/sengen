@@ -42,13 +42,28 @@
   "url": "https://dani90.rs/",
   "description": "Evidencija dana vozača u Šengen zoni po pravilu 90/180 za prevozničke firme. Dispečer unosi prelaske granice na webu ili ih vozači javljaju preko Telegram bota, a stanje celog voznog parka je na jednom ekranu.",
   "screenshot": "https://dani90.rs/images/pregled.jpg",
-  "offers": {
-    "@type": "Offer",
-    "price": "0",
-    "priceCurrency": "RSD",
-    "description": "Besplatna proba 30 dana, bez kartice",
-    "url": "https://app.dani90.rs/registracija"
-  },
+  "offers": [
+    {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "RSD",
+      "description": "Besplatna proba 30 dana, bez kartice",
+      "url": "https://app.dani90.rs/registracija"
+    },
+    {
+      "@type": "Offer",
+      "price": "300",
+      "priceCurrency": "RSD",
+      "description": "Mesečno po aktivnom vozaču",
+      "priceSpecification": {
+        "@type": "UnitPriceSpecification",
+        "price": "300",
+        "priceCurrency": "RSD",
+        "unitText": "vozač mesečno"
+      },
+      "url": "https://app.dani90.rs/registracija"
+    }
+  ],
   "publisher": {
     "@id": "https://dani90.rs/#organizacija"
   }
@@ -93,7 +108,7 @@
           <a href="#kontakt" class="btn btn-ghost btn-lg">Pišite nam</a>
         </div>
         <ul class="hero-points">
-          <li>30 dana besplatno, bez kartice</li>
+          <li>30 dana besplatno, bez kartice, zatim 300 din po vozaču mesečno</li>
           <li>Unosite sami ili prepustite vozačima</li>
           <li>Staru evidenciju uvezete iz skena ili Excela</li>
           <li>Radi na telefonu i računaru</li>
@@ -310,7 +325,7 @@
         </details>
         <details>
           <summary>Koliko košta?</summary>
-          <p>Prvih 30 dana je besplatno, bez kartice: <a href="https://app.dani90.rs/registracija">registrujte firmu</a> i probajte sa svojim vozačima. Posle toga cena zavisi od broja vozača; <a href="https://app.dani90.rs/kontakt">pišite nam</a> i poslaćemo ponudu.</p>
+          <p>Prvih 30 dana je besplatno, bez kartice: <a href="https://app.dani90.rs/registracija">registrujte firmu</a> i probajte sa svojim vozačima. Posle toga <strong>300 dinara mesečno po aktivnom vozaču</strong>. Deaktivirani vozači se ne plaćaju. Pitanja o naplati? <a href="https://app.dani90.rs/kontakt">Pišite nam</a>.</p>
         </details>
       </div>
     </div>
