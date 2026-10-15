@@ -4,9 +4,12 @@ package web
 
 import (
 	"net/http"
+	"sync"
 	"time"
 
 	"shengen/internal/auth"
+	"shengen/internal/legal"
+	"shengen/internal/mail"
 	"shengen/internal/store"
 	"shengen/internal/telegram"
 )
@@ -19,9 +22,30 @@ type Server struct {
 	// login rate limit; the zero value trusts none.
 	TrustedProxy auth.TrustedProxy
 
+	// Mailer sends the app's email; the default only logs it.
+	Mailer mail.Mailer
+	// MailReady is false when nothing can be sent (a server without SMTP):
+	// the pages that promise an email are then not offered at all, rather
+	// than saying "we sent you a link" when nothing will arrive.
+	MailReady bool
+	// MailDailyLimit caps messages sent per 24 hours (see config).
+	MailDailyLimit int
+	// PublicURL starts every link the app puts in an email. It comes from
+	// configuration, never from the request's Host header: otherwise anyone
+	// could ask for a reset of someone else's account with their own host
+	// in the link and collect the token when the victim clicks.
+	PublicURL string
+	// Turnstile guards the public forms; nil turns the check off.
+	Turnstile *Turnstile
+
 	templates           templateSet
 	loginIPLimiter      *auth.LoginLimiter
 	loginAccountLimiter *auth.LoginLimiter
+	resetIPLimiter      *auth.LoginLimiter
+	resetEmailLimiter   *auth.LoginLimiter
+
+	// mailWG tracks messages still being sent in the background.
+	mailWG sync.WaitGroup
 }
 
 // Login limits, per 15 minutes. The IP limit is looser because a firm's
@@ -32,6 +56,15 @@ const (
 	loginLimitPerAccount = 10
 )
 
+// Password reset requests, per hour: each one may send an email.
+const (
+	resetLimitWindow   = time.Hour
+	resetLimitPerIP    = 5
+	resetLimitPerEmail = 3
+)
+
+const defaultMailDailyLimit = 250
+
 func New(st *store.Store, authSvc *auth.Service, bot *telegram.Bot) *Server {
 	return &Server{
 		Store:               st,
@@ -40,6 +73,12 @@ func New(st *store.Store, authSvc *auth.Service, bot *telegram.Bot) *Server {
 		templates:           loadTemplates(),
 		loginIPLimiter:      auth.NewLoginLimiter(loginLimitPerIP, loginLimitWindow),
 		loginAccountLimiter: auth.NewLoginLimiter(loginLimitPerAccount, loginLimitWindow),
+		resetIPLimiter:      auth.NewLoginLimiter(resetLimitPerIP, resetLimitWindow),
+		resetEmailLimiter:   auth.NewLoginLimiter(resetLimitPerEmail, resetLimitWindow),
+		Mailer:              mail.LogMailer{},
+		MailReady:           true,
+		MailDailyLimit:      defaultMailDailyLimit,
+		PublicURL:           legal.PublicBaseURL,
 	}
 }
 
@@ -52,6 +91,12 @@ func (s *Server) Routes() http.Handler {
 	// visitor in to the attacker's account (SEC-21).
 	mux.Handle("POST /login", http.NewCrossOriginProtection().Handler(http.HandlerFunc(s.handleLoginSubmit)))
 	mux.HandleFunc("POST /logout", s.handleLogout)
+	// Password reset: public, so, like login, guarded by the browser's
+	// Sec-Fetch-Site instead of a session's CSRF token.
+	mux.HandleFunc("GET /zaboravljena-lozinka", s.handleForgotPage)
+	mux.Handle("POST /zaboravljena-lozinka", http.NewCrossOriginProtection().Handler(http.HandlerFunc(s.handleForgotSubmit)))
+	mux.HandleFunc("GET /nova-lozinka", s.handleResetPage)
+	mux.Handle("POST /nova-lozinka", http.NewCrossOriginProtection().Handler(http.HandlerFunc(s.handleResetSubmit)))
 	mux.HandleFunc("POST /telegram/webhook", s.Bot.HandleWebhook)
 	mux.Handle("GET /static/", staticHandler())
 	mux.HandleFunc("GET /privatnost", s.handlePrivacyPage)

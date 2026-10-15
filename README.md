@@ -133,6 +133,26 @@ Prijavi se na `https://app.dani90.rs/login`.
 Dok tunel i aplikacija rade, bot je uživo. Kad ugasiš računar, bot prestaje da
 odgovara — zato je ovo privremeno rešenje za test, ne za klijenta.
 
+## Proba izmena pre produkcije
+
+Ne postoji posebno dev okruženje, pa se izmena proba nad kopijom produkcijske
+baze, pre nego što se produkcija restartuje sa novim kodom:
+
+```bash
+make proba
+```
+
+Pravi kopiju `DB_PATH` u `proba/proba.db` (može dok produkcija radi) i
+pokreće aplikaciju na `http://localhost:8095` bez Telegram bota — nijedan
+vozač ni operator ne dobija poruku iz kopije — a mejlove samo ispisuje u log
+(tu se vidi i link za reset lozinke). `PROBA_SMTP=1 make proba` zadržava SMTP
+iz `.env`, za probu pravog slanja; reset tada tražite samo za svoju adresu.
+Na serveru je potreban paket `sqlite3`.
+
+Pre restarta produkcije sa novim kodom napraviti kopiju baze
+(`sqlite3 dani90.db ".backup dani90-pre-izmene.db"`): migracije se primenjuju
+same pri startu.
+
 ## Kasnije: trajni server
 
 Za produkciju kod ostaje isti, menja se samo okruženje: Hetzner VPS (CX22),
@@ -167,6 +187,10 @@ poslao sam klijent.
 | `TELEGRAM_BOT_TOKEN` | — | token jedinog bota, od @BotFather |
 | `TELEGRAM_WEBHOOK_SECRET` | — | obavezan uz token; `openssl rand -hex 32` |
 | `TELEGRAM_BOT_USERNAME` | — | opciono, za linkove na koje se samo tapne |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` | —, `587` | SMTP relej provajdera (Brevo: `smtp-relay.brevo.com`); bez njega na serveru nema slanja mejlova, pa ni reseta lozinke |
+| `MAIL_FROM`, `MAIL_REPLY_TO` | — | pošiljalac (obavezan uz SMTP) i adresa za odgovore |
+| `MAIL_DAILY_LIMIT` | `250` | najviše mejlova u 24h |
+| `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | — | Cloudflare Turnstile na javnim formama; oba ili nijedan |
 
 Token i secret idu samo u okruženje (`.env`, systemd), nikada u repo. Firma u
 **Podešavanja → Telegram** bira samo svoj chat za upozorenja i pragove.

@@ -1,0 +1,7 @@
+{{define "reset.html"}}
+<p>Zdravo {{.Name}},</p>
+<p>za novu lozinku kliknite na dugme. Link važi {{.ValidFor}} i može se iskoristiti jednom.</p>
+<p style="margin:24px 0;"><a href="{{.URL}}" style="display:inline-block;background:#1d4ed8;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:4px;font-weight:bold;">Postavi novu lozinku</a></p>
+<p style="font-size:14px;color:#4b5563;">Ako dugme ne radi, otvorite ovaj link:<br><a href="{{.URL}}" style="color:#1d4ed8;word-break:break-all;">{{.URL}}</a></p>
+<p style="font-size:14px;color:#4b5563;">Posle promene bićete odjavljeni sa svih uređaja. Niste tražili promenu? Ignorišite ovaj mejl, lozinka ostaje ista.</p>
+{{end}}

@@ -23,6 +23,8 @@
     </div>
     <button type="submit" class="btn btn-primary btn-block" data-busy="Prijavljujem…">Prijavi se</button>
   </form>
-  <p class="login-help muted">Zaboravili ste lozinku? Vlasnik naloga u vašoj firmi može da vam postavi novu. Vlasnici: <a href="https://dani90.rs/#demo">Javite nam se</a>.</p>
+  {{if .ResetEnabled}}<p class="login-help"><a href="/zaboravljena-lozinka">Zaboravili ste lozinku?</a></p>
+  {{else}}<p class="login-help muted">Zaboravili ste lozinku? Pišite nam i postavićemo vam novu.</p>{{end}}
+  <p class="login-help muted">Nemate nalog? <a href="https://dani90.rs/#demo">Javite nam se</a>.</p>
 </div>
 {{end}}

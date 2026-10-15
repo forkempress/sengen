@@ -14,10 +14,12 @@ type loginPageData struct {
 	Email string
 	// Err is shown next to the fields it is about, not only at the top.
 	Err string
+	// ResetEnabled: "Zaboravili ste lozinku?" leads to a working reset.
+	ResetEnabled bool
 }
 
 func (s *Server) handleLoginPage(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "login.html", loginPageData{baseData: s.base(r, "login")})
+	s.render(w, "login.html", loginPageData{baseData: s.base(r, "login"), ResetEnabled: s.MailReady})
 }
 
 func (s *Server) handleLoginSubmit(w http.ResponseWriter, r *http.Request) {
@@ -63,7 +65,7 @@ func (s *Server) handleLoginSubmit(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) renderLoginError(w http.ResponseWriter, r *http.Request, email, msg string, status int) {
-	data := loginPageData{baseData: s.base(r, "login"), Email: email, Err: msg}
+	data := loginPageData{baseData: s.base(r, "login"), Email: email, Err: msg, ResetEnabled: s.MailReady}
 	w.WriteHeader(status)
 	s.render(w, "login.html", data)
 }

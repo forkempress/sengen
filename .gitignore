@@ -5,3 +5,5 @@
 .env
 .chrome-profile/
 .claude/worktrees/
+/proba/
+.env~

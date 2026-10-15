@@ -1,0 +1,13 @@
+{{define "reset.subject"}}Nova lozinka za Dani90{{end}}
+{{define "reset.text"}}
+Zdravo {{.Name}},
+
+za novu lozinku otvorite link (važi {{.ValidFor}}, može se iskoristiti jednom):
+
+{{.URL}}
+
+Posle promene bićete odjavljeni sa svih uređaja.
+Niste tražili promenu? Ignorišite ovaj mejl, lozinka ostaje ista.
+
+Dani90 · app.dani90.rs
+{{end}}

@@ -51,6 +51,13 @@
 </html>
 {{end}}
 
+{{/* Cloudflare Turnstile on a public form; nothing when it is turned off.
+     The handler has already widened the page's CSP for Cloudflare. */}}
+{{define "turnstile"}}{{if .}}
+<div class="field cf-turnstile" data-sitekey="{{.SiteKey}}" data-action="{{.Action}}"></div>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+{{end}}{{end}}
+
 {{/* Shown once, right after a link is generated. The token is not repeated in
      any URL, so this is the only place to copy it from. */}}
 {{define "telegramLink"}}

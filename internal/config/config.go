@@ -7,6 +7,7 @@ package config
 import (
 	"fmt"
 	"net"
+	"net/mail"
 	"os"
 	"regexp"
 	"strconv"
@@ -49,7 +50,27 @@ type Config struct {
 	// successful backup (BACKUP_HEARTBEAT_FILE). When set, a file older than
 	// a day and a bit — or missing — is reported to the superadmins.
 	BackupHeartbeatFile string
+
+	// Outgoing email through the provider's SMTP relay. Without SMTP_HOST
+	// the app only logs each message (local development).
+	SMTPHost     string
+	SMTPPort     string // 587 (STARTTLS) by default; 465 for TLS from the start
+	SMTPUsername string
+	SMTPPassword string
+	MailFrom     *mail.Address // MAIL_FROM, e.g. "Dani90 <nalog@dani90.rs>"
+	MailReplyTo  *mail.Address // MAIL_REPLY_TO, optional
+	// MailDailyLimit caps messages per 24 hours (MAIL_DAILY_LIMIT), below
+	// the provider's own limit, so a flood of requests cannot use up the
+	// quota that password resets depend on.
+	MailDailyLimit int
+
+	// Cloudflare Turnstile on the public forms; both keys or neither.
+	TurnstileSiteKey   string
+	TurnstileSecretKey string
 }
+
+// defaultMailDailyLimit stays under Brevo's free 300 a day.
+const defaultMailDailyLimit = 250
 
 // Telegram only accepts A-Z, a-z, 0-9, "_" and "-" in a webhook secret, 1–256
 // characters; anything else makes setWebhook fail.
@@ -69,6 +90,12 @@ func Load() (Config, error) {
 		TelegramWebhookSecret: strings.TrimSpace(os.Getenv("TELEGRAM_WEBHOOK_SECRET")),
 		TelegramBotUsername:   strings.TrimPrefix(strings.TrimSpace(os.Getenv("TELEGRAM_BOT_USERNAME")), "@"),
 		BackupHeartbeatFile:   strings.TrimSpace(os.Getenv("BACKUP_HEARTBEAT_FILE")),
+		SMTPHost:              strings.TrimSpace(os.Getenv("SMTP_HOST")),
+		SMTPPort:              getenv("SMTP_PORT", "587"),
+		SMTPUsername:          strings.TrimSpace(os.Getenv("SMTP_USERNAME")),
+		SMTPPassword:          os.Getenv("SMTP_PASSWORD"),
+		TurnstileSiteKey:      strings.TrimSpace(os.Getenv("TURNSTILE_SITE_KEY")),
+		TurnstileSecretKey:    strings.TrimSpace(os.Getenv("TURNSTILE_SECRET_KEY")),
 	}
 
 	ids, err := parseTelegramIDs(os.Getenv("ADMIN_TELEGRAM_IDS"))
@@ -91,10 +118,56 @@ func Load() (Config, error) {
 			return Config{}, fmt.Errorf("TELEGRAM_WEBHOOK_SECRET sme da sadrži samo slova, cifre, _ i - (najviše 256 znakova)")
 		}
 	}
+	if err := loadMail(&cfg); err != nil {
+		return Config{}, err
+	}
+	if (cfg.TurnstileSiteKey == "") != (cfg.TurnstileSecretKey == "") {
+		return Config{}, fmt.Errorf("TURNSTILE_SITE_KEY i TURNSTILE_SECRET_KEY se postavljaju zajedno")
+	}
 	if cfg.PublicBaseURL != "" && !strings.HasPrefix(cfg.PublicBaseURL, "https://") {
 		return Config{}, fmt.Errorf("PUBLIC_BASE_URL mora počinjati sa https:// (Telegram ne prihvata http webhook)")
 	}
 	return cfg, nil
+}
+
+// loadMail reads the email settings. Half a configuration is an error, like
+// a bot token without its secret: the app would start and then fail every
+// password reset.
+func loadMail(cfg *Config) error {
+	limit := getenv("MAIL_DAILY_LIMIT", strconv.Itoa(defaultMailDailyLimit))
+	n, err := strconv.Atoi(limit)
+	if err != nil || n < 1 {
+		return fmt.Errorf("MAIL_DAILY_LIMIT: %q nije pozitivan broj", limit)
+	}
+	cfg.MailDailyLimit = n
+
+	if from := strings.TrimSpace(os.Getenv("MAIL_FROM")); from != "" {
+		addr, err := mail.ParseAddress(from)
+		if err != nil {
+			return fmt.Errorf("MAIL_FROM: %q nije email adresa (primer: Dani90 <nalog@dani90.rs>)", from)
+		}
+		cfg.MailFrom = addr
+	}
+	if replyTo := strings.TrimSpace(os.Getenv("MAIL_REPLY_TO")); replyTo != "" {
+		addr, err := mail.ParseAddress(replyTo)
+		if err != nil {
+			return fmt.Errorf("MAIL_REPLY_TO: %q nije email adresa", replyTo)
+		}
+		cfg.MailReplyTo = addr
+	}
+	if cfg.SMTPHost == "" {
+		return nil
+	}
+	if cfg.MailFrom == nil {
+		return fmt.Errorf("SMTP_HOST je postavljen, ali MAIL_FROM nije")
+	}
+	if cfg.SMTPUsername == "" || cfg.SMTPPassword == "" {
+		return fmt.Errorf("SMTP_HOST je postavljen, ali SMTP_USERNAME ili SMTP_PASSWORD nije")
+	}
+	if p, err := strconv.Atoi(cfg.SMTPPort); err != nil || p < 1 || p > 65535 {
+		return fmt.Errorf("SMTP_PORT: %q nije port", cfg.SMTPPort)
+	}
+	return nil
 }
 
 // parseTelegramIDs reads a comma-separated list of Telegram user ids. A typo

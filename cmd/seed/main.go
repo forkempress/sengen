@@ -155,9 +155,6 @@ func setBilling(ctx context.Context, st *store.Store, tenantID int64, plan, tria
 	fmt.Printf("Firma #%d: plan %s, trial do %s, %d centi po vozaču\n", tenantID, plan, until, priceCents)
 }
 
-// minPasswordLen matches the rule on the web (users page, password change).
-const minPasswordLen = 10
-
 // readPassword takes the owner's password from SEED_PASSWORD if set, else
 // from the terminal without echo (typed twice), else as the first line of a
 // piped stdin.
@@ -190,8 +187,9 @@ func readPassword(env string, in *os.File, prompt io.Writer) (string, error) {
 		}
 		password = strings.TrimRight(line, "\r\n")
 	}
-	if len([]rune(password)) < minPasswordLen {
-		return "", fmt.Errorf("lozinka mora imati najmanje %d znakova", minPasswordLen)
+	// The same rules as on the web.
+	if err := auth.CheckNewPassword(password); err != nil {
+		return "", err
 	}
 	return password, nil
 }

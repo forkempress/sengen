@@ -18,7 +18,9 @@ func TestValidateNewUser(t *testing.T) {
 		{"not an email", "Ana", "ana.firma.rs", good, "dispatcher", true},
 		{"display-name form is not a bare address", "Ana", "Ana <ana@firma.rs>", good, "dispatcher", true},
 		{"password too short", "Ana", "ana@firma.rs", "kratka", "dispatcher", true},
-		{"password exactly 10", "Ana", "ana@firma.rs", "1234567890", "dispatcher", false},
+		{"password exactly 10", "Ana", "ana@firma.rs", "konj-trava", "dispatcher", false},
+		{"common password", "Ana", "ana@firma.rs", "1234567890", "dispatcher", true},
+		{"password containing the name", "Ana Marić", "ana@firma.rs", "maric-2026-x", "dispatcher", true},
 		{"password over bcrypt limit", "Ana", "ana@firma.rs", strings.Repeat("a", 73), "dispatcher", true},
 		// viewer is not assignable until it has real read-only enforcement.
 		{"viewer not assignable yet", "Ana", "ana@firma.rs", good, "viewer", true},
@@ -38,7 +40,7 @@ func TestValidateNewUser(t *testing.T) {
 // Ten Serbian letters are ten characters to the user even though they are
 // more bytes; the length rule must count what the user typed.
 func TestValidateNewUser_PasswordLengthCountsCharacters(t *testing.T) {
-	if _, _, err := validateNewUser("Ana", "ana@firma.rs", "ččččććććšš", "dispatcher"); err != nil {
+	if _, _, err := validateNewUser("Ana", "ana@firma.rs", "čćžšđčćžšđ", "dispatcher"); err != nil {
 		t.Errorf("10-character password with diacritics rejected: %v", err)
 	}
 }

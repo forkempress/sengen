@@ -1,0 +1,33 @@
+{{define "content"}}
+<div class="login-wrap">
+  <div class="login-brand">
+    <span class="logo logo-lg" aria-hidden="true">90</span>
+    <span class="login-name">Dani90</span>
+  </div>
+
+  <h1>Nova lozinka</h1>
+  {{if .Unavailable}}
+  <p>Promena lozinke preko mejla trenutno nije uključena. Pišite nam i postavićemo vam novu lozinku.</p>
+  <p class="login-help"><a href="/login">Nazad na prijavu</a></p>
+  {{else if .Sent}}
+  <div class="flash flash-ok" role="status">
+    Ako postoji nalog za <strong>{{.Email}}</strong>, poslali smo mu link za novu lozinku. Link važi 1 sat.
+  </div>
+  <p class="muted">Mejl ne stiže za nekoliko minuta? Proverite folder za neželjenu poštu i da li je adresa tačno upisana. Ako ste tražili link više puta, važi samo onaj iz poslednjeg mejla.</p>
+  <p class="login-help"><a href="/login">Nazad na prijavu</a></p>
+  {{else}}
+  <p class="muted">Upišite email kojim se prijavljujete. Poslaćemo vam link za novu lozinku.</p>
+  <form method="post" action="/zaboravljena-lozinka" novalidate>
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required autofocus autocomplete="email" inputmode="email"
+             placeholder="ime@firma.rs" value="{{.Email}}"{{if .Err}} aria-invalid="true" aria-describedby="forgot-err"{{end}}>
+      {{if .Err}}<p class="field-error" id="forgot-err" role="alert">{{.Err}}</p>{{end}}
+    </div>
+    {{template "turnstile" .Turnstile}}
+    <button type="submit" class="btn btn-primary btn-block" data-busy="Šaljem…">Pošalji link</button>
+  </form>
+  <p class="login-help"><a href="/login">Nazad na prijavu</a></p>
+  {{end}}
+</div>
+{{end}}

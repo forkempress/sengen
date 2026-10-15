@@ -16,12 +16,6 @@ import (
 	"shengen/internal/tenant"
 )
 
-const minPasswordLen = 10
-
-// bcrypt silently refuses anything longer than 72 bytes, so the limit is
-// enforced here with a readable message instead of a server error.
-const maxPasswordBytes = 72
-
 var assignableRoles = map[string]string{
 	"owner":      "vlasnik",
 	"dispatcher": "dispečer",
@@ -45,11 +39,8 @@ func validateNewUser(name, email, password, role string) (cleanName, cleanEmail 
 	if addr, perr := mail.ParseAddress(cleanEmail); perr != nil || addr.Address != cleanEmail {
 		return "", "", errors.New("Email adresa nije ispravna.")
 	}
-	if len([]rune(password)) < minPasswordLen {
-		return "", "", errors.New("Lozinka mora imati najmanje 10 znakova.")
-	}
-	if len(password) > maxPasswordBytes {
-		return "", "", errors.New("Lozinka je predugačka (najviše 72 bajta).")
+	if err := auth.CheckNewPassword(password, cleanEmail, cleanName); err != nil {
+		return "", "", err
 	}
 	if _, ok := assignableRoles[role]; !ok {
 		return "", "", errors.New("Nepoznata uloga.")

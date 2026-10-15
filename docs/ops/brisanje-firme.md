@@ -41,6 +41,9 @@ BEGIN;
 DELETE FROM sessions             WHERE tenant_id = <ID>;
 DELETE FROM telegram_link_tokens WHERE tenant_id = <ID>;
 DELETE FROM telegram_alert_log   WHERE tenant_id = <ID>;
+DELETE FROM email_tokens         WHERE tenant_id = <ID>
+   OR user_id IN (SELECT id FROM users WHERE tenant_id = <ID>);
+DELETE FROM email_log            WHERE tenant_id = <ID>;
 DELETE FROM audit_log            WHERE tenant_id = <ID>;
 DELETE FROM planned_stays        WHERE tenant_id = <ID>;
 DELETE FROM stays                WHERE tenant_id = <ID>;

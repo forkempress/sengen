@@ -73,6 +73,8 @@ var funcMap = template.FuncMap{
 // pages lists every top-level template that gets rendered inside layout.html.
 var pages = []string{
 	"login.html",
+	"zaboravljena_lozinka.html",
+	"nova_lozinka.html",
 	"pregled.html",
 	"vozac_detalj.html",
 	"planer.html",

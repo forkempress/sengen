@@ -1,0 +1,11 @@
+{{define "reset_done.subject"}}Lozinka za Dani90 je promenjena{{end}}
+{{define "reset_done.text"}}
+Zdravo {{.Name}},
+
+lozinka za vaš Dani90 nalog je promenjena {{.When}}.
+
+Ako to niste bili vi, odmah zatražite novu lozinku:
+{{.ResetURL}}
+
+Dani90 · app.dani90.rs
+{{end}}

@@ -7,7 +7,7 @@ import (
 
 func setEnv(t *testing.T, kv map[string]string) {
 	t.Helper()
-	for _, k := range []string{"PUBLIC_BASE_URL", "TELEGRAM_BOT_TOKEN", "TELEGRAM_WEBHOOK_SECRET", "TELEGRAM_BOT_USERNAME", "TRUSTED_PROXY", "BIND_ADDR", "PORT", "ADMIN_TELEGRAM_IDS"} {
+	for _, k := range []string{"PUBLIC_BASE_URL", "TELEGRAM_BOT_TOKEN", "TELEGRAM_WEBHOOK_SECRET", "TELEGRAM_BOT_USERNAME", "TRUSTED_PROXY", "BIND_ADDR", "PORT", "ADMIN_TELEGRAM_IDS", "SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "MAIL_FROM", "MAIL_REPLY_TO", "MAIL_DAILY_LIMIT", "TURNSTILE_SITE_KEY", "TURNSTILE_SECRET_KEY"} {
 		t.Setenv(k, kv[k])
 	}
 }
@@ -38,6 +38,30 @@ func TestLoad_BotConfigurationIsValidated(t *testing.T) {
 		}, "https://"},
 		{"https public address", map[string]string{
 			"PUBLIC_BASE_URL": "https://app.dani90.rs",
+		}, ""},
+		{"complete SMTP", map[string]string{
+			"SMTP_HOST": "smtp-relay.brevo.com", "SMTP_USERNAME": "u", "SMTP_PASSWORD": "p", "MAIL_FROM": "Dani90 <nalog@dani90.rs>",
+		}, ""},
+		{"SMTP without sender", map[string]string{
+			"SMTP_HOST": "smtp-relay.brevo.com", "SMTP_USERNAME": "u", "SMTP_PASSWORD": "p",
+		}, "MAIL_FROM"},
+		{"SMTP without password", map[string]string{
+			"SMTP_HOST": "smtp-relay.brevo.com", "SMTP_USERNAME": "u", "MAIL_FROM": "nalog@dani90.rs",
+		}, "SMTP_PASSWORD"},
+		{"sender that is not an address", map[string]string{
+			"MAIL_FROM": "Dani90",
+		}, "MAIL_FROM"},
+		{"bad SMTP port", map[string]string{
+			"SMTP_HOST": "h", "SMTP_PORT": "smtp", "SMTP_USERNAME": "u", "SMTP_PASSWORD": "p", "MAIL_FROM": "nalog@dani90.rs",
+		}, "SMTP_PORT"},
+		{"bad daily limit", map[string]string{
+			"MAIL_DAILY_LIMIT": "0",
+		}, "MAIL_DAILY_LIMIT"},
+		{"only one Turnstile key", map[string]string{
+			"TURNSTILE_SITE_KEY": "0x4AAA",
+		}, "TURNSTILE"},
+		{"both Turnstile keys", map[string]string{
+			"TURNSTILE_SITE_KEY": "0x4AAA", "TURNSTILE_SECRET_KEY": "0x4BBB",
 		}, ""},
 	}
 	for _, tc := range cases {

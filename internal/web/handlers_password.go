@@ -8,13 +8,11 @@ import (
 	"shengen/internal/tenant"
 )
 
-// validateNewPassword applies the same rule as the "add user" form.
-func validateNewPassword(password, repeat string) error {
-	if len([]rune(password)) < minPasswordLen {
-		return errors.New("Nova lozinka mora imati najmanje 10 znakova.")
-	}
-	if len(password) > maxPasswordBytes {
-		return errors.New("Nova lozinka je predugačka (najviše 72 bajta).")
+// validateNewPassword applies the password rules every form shares
+// (auth.CheckNewPassword) and checks the repeated password.
+func validateNewPassword(password, repeat string, personal ...string) error {
+	if err := auth.CheckNewPassword(password, personal...); err != nil {
+		return err
 	}
 	if password != repeat {
 		return errors.New("Ponovljena lozinka se ne poklapa sa novom.")
@@ -54,7 +52,7 @@ func (s *Server) handlePasswordChange(w http.ResponseWriter, r *http.Request) {
 	s.loginAccountLimiter.Reset(u.Email)
 
 	newPassword := r.FormValue("new_password")
-	if err := validateNewPassword(newPassword, r.FormValue("new_password_repeat")); err != nil {
+	if err := validateNewPassword(newPassword, r.FormValue("new_password_repeat"), u.Email, u.Name, t.Name); err != nil {
 		s.renderPasswordError(w, r, err.Error(), http.StatusUnprocessableEntity)
 		return
 	}

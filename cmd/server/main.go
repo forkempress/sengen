@@ -8,7 +8,9 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"net/url"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -16,6 +18,7 @@ import (
 	"shengen/internal/config"
 	"shengen/internal/db"
 	"shengen/internal/jobs"
+	"shengen/internal/mail"
 	"shengen/internal/store"
 	"shengen/internal/superadmin"
 	"shengen/internal/telegram"
@@ -52,6 +55,7 @@ func main() {
 	webServer := web.New(st, authSvc, bot)
 	webServer.TrustedProxy = cfg.TrustedProxy
 	log.Printf("trusted proxy: %s", cfg.TrustedProxy)
+	configureMail(cfg, webServer)
 
 	runner := jobs.New(st, bot.Client())
 	if len(cfg.AdminTelegramIDs) > 0 && bot.Client() != nil {
@@ -79,6 +83,8 @@ func main() {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		srv.Shutdown(shutdownCtx)
+		// Reset links already promised on a page should still go out.
+		webServer.WaitMail(shutdownCtx)
 		// Updates already answered with 200 will not be redelivered, so
 		// give the ones still being handled a moment to finish.
 		bot.Wait(shutdownCtx)
@@ -103,6 +109,46 @@ func newHTTPServer(addr string, h http.Handler) *http.Server {
 		WriteTimeout:      30 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
+}
+
+// configureMail sets up email links, sending and the Turnstile check.
+func configureMail(cfg config.Config, s *web.Server) {
+	switch {
+	case cfg.PublicBaseURL != "":
+		s.PublicURL = cfg.PublicBaseURL
+	case cfg.InsecureCookies:
+		// Local development: links point at this machine.
+		s.PublicURL = "http://localhost:" + cfg.Port
+	}
+	log.Printf("mail: linkovi vode na %s", s.PublicURL)
+
+	s.MailDailyLimit = cfg.MailDailyLimit
+	switch {
+	case cfg.SMTPHost == "" && cfg.InsecureCookies:
+		log.Printf("mail: SMTP_HOST nije postavljen — mejlovi se ispisuju u log (lokalni razvoj)")
+	case cfg.SMTPHost == "":
+		// Not local development: never put reset links in the log.
+		s.Mailer = mail.Unconfigured{}
+		s.MailReady = false
+		log.Printf("mail: SMTP_HOST nije postavljen — mejlovi se NE šalju, reset lozinke je isključen")
+	default:
+		s.Mailer = &mail.SMTPMailer{
+			Host: cfg.SMTPHost, Port: cfg.SMTPPort,
+			Username: cfg.SMTPUsername, Password: cfg.SMTPPassword,
+			From: cfg.MailFrom, ReplyTo: cfg.MailReplyTo,
+		}
+		log.Printf("mail: šalje se preko %s:%s kao %s, najviše %d dnevno", cfg.SMTPHost, cfg.SMTPPort, cfg.MailFrom.Address, cfg.MailDailyLimit)
+	}
+
+	if cfg.TurnstileSecretKey == "" {
+		log.Printf("turnstile: ključevi nisu postavljeni — javne forme rade bez provere")
+		return
+	}
+	t := &web.Turnstile{SiteKey: cfg.TurnstileSiteKey, Secret: cfg.TurnstileSecretKey}
+	if u, err := url.Parse(s.PublicURL); err == nil && strings.HasPrefix(s.PublicURL, "https://") {
+		t.Hostname = u.Hostname()
+	}
+	s.Turnstile = t
 }
 
 // registerWebhook points the shared bot at this server. setWebhook is

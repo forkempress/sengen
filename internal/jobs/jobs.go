@@ -43,6 +43,9 @@ const cleanupInterval = 24 * time.Hour
 // 24 hours, so a week of update ids is plenty for dedup.
 const telegramUpdateRetention = 7 * 24 * time.Hour
 
+// emailLogRetention: long enough to answer "the email never came".
+const emailLogRetention = 90 * 24 * time.Hour
+
 func New(st *store.Store, client *telegram.Client) *Runner {
 	return &Runner{Store: st, Client: client}
 }
@@ -107,6 +110,14 @@ func (r *Runner) Cleanup(ctx context.Context, now time.Time) {
 		log.Printf("jobs: cleanup link tokens: %v", err)
 	} else if n > 0 {
 		log.Printf("jobs: deleted %d expired link tokens", n)
+	}
+	if n, err := r.Store.DeleteExpiredEmailTokens(ctx, now); err != nil {
+		log.Printf("jobs: cleanup email tokens: %v", err)
+	} else if n > 0 {
+		log.Printf("jobs: deleted %d expired email tokens", n)
+	}
+	if _, err := r.Store.DeleteEmailLogBefore(ctx, now.Add(-emailLogRetention)); err != nil {
+		log.Printf("jobs: cleanup email log: %v", err)
 	}
 	if _, err := r.Store.DeleteTelegramUpdatesBefore(ctx, now.Add(-telegramUpdateRetention)); err != nil {
 		log.Printf("jobs: cleanup telegram updates: %v", err)

@@ -1,0 +1,34 @@
+{{define "content"}}
+<div class="login-wrap">
+  <div class="login-brand">
+    <span class="logo logo-lg" aria-hidden="true">90</span>
+    <span class="login-name">Dani90</span>
+  </div>
+
+  <h1>Nova lozinka</h1>
+  {{if .Invalid}}
+  <div class="flash flash-err" role="alert">{{.Invalid}}</div>
+  <p class="login-help"><a href="/zaboravljena-lozinka" class="btn btn-primary btn-block">Zatraži novi link</a></p>
+  <p class="login-help"><a href="/login">Nazad na prijavu</a></p>
+  {{else}}
+  <p class="muted">Za nalog <strong>{{.Email}}</strong>. Posle promene bićete odjavljeni sa svih drugih uređaja.</p>
+  <form method="post" action="/nova-lozinka" novalidate>
+    <input type="hidden" name="t" value="{{.Token}}">
+    <input type="text" name="username" value="{{.Email}}" autocomplete="username" hidden>
+    <div class="field">
+      <label for="p-new">Nova lozinka (najmanje 10 znakova)</label>
+      <div class="password-row">
+        <input type="password" id="p-new" name="new_password" required minlength="10" autofocus autocomplete="new-password"{{if .Err}} aria-invalid="true" aria-describedby="reset-err"{{end}}>
+        <button type="button" class="btn btn-sm password-toggle" data-toggle-password="p-new" aria-controls="p-new" aria-pressed="false">Prikaži</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="p-repeat">Ponovite novu lozinku</label>
+      <input type="password" id="p-repeat" name="new_password_repeat" required minlength="10" autocomplete="new-password"{{if .Err}} aria-invalid="true" aria-describedby="reset-err"{{end}}>
+      {{if .Err}}<p class="field-error" id="reset-err" role="alert">{{.Err}}</p>{{end}}
+    </div>
+    <button type="submit" class="btn btn-primary btn-block" data-busy="Čuvam…">Sačuvaj lozinku</button>
+  </form>
+  {{end}}
+</div>
+{{end}}
