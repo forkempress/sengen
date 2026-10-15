@@ -1,6 +1,6 @@
 # Cloudflare Pages: stare/prečice ka aplikaciji na app.dani90.rs
-/login    https://app.dani90.rs/login  301
-/prijava  https://app.dani90.rs/login  301
+/login    https://app.dani90.rs/  301
+/prijava  https://app.dani90.rs/  301
 /app      https://app.dani90.rs/       301
 /privatnost       https://app.dani90.rs/privatnost       301
 /uslovi           https://app.dani90.rs/uslovi           301

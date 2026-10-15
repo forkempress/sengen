@@ -35,3 +35,24 @@ func (a *testApp) setLastSeen(s *session, at time.Time) {
 		a.t.Fatal(err)
 	}
 }
+
+// "Prijava" on dani90.rs leads to /login: a browser still signed in goes
+// straight to /pregled, one whose session has ended gets the form.
+func TestLoginPage_RedirectsSignedIn(t *testing.T) {
+	app, a, _ := twoFirmApp(t)
+
+	if w := app.request(http.MethodGet, "/login", nil, nil); w.Code != http.StatusOK {
+		t.Fatalf("anonymous /login: status %d, want 200", w.Code)
+	}
+
+	sa := app.mustLogin(a)
+	w := sa.get("/login")
+	if w.Code != http.StatusSeeOther || w.Header().Get("Location") != "/pregled" {
+		t.Fatalf("signed-in /login: status %d to %q, want 303 to /pregled", w.Code, w.Header().Get("Location"))
+	}
+
+	app.setLastSeen(sa, time.Now().Add(-25*time.Hour))
+	if w := sa.get("/login"); w.Code != http.StatusOK {
+		t.Errorf("idle session /login: status %d, want 200 (the form)", w.Code)
+	}
+}

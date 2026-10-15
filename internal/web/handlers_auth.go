@@ -19,6 +19,13 @@ type loginPageData struct {
 }
 
 func (s *Server) handleLoginPage(w http.ResponseWriter, r *http.Request) {
+	// Someone still signed in who follows "Prijava" from dani90.rs goes
+	// straight in. A session whose firm or user is gone is ended by
+	// RequireAuth on /pregled, which sends the browser back here.
+	if _, err := s.Auth.SessionFromRequest(r); err == nil {
+		http.Redirect(w, r, "/pregled", http.StatusSeeOther)
+		return
+	}
 	s.render(w, "login.html", loginPageData{baseData: s.base(r, "login"), ResetEnabled: s.MailReady})
 }
 
