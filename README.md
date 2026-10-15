@@ -43,71 +43,49 @@ make demo ARGS="-slug moja-firma"
 make test
 ```
 
-## Prvi javni test — Cloudflare Tunnel sa svog računara
+## Produkcija — netcup VPS
 
-Telegram webhook zahteva javni HTTPS, pa aplikacija mora biti dostupna spolja.
-Za prvi test nije potreban server: `cloudflared` izlaže aplikaciju sa tvog
-računara, a Cloudflare obezbeđuje domen i TLS.
+Aplikacija radi na netcup VPS-u (Debian 13, x86_64). Spolja je dostupna
+samo kroz Cloudflare Tunnel: `cloudflared` na serveru otvara izlaznu vezu ka
+Cloudflare-u, a Cloudflare obezbeđuje domen i TLS. Na serveru nema otvorenih
+ulaznih portova osim SSH-a, pa ni Caddy-ja.
 
-**1. Domen na Cloudflare**
+Aplikacija je na `https://app.dani90.rs`, a glavni domen `dani90.rs` ostaje
+za prodajni sajt (`site/`, Cloudflare Pages).
 
-Dodaj `dani90.rs` u Cloudflare i kod registrara postavi Cloudflare-ove
-nameservere. Sačekaj da zona postane aktivna.
+| Šta | Gde |
+|---|---|
+| program | `/opt/dani90/shengen`, systemd servis `dani90` |
+| okruženje | `/etc/dani90/dani90.env` (vlasnik `root:dani90`, `640`) |
+| baza | `/var/lib/dani90/dani90.db` |
+| tunel | servis `cloudflared`, `/etc/cloudflared/config.yml` |
 
-Aplikacija ide na poddomen `app.dani90.rs`, a glavni domen ostaje slobodan
-za kasniji prodajni sajt. Tako se adresa aplikacije (i Telegram webhook) ne
-menja kad taj sajt dođe.
+Aplikacija radi kao sistemski korisnik `dani90` bez prava na login i sluša
+samo na `127.0.0.1:8080`. SSH ulaz je samo ključem, root login je isključen,
+a `ufw` propušta samo SSH.
 
-**2. Instaliraj i poveži cloudflared**
+### Deploy nove verzije
 
-```bash
-brew install cloudflared
-cloudflared tunnel login
-cloudflared tunnel create dani90
-cloudflared tunnel route dns dani90 app.dani90.rs
-```
-
-`login` otvara browser i traži da izabereš zonu. `create` ispisuje UUID tunela
-i putanju do credentials fajla — oboje ti treba u sledećem koraku.
-
-**3. Konfiguracija tunela**
-
-Prekopiraj [deploy/cloudflared.example.yml](deploy/cloudflared.example.yml) u
-`~/.cloudflared/config.yml` i upiši svoj UUID tunela i putanju do credentials
-fajla.
-
-**4. Telegram bot (jednom, za sve firme)**
-
-Kod [@BotFather](https://t.me/BotFather) pošalji `/newbot` i zapamti token i
-korisničko ime bota. Napravi secret za webhook:
+Na Mac-u:
 
 ```bash
-openssl rand -hex 32
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/shengen-linux ./cmd/server && scp bin/shengen-linux veljko@SERVER_IP:/tmp/
 ```
 
-**5. Pokreni aplikaciju**
-
-U `.env` postavi:
-
-```
-PORT=8080
-DB_PATH=dani90.db
-DEV_INSECURE_COOKIES=false
-TRUSTED_PROXY=cloudflare
-PUBLIC_BASE_URL=https://app.dani90.rs
-TELEGRAM_BOT_TOKEN=<token od BotFather-a>
-TELEGRAM_WEBHOOK_SECRET=<izlaz openssl komande>
-TELEGRAM_BOT_USERNAME=<korisničko ime bota, bez @>
-```
-
-`DEV_INSECURE_COOKIES=false` je obavezno — browser razgovara sa Cloudflare-om
-preko HTTPS-a, pa sesijski kolačić treba da nosi `Secure` zastavicu.
-`TRUSTED_PROXY=cloudflare` kaže aplikaciji da pravu adresu posetioca čita iz
-`CF-Connecting-IP`; bez toga svi posetioci dele jedan limit prijava.
+Na serveru (prvo kopija baze, jer se migracije primenjuju same pri startu):
 
 ```bash
-make seed ARGS="-tenant-name 'Moja Firma' -email ja@firma.rs -name 'Ime Prezime'"
-make run
+sudo -u dani90 sqlite3 /var/lib/dani90/dani90.db ".backup /var/lib/dani90/pre-izmene.db" && sudo install -m 755 /tmp/shengen-linux /opt/dani90/shengen && sudo systemctl restart dani90
+```
+
+Šabloni, statički fajlovi i migracije su ugrađeni u binary, pa se na server
+prenosi samo on. SQLite drajver je čist Go, pa build za Linux radi sa Mac-a.
+
+Log i stanje:
+
+```bash
+sudo journalctl -u dani90 -n 50 --no-pager
+sudo systemctl status cloudflared --no-pager
 ```
 
 Pri startu aplikacija sama prijavljuje webhook
@@ -115,52 +93,136 @@ Pri startu aplikacija sama prijavljuje webhook
 token postoji a secret ne (ili sadrži nedozvoljene znakove), aplikacija se ne
 pokreće i kaže zašto.
 
-**6. Pokreni tunel (u drugom terminalu)**
+### Backup
 
-```bash
-cloudflared tunnel run dani90
+Cron korisnika `dani90` svake noći u 3:30 pravi kopiju baze
+(`/var/lib/dani90/backup-<dan u nedelji>.db`, sedam rotirajućih) i ažurira
+`backup.ok`. Ako je taj fajl stariji od 26h, operatori dobijaju upozorenje
+(`BACKUP_HEARTBEAT_FILE`).
+
+```
+30 3 * * * sqlite3 /var/lib/dani90/dani90.db ".backup /var/lib/dani90/backup-$(date +\%u).db" && touch /var/lib/dani90/backup.ok
 ```
 
-Prijavi se na `https://app.dani90.rs/login`.
+Kopije su na istom disku kao baza. Slanje van servera (Litestream ili R2) je
+sledeći korak.
 
-**7. Povezivanje sa botom**
+### Okruženje
+
+Pored Telegram i SMTP podešavanja, u `/etc/dani90/dani90.env`:
+
+```
+PORT=8080
+DB_PATH=/var/lib/dani90/dani90.db
+DEV_INSECURE_COOKIES=false
+TRUSTED_PROXY=cloudflare
+PUBLIC_BASE_URL=https://app.dani90.rs
+BACKUP_HEARTBEAT_FILE=/var/lib/dani90/backup.ok
+```
+
+`DEV_INSECURE_COOKIES=false` je obavezno — browser razgovara sa Cloudflare-om
+preko HTTPS-a, pa sesijski kolačić treba da nosi `Secure` zastavicu.
+`TRUSTED_PROXY=cloudflare` kaže aplikaciji da pravu adresu posetioca čita iz
+`CF-Connecting-IP`; bez toga svi posetioci dele jedan limit prijava. To je
+bezbedno samo dok je tunel jedini put do aplikacije — ako se ikad stavi Caddy
+ispred, mora `TRUSTED_PROXY=caddy`, jer Caddy propušta `CF-Connecting-IP` koji
+je poslao sam klijent.
+
+### Postavljanje novog servera
+
+Za slučaj da server treba podići ponovo.
+
+**1. Korisnik i folderi**
+
+```bash
+sudo apt install -y sudo sqlite3 ufw curl
+sudo useradd --system --home /var/lib/dani90 --shell /usr/sbin/nologin dani90
+sudo mkdir -p /opt/dani90 /var/lib/dani90 /etc/dani90
+sudo chown dani90:dani90 /var/lib/dani90 && sudo chmod 700 /var/lib/dani90
+```
+
+**2. systemd servis** — `/etc/systemd/system/dani90.service`:
+
+```ini
+[Unit]
+Description=Dani90 (evidencija 90/180)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=dani90
+Group=dani90
+EnvironmentFile=/etc/dani90/dani90.env
+WorkingDirectory=/var/lib/dani90
+ExecStart=/opt/dani90/shengen
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/dani90
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload && sudo systemctl enable dani90
+```
+
+**3. Baza** — sa starog servera `sqlite3 dani90.db ".backup kopija.db"`,
+prebaciti u `/var/lib/dani90/dani90.db` (vlasnik `dani90`, `600`).
+
+**4. Tunel** — instalirati `cloudflared` iz Cloudflare-ovog apt repoa, u
+`/etc/cloudflared/` staviti credentials fajl tunela `dani90` i config po
+[deploy/cloudflared.example.yml](deploy/cloudflared.example.yml), pa
+`sudo cloudflared service install`. DNS (`app.dani90.rs` → tunel) se ne
+menja. Tunel se pokreće tek kad se stari ugasi, inače Cloudflare deli
+saobraćaj između dve instalacije sa dve različite baze.
+
+Novi tunel od nule (samo ako credentials nisu sačuvani):
+
+```bash
+cloudflared tunnel login
+cloudflared tunnel create dani90
+cloudflared tunnel route dns dani90 app.dani90.rs
+```
+
+### Telegram bot (jednom, za sve firme)
+
+Kod [@BotFather](https://t.me/BotFather) pošalji `/newbot` i zapamti token i
+korisničko ime bota. Secret za webhook: `openssl rand -hex 32`.
+
+Povezivanje:
 
 1. **Podešavanja → Telegram → Generiši link za povezivanje** — otvori link i
    tvoj Telegram postaje administratorski nalog firme.
 2. Za vozača: **Vozači → Telegram link** — pošalji mu link (Viber, SMS); on
    samo tapne i povezan je. Link važi 48 sati i jednokratan je.
 
-Dok tunel i aplikacija rade, bot je uživo. Kad ugasiš računar, bot prestaje da
-odgovara — zato je ovo privremeno rešenje za test, ne za klijenta.
+Webhook može imati samo jedna instalacija. Lokalni `make run` sa produkcijskim
+tokenom bi ga preuzeo od servera, pa lokalni `.env` ne sme imati
+`TELEGRAM_BOT_TOKEN`.
 
 ## Proba izmena pre produkcije
 
 Ne postoji posebno dev okruženje, pa se izmena proba nad kopijom produkcijske
-baze, pre nego što se produkcija restartuje sa novim kodom:
+baze. Kopija se povlači sa servera na putanju `DB_PATH` iz lokalnog `.env`
+(`make proba` čita `DB_PATH` iz `.env`, ne sa komandne linije):
 
 ```bash
+ssh veljko@SERVER_IP "sudo -u dani90 sqlite3 /var/lib/dani90/dani90.db '.backup /tmp/kopija.db' && sudo chmod 644 /tmp/kopija.db" && scp veljko@SERVER_IP:/tmp/kopija.db dani90.db && ssh veljko@SERVER_IP "rm /tmp/kopija.db"
 make proba
 ```
 
-Pravi kopiju `DB_PATH` u `proba/proba.db` (može dok produkcija radi) i
-pokreće aplikaciju na `http://localhost:8095` bez Telegram bota — nijedan
-vozač ni operator ne dobija poruku iz kopije — a mejlove samo ispisuje u log
-(tu se vidi i link za reset lozinke). `PROBA_SMTP=1 make proba` zadržava SMTP
-iz `.env`, za probu pravog slanja; reset tada tražite samo za svoju adresu.
-Na serveru je potreban paket `sqlite3`.
+`make proba` pravi kopiju `DB_PATH` u `proba/proba.db` i pokreće aplikaciju na
+`http://localhost:8095` bez Telegram bota — nijedan vozač ni operator ne
+dobija poruku iz kopije — a mejlove samo ispisuje u log (tu se vidi i link za
+reset lozinke). `PROBA_SMTP=1 make proba` zadržava SMTP iz `.env`, za probu
+pravog slanja; reset tada tražite samo za svoju adresu.
 
-Pre restarta produkcije sa novim kodom napraviti kopiju baze
-(`sqlite3 dani90.db ".backup dani90-pre-izmene.db"`): migracije se primenjuju
-same pri startu.
-
-## Kasnije: trajni server
-
-Za produkciju kod ostaje isti, menja se samo okruženje: Hetzner VPS (CX22),
-Caddy ispred za automatski TLS, systemd servis i Litestream backup baze na
-S3-kompatibilan storage (Cloudflare R2 ili Hetzner Object Storage). Iza
-Caddy-ja postaviti `TRUSTED_PROXY=caddy` (adresa iz `X-Forwarded-For`);
-`cloudflare` tamo ne sme, jer Caddy propušta `CF-Connecting-IP` koji je
-poslao sam klijent.
+Kopija sadrži lične podatke vozača — obrisati je kad proba završi.
 
 ## Struktura
 
@@ -179,7 +241,7 @@ poslao sam klijent.
 | Varijabla | Podrazumevano | Opis |
 |---|---|---|
 | `PORT` | `8080` | port web servera |
-| `BIND_ADDR` | `127.0.0.1` | interfejs na kome server sluša; tunel i Caddy rade na istom računaru, pa `0.0.0.0` samo ako baš treba |
+| `BIND_ADDR` | `127.0.0.1` | interfejs na kome server sluša; tunel radi na istom serveru, pa `0.0.0.0` samo ako baš treba |
 | `DB_PATH` | `shengen.db` | putanja do SQLite baze |
 | `DEV_INSECURE_COOKIES` | `false` | `true` samo za lokalni HTTP razvoj |
 | `TRUSTED_PROXY` | `none` | `cloudflare` (tunel), `caddy` ili `none`; odakle se čita adresa klijenta za limit prijava |
@@ -192,5 +254,5 @@ poslao sam klijent.
 | `MAIL_DAILY_LIMIT` | `250` | najviše mejlova u 24h |
 | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | — | Cloudflare Turnstile na javnim formama; oba ili nijedan |
 
-Token i secret idu samo u okruženje (`.env`, systemd), nikada u repo. Firma u
+Token i secret idu samo u okruženje (`/etc/dani90/dani90.env`), nikada u repo. Firma u
 **Podešavanja → Telegram** bira samo svoj chat za upozorenja i pragove.

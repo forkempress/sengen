@@ -1,12 +1,13 @@
-# Primer konfiguracije za Cloudflare Tunnel.
-# Kopirati u ~/.cloudflared/config.yml i zameniti UUID i putanju.
+# Konfiguracija Cloudflare Tunnel-a na serveru: /etc/cloudflared/config.yml
+# Credentials fajl tunela ide pored nje, u /etc/cloudflared/ (chmod 600).
+# Posle izmene: sudo systemctl restart cloudflared
 #
 #   cloudflared tunnel create dani90          -> ispisuje UUID i credentials fajl
 #   cloudflared tunnel route dns dani90 app.dani90.rs
-#   cloudflared tunnel run dani90
+#   sudo cloudflared service install          -> servis koji čita ovaj fajl
 
 tunnel: ZAMENI-SA-UUID-TUNELA
-credentials-file: /Users/KORISNIK/.cloudflared/ZAMENI-SA-UUID-TUNELA.json
+credentials-file: /etc/cloudflared/ZAMENI-SA-UUID-TUNELA.json
 
 ingress:
   - hostname: app.dani90.rs
