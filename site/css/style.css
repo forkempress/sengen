@@ -408,3 +408,35 @@ h3 { font-size: 1.1rem; }
   .stay input[type="date"] { padding-left: 0.5rem; padding-right: 0.4rem; }
   .result-num strong { font-size: 1.7rem; }
 }
+
+/* floating CTA: on desktop only the email pill (bottom right); on phones a
+   bar with the signup button and an email icon, shown once the hero buttons
+   are scrolled away. main.js toggles .is-visible; without JS it stays hidden
+   on phones and the desktop pill is always there. */
+.float-cta { position: fixed; z-index: 40; right: 20px; bottom: 20px; display: flex; gap: 8px; align-items: center; transition: opacity 0.2s, transform 0.2s; }
+.float-cta.is-hidden { opacity: 0; transform: translateY(12px); pointer-events: none; }
+.float-cta-signup { display: none; }
+.float-cta-mail {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 0.7rem 1.1rem; border-radius: 999px;
+  background: var(--accent); color: #fff; text-decoration: none; font-weight: 600;
+  box-shadow: 0 6px 18px rgba(22, 32, 43, 0.25);
+}
+.float-cta-mail:hover { background: var(--accent-dark); color: #fff; }
+.float-cta-mail:focus-visible, .float-cta-signup:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+/* until the real address is filled in, never show a broken mailto */
+.float-cta-mail[href^="mailto:KONTAKT_EMAIL"] { display: none; }
+
+@media (max-width: 860px) {
+  .float-cta {
+    left: 0; right: 0; bottom: 0; gap: 8px;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    background: var(--ink); box-shadow: 0 -4px 16px rgba(22, 32, 43, 0.2);
+  }
+  .float-cta:not(.is-visible) { opacity: 0; transform: translateY(100%); pointer-events: none; }
+  .float-cta-signup { display: block; flex: 1; text-align: center; }
+  .float-cta-mail { padding: 0.7rem; box-shadow: none; border-radius: var(--radius); }
+  .float-cta-mail-text { display: none; }
+  .site-footer { padding-bottom: 96px; }
+}
+@media (prefers-reduced-motion: reduce) { .float-cta { transition: none; } }

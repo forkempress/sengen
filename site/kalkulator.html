@@ -18,7 +18,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preload" href="/fonts/ibm-plex-sans-400-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/css/fonts.css">
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/style.css?v=20261015">
 
   <script type="application/ld+json">
   {
@@ -79,7 +79,7 @@
 
 <main>
 
-  <section class="calc-hero">
+  <section class="calc-hero" data-cta-anchor>
     <div class="wrap">
       <p class="eyebrow">Besplatno · bez registracije</p>
       <h1>Kalkulator 90/180: koliko dana još smete u Šengenu</h1>
@@ -133,7 +133,7 @@
   <section class="section alt" aria-labelledby="cta-naslov">
     <div class="wrap narrow calc-cta">
       <h2 id="cta-naslov">Imate više vozača?</h2>
-      <p>Dani90 ovo računa automatski za ceo vozni park. Vozač jednim dugmetom u Telegramu javi prelazak granice, a vi na jednom ekranu vidite ko sme na turu i do kog dana — i dobijete upozorenje pre nego što neko pređe limit.</p>
+      <p>Dani90 ovo računa automatski za ceo vozni park. Prelaske granice unosite sami ili ih vozač javlja u Telegramu, a vi na jednom ekranu vidite ko sme na turu i do kog dana — i dobijete upozorenje pre nego što neko pređe limit.</p>
       <div class="hero-actions">
         <a href="https://app.dani90.rs/registracija" class="btn btn-primary btn-lg">Probajte besplatno 30 dana</a>
         <a href="/#demo" class="btn btn-ghost btn-lg">Zakažite demo</a>
@@ -228,7 +228,18 @@
   <p class="wrap footer-disclaimer">Dani90 je pomoć za planiranje i računa samo iz unetih datuma. Nije povezan sa EU ni sa državnim organima; o ulasku i boravku odlučuje granična policija, a zvanično stanje proverite u <a href="https://home-affairs.ec.europa.eu/policies/schengen/border-crossing/short-stay-calculator_en" rel="noopener">EU kalkulatoru kratkog boravka</a> i <a href="https://travel-europe.europa.eu/en/ees" rel="noopener">informacijama o EES-u</a>.</p>
 </footer>
 
-<script src="/js/main.js" defer></script>
+<!-- Plutajući CTA: na telefonu traka za registraciju + email, na računaru samo
+     email dugme. KONTAKT_EMAIL zameniti pravom adresom; dok stoji, CSS skriva
+     email dugme. -->
+<div class="float-cta" id="float-cta">
+  <a href="https://app.dani90.rs/registracija" class="btn btn-yellow float-cta-signup">Probajte 30 dana besplatno</a>
+  <a href="mailto:KONTAKT_EMAIL?subject=Dani90%20%E2%80%94%20pitanje&amp;body=Firma%3A%0D%0ABroj%20voza%C4%8Da%3A%0D%0ATelefon%20%28ako%20%C5%BEelite%20da%20vas%20pozovemo%29%3A%0D%0A%0D%0APitanje%3A%0D%0A" class="float-cta-mail" aria-label="Pišite nam email">
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M3 6h18v12H3z M3 6l9 7 9-7"/></svg>
+    <span class="float-cta-mail-text">Pišite nam</span>
+  </a>
+</div>
+
+<script src="/js/main.js?v=20261015" defer></script>
 <script src="/js/calc90.js" defer></script>
 <script src="/js/kalkulator.js" defer></script>
 </body>

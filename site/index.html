@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Dani90 — evidencija dana vozača u Šengenu (pravilo 90/180)</title>
-  <meta name="description" content="Dani90 broji dane vaših vozača u Šengenu po pravilu 90/180. Vozač jednim dugmetom u Telegramu javi prelazak granice, a vi vidite ko sme na turu i do kog dana.">
+  <meta name="description" content="Dani90 broji dane vaših vozača u Šengenu po pravilu 90/180. Ulaske i izlaske unosite sami ili ih vozač javlja u Telegramu, a vi vidite ko sme na turu i do kog dana.">
   <link rel="canonical" href="https://dani90.rs/">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 
@@ -12,13 +12,13 @@
   <meta property="og:locale" content="sr_RS">
   <meta property="og:site_name" content="Dani90">
   <meta property="og:title" content="Dani90 — koliko dana vaš vozač još sme u Šengenu">
-  <meta property="og:description" content="Evidencija dana vozača po pravilu 90/180. Vozač javlja granicu dugmetom u Telegramu, vi vidite ko sme na turu.">
+  <meta property="og:description" content="Evidencija dana vozača po pravilu 90/180. Unesete granicu za par sekundi i vidite ko sme na turu.">
   <meta property="og:url" content="https://dani90.rs/">
   <meta property="og:image" content="https://dani90.rs/images/pregled.jpg">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preload" href="/fonts/ibm-plex-sans-400-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/css/fonts.css">
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/style.css?v=20261015">
 
   <script type="application/ld+json">
   {
@@ -30,7 +30,7 @@
     "operatingSystem": "Web, Telegram",
     "inLanguage": "sr-Latn",
     "url": "https://dani90.rs/",
-    "description": "Evidencija dana vozača u Šengen zoni po pravilu 90/180 za prevozničke firme. Vozači javljaju prelazak granice preko Telegram bota, dispečer vidi stanje celog voznog parka.",
+    "description": "Evidencija dana vozača u Šengen zoni po pravilu 90/180 za prevozničke firme. Dispečer unosi prelaske granice na webu ili ih vozači javljaju preko Telegram bota, a stanje celog voznog parka je na jednom ekranu.",
     "screenshot": "https://dani90.rs/images/pregled.jpg"
   }
   </script>
@@ -40,7 +40,7 @@
     "@type": "FAQPage",
     "mainEntity": [
       {"@type": "Question", "name": "Da li vozači moraju da instaliraju aplikaciju?",
-       "acceptedAnswer": {"@type": "Answer", "text": "Ne. Vozači koriste Telegram koji već imaju. Dobiju link, tapnu ga i povezani su sa botom."}},
+       "acceptedAnswer": {"@type": "Answer", "text": "Ne. Ulaske i izlaske možete da unosite sami, pa vozači ne moraju ništa da rade. Ako želite da javljaju sami, koriste Telegram koji već imaju: dobiju link, tapnu ga i povezani su sa botom."}},
       {"@type": "Question", "name": "Šta ako vozač zaboravi da pritisne dugme?",
        "acceptedAnswer": {"@type": "Answer", "text": "Ako boravak ostane otvoren 7 dana, bot vozača pita da li je još u EU. Dispečer u aplikaciji ispravlja datum, a svaka izmena se beleži."}},
       {"@type": "Question", "name": "Da li se računaju privatna putovanja?",
@@ -84,14 +84,15 @@
       <div class="hero-copy">
         <p class="eyebrow">Za prevoznike sa kombijima · pravilo 90/180</p>
         <h1>Znajte tačno koliko dana vaš vozač još sme u Šengenu.</h1>
-        <p class="lead">Dani90 broji dane svakog vozača po pravilu 90/180. Vozač jednim dugmetom u Telegramu javi kad pređe granicu, a vi na jednom ekranu vidite ko sme na turu, do kog dana, i ko je blizu limita.</p>
-        <div class="hero-actions">
+        <p class="lead">Dani90 broji dane svakog vozača po pravilu 90/180. Ulazak i izlazak unesete za par sekundi, a ako želite, vozač ih javlja sam jednim dugmetom u Telegramu. Na jednom ekranu vidite ko sme na turu, do kog dana, i ko je blizu limita.</p>
+        <div class="hero-actions" data-cta-anchor>
           <a href="https://app.dani90.rs/registracija" class="btn btn-primary btn-lg">Probajte besplatno 30 dana</a>
           <a href="#demo" class="btn btn-ghost btn-lg">Zakažite demo</a>
         </div>
         <ul class="hero-points">
           <li>30 dana besplatno, bez kartice</li>
-          <li>Vozači ne instaliraju ništa — koriste Telegram</li>
+          <li>Unosite sami ili prepustite vozačima</li>
+          <li>Staru evidenciju uvezete iz skena ili Excela</li>
           <li>Radi na telefonu i računaru</li>
           <li>Šengen, ne EU — tačno po pravilu</li>
         </ul>
@@ -134,12 +135,12 @@
         <li class="step">
           <span class="step-num" aria-hidden="true">1</span>
           <h3>Unesete istoriju</h3>
-          <p>Boravke iz poslednjih 180 dana uvezete iz Excela (CSV) ili unesete ručno. Pre upisa vidite pregled sa greškama po redu, pa su brojke tačne od prvog dana.</p>
+          <p>Boravke iz poslednjih 180 dana uvezete iz skena, PDF-a ili Excela, ili ih unesete ručno. Pre upisa vidite pregled sa greškama po redu, pa su brojke tačne od prvog dana.</p>
         </li>
         <li class="step">
           <span class="step-num" aria-hidden="true">2</span>
-          <h3>Vozač javlja granicu</h3>
-          <p>Vozač dobije link, tapne ga i povezan je sa botom. Na granici pritisne <strong>▶ Ušao u Šengen</strong> ili <strong>◀ Izašao iz Šengena</strong> i odmah dobije odgovor do kog dana sme da ostane.</p>
+          <h3>Beležite granicu</h3>
+          <p>Kad vozač pređe granicu, upišete datum u aplikaciji. Ako želite da to radi vozač, on u Telegramu pritisne <strong>▶ Ušao u Šengen</strong> ili <strong>◀ Izašao iz Šengena</strong> i odmah dobije odgovor do kog dana sme da ostane.</p>
         </li>
         <li class="step">
           <span class="step-num" aria-hidden="true">3</span>
@@ -174,7 +175,7 @@
         </article>
         <article class="feature">
           <h3>Provera ture</h3>
-          <p>U Telegramu: <code>/planer Marko 25.10 20</code> — može li Marko na turu od 20 dana i koja je najduža koju sme da vozi.</p>
+          <p>Unesete datum polaska i trajanje i vidite da li tura staje u 90/180 i koja je najduža koju vozač sme da vozi. Radi u aplikaciji i u Telegramu.</p>
         </article>
         <article class="feature">
           <h3>Upozorenja na Telegram</h3>
@@ -185,8 +186,8 @@
           <p>Hrvatska, Bugarska i Rumunija se broje. BiH, Crna Gora, Makedonija, Albanija i Kipar se ne broje. Računaju se i privatna putovanja.</p>
         </article>
         <article class="feature">
-          <h3>Uvoz iz Excela</h3>
-          <p>CSV sa boravcima, uz pregled grešaka po redu pre upisa. Ništa se ne upisuje dok ne potvrdite.</p>
+          <h3>Uvoz stare evidencije</h3>
+          <p>Pošaljete sken, fotografiju, PDF ili CSV, a boravci se sami pročitaju. Pre upisa vidite pregled po redu i ništa se ne upisuje dok ne potvrdite.</p>
         </article>
         <article class="feature">
           <h3>Vlasnik i dispečeri</h3>
@@ -268,7 +269,7 @@
       <div class="faq">
         <details>
           <summary>Da li vozači moraju da instaliraju aplikaciju?</summary>
-          <p>Ne. Vozači koriste Telegram koji već imaju. Dobiju link, tapnu ga i povezani su sa botom.</p>
+          <p>Ne. Ulaske i izlaske možete da unosite sami, pa vozači ne moraju ništa da rade. Ako želite da javljaju sami, koriste Telegram koji već imaju: dobiju link, tapnu ga i povezani su sa botom.</p>
         </details>
         <details>
           <summary>Šta ako vozač zaboravi da pritisne dugme?</summary>
@@ -284,7 +285,7 @@
         </details>
         <details>
           <summary>Imamo istoriju u Excelu. Šta sa njom?</summary>
-          <p>Sačuvate je kao CSV (vozač, ulaz, izlaz, tip) i uvezete. Pre upisa vidite pregled sa greškama po redu, pa ništa pogrešno ne uđe u evidenciju.</p>
+          <p>Uvezete je kao CSV (vozač, ulaz, izlaz, tip), a papirnu evidenciju pošaljete kao sken, fotografiju ili PDF. Pre upisa vidite pregled sa greškama po redu, pa ništa pogrešno ne uđe u evidenciju.</p>
         </details>
         <details>
           <summary>Da li je ovo zvanično stanje sa granice?</summary>
@@ -383,6 +384,17 @@
   <p class="wrap footer-disclaimer">Dani90 je pomoć za planiranje i računa samo iz unetih datuma. Nije povezan sa EU ni sa državnim organima; o ulasku i boravku odlučuje granična policija, a zvanično stanje proverite u <a href="https://home-affairs.ec.europa.eu/policies/schengen/border-crossing/short-stay-calculator_en" rel="noopener">EU kalkulatoru kratkog boravka</a> i <a href="https://travel-europe.europa.eu/en/ees" rel="noopener">informacijama o EES-u</a>.</p>
 </footer>
 
-<script src="/js/main.js" defer></script>
+<!-- Plutajući CTA: na telefonu traka za registraciju + email, na računaru samo
+     email dugme. KONTAKT_EMAIL zameniti pravom adresom; dok stoji, CSS skriva
+     email dugme. -->
+<div class="float-cta" id="float-cta">
+  <a href="https://app.dani90.rs/registracija" class="btn btn-yellow float-cta-signup">Probajte 30 dana besplatno</a>
+  <a href="mailto:KONTAKT_EMAIL?subject=Dani90%20%E2%80%94%20pitanje&amp;body=Firma%3A%0D%0ABroj%20voza%C4%8Da%3A%0D%0ATelefon%20%28ako%20%C5%BEelite%20da%20vas%20pozovemo%29%3A%0D%0A%0D%0APitanje%3A%0D%0A" class="float-cta-mail" aria-label="Pišite nam email">
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M3 6h18v12H3z M3 6l9 7 9-7"/></svg>
+    <span class="float-cta-mail-text">Pišite nam</span>
+  </a>
+</div>
+
+<script src="/js/main.js?v=20261015" defer></script>
 </body>
 </html>
