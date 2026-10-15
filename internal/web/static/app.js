@@ -123,3 +123,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (d && d.tagName === 'DIALOG') openDialog(d);
   }
 });
+
+// Izveštaj vozača: dugme otvara štampu (u njoj i „Sačuvaj kao PDF“).
+document.addEventListener('click', function (e) {
+  if (e.target.closest && e.target.closest('[data-print]')) window.print();
+});

@@ -131,6 +131,7 @@ func (s *Server) Routes() http.Handler {
 	protected.HandleFunc("GET /vozaci/{id}", s.handleDriverDetail)
 	protected.HandleFunc("POST /vozaci/{id}/vratio-se", s.handleDriverReturned)
 	protected.HandleFunc("POST /vozaci/{id}/granica", s.handleCrossing)
+	protected.HandleFunc("GET /vozaci/{id}/izvestaj", s.handleDriverReport)
 	protected.HandleFunc("POST /vozaci/{id}/boravci", s.handleStayCreate)
 	protected.HandleFunc("POST /vozaci/{id}/boravci/{stay_id}", s.handleStayUpdate)
 	protected.HandleFunc("POST /vozaci/{id}/boravci/{stay_id}/obrisi", s.handleStayDelete)

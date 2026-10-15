@@ -1,0 +1,53 @@
+{{define "content"}}
+<div class="report">
+<p class="no-print actions-row">
+  <a href="/vozaci/{{.Driver.ID}}" class="btn">← Nazad na vozača</a>
+  <button type="button" class="btn btn-primary" data-print>Štampaj ili sačuvaj kao PDF</button>
+</p>
+
+<header class="report-head">
+  <p class="report-brand"><span class="logo" aria-hidden="true">90</span> Dani90 · evidencija 90/180</p>
+  <h1>Boravci u Šengenu — {{.Driver.Name}}</h1>
+  <p class="muted">{{if .Driver.VehicleLabel}}Vozilo {{.Driver.VehicleLabel}} · {{end}}{{if .FirmName}}{{.FirmName}} · {{end}}stanje na dan <span class="num">{{fmtDate .Today}}</span></p>
+</header>
+
+{{with .Status}}
+<dl class="report-facts">
+  <div><dt>Iskorišćeno u poslednjih 180 dana</dt><dd class="num">{{.UsedDays}}/90</dd></div>
+  <div><dt>{{if .OverBy}}Preko limita{{else}}Preostalo danas{{end}}</dt><dd class="num">{{if .OverBy}}{{.OverBy}} {{dana .OverBy}}{{else}}{{.Remaining}} {{dana .Remaining}}{{end}}</dd></div>
+  {{if .InSchengen}}
+  <div><dt>U Šengenu od</dt><dd class="num">{{fmtDate (deref .CurrentSince)}}</dd></div>
+  <div><dt>{{if .OverBy}}Rok je bio{{else}}Sme da ostane najkasnije do{{end}}</dt><dd class="num">{{fmtDate (deref .MaxContinuousUntil)}}</dd></div>
+  {{else}}
+  <div><dt>Najduža tura ako krene danas</dt><dd class="num">{{.MaxTripLengthToday}} {{dana .MaxTripLengthToday}}</dd></div>
+  {{end}}
+  {{if .NextFreeUp}}<div><dt>Sledeće oslobađanje</dt><dd class="num">{{fmtDate .NextFreeUp.Date}} (+{{.NextFreeUp.DaysFreed}})</dd></div>{{end}}
+</dl>
+{{end}}
+
+<h2>Boravci koji se računaju ({{fmtDate .WindowFrom}} – {{fmtDate .Today}})</h2>
+{{if .Stays}}
+<table class="report-table">
+  <thead><tr><th>Ulazak</th><th>Izlazak</th><th>Tip</th><th class="report-days">Dana u periodu</th><th>Napomena</th></tr></thead>
+  <tbody>
+  {{range .Stays}}
+    <tr>
+      <td><span class="num">{{fmtDate .Entry}}</span></td>
+      <td><span class="num">{{if .Exit}}{{fmtDate (deref .Exit)}}{{else}}u toku{{end}}</span></td>
+      <td>{{if eq .Type "private"}}privatno{{else}}posao{{end}}</td>
+      <td class="num report-days">{{.DaysInWindow}}</td>
+      <td>{{.Note}}</td>
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+<p class="muted small">Dan ulaska i dan izlaska se računaju kao celi dani. Ako se dva boravka dodiruju istog dana, taj dan se u ukupnom broju ({{.Status.UsedDays}}) računa jednom.</p>
+{{else}}
+<p>U poslednjih 180 dana nema evidentiranih boravaka u Šengenu.</p>
+{{end}}
+{{if .Earlier}}<p class="muted small">Starijih boravaka: {{.Earlier}}. Oni više ne utiču na pravilo 90/180 i nisu u izveštaju.</p>{{end}}
+
+<p class="report-note">{{(legal).Disclaimer}}</p>
+<p class="muted small">Izveštaj je napravljen {{fmtDate .Today}} iz podataka koje je firma unela u Dani90 (dani90.rs).</p>
+</div>
+{{end}}

@@ -38,6 +38,7 @@
   {{end}}
   <button type="button" class="btn{{if not .Status.InSchengen}} btn-primary{{end}}" data-dialog-open="dodaj-boravak" aria-haspopup="dialog">+ Dodaj boravak</button>
   <a href="#planovi" class="btn" data-open-details>Planiraj turu</a>
+  <a href="/vozaci/{{.Driver.ID}}/izvestaj" class="btn">Izveštaj za štampu / PDF</a>
 </div>
 
 <dialog class="add-dialog" id="dodaj-boravak" aria-labelledby="dodaj-boravak-naslov">

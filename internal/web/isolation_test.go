@@ -224,6 +224,10 @@ func TestIsolation_CannotOpenAnotherFirmsDriver(t *testing.T) {
 	if strings.Contains(w.Body.String(), "Boris Drugi") {
 		t.Error("firm B's driver name leaked into the response")
 	}
+	w = sa.get("/vozaci/" + id(b.driver.ID) + "/izvestaj")
+	if w.Code != http.StatusNotFound || strings.Contains(w.Body.String(), "Boris Drugi") {
+		t.Errorf("firm A opening firm B's driver report = %d, want 404 without his name", w.Code)
+	}
 }
 
 func TestIsolation_UsersPageShowsOnlyOwnFirm(t *testing.T) {

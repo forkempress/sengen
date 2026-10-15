@@ -92,6 +92,7 @@ var pages = []string{
 	"registracija_potvrda.html",
 	"pregled.html",
 	"vozac_detalj.html",
+	"vozac_izvestaj.html",
 	"planer.html",
 	"privatnost.html",
 	"uslovi.html",
