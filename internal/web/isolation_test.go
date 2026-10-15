@@ -262,6 +262,8 @@ func TestIsolation_CannotWriteToAnotherFirmsData(t *testing.T) {
 		{"add a stay to B's driver", "/vozaci/" + id(b.driver.ID) + "/boravci",
 			url.Values{"entry_date": {day(-2)}, "exit_date": {day(-1)}, "type": {"work"}}},
 		{"close B's driver's stay", "/vozaci/" + id(b.driver.ID) + "/vratio-se", nil},
+		{"border entry for B's driver", "/vozaci/" + id(b.driver.ID) + "/granica",
+			url.Values{"smer": {"ulaz"}, "date": {day(0)}}},
 		{"edit B's stay through B's driver", "/vozaci/" + id(b.driver.ID) + "/boravci/" + id(b.stay.ID),
 			url.Values{"entry_date": {day(-9)}, "exit_date": {day(-8)}, "type": {"work"}}},
 		{"edit B's stay through A's own driver", "/vozaci/" + id(a.driver.ID) + "/boravci/" + id(b.stay.ID),
@@ -300,6 +302,7 @@ func TestIsolation_WritesToAnotherFirmReturn404(t *testing.T) {
 	for _, path := range []string{
 		"/vozaci/" + id(b.driver.ID) + "/boravci",
 		"/vozaci/" + id(b.driver.ID) + "/vratio-se",
+		"/vozaci/" + id(b.driver.ID) + "/granica",
 		"/podesavanja/vozaci/" + id(b.driver.ID) + "/deaktiviraj",
 		"/podesavanja/vozaci/" + id(b.driver.ID) + "/telegram-link",
 	} {

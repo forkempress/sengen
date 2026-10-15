@@ -42,6 +42,9 @@ type pregledData struct {
 	NoAlertRecipient bool
 	IsOwner          bool
 
+	// BackURL brings a crossing entered from a row back to this same view.
+	BackURL string
+
 	Query         string
 	Severity      string
 	FiltersActive bool
@@ -140,6 +143,7 @@ func (s *Server) handlePregled(w http.ResponseWriter, r *http.Request) {
 		Thresholds:    thresholds,
 		AsOf:          day,
 		IsToday:       day.Equal(today),
+		BackURL:       r.URL.RequestURI(),
 		IsFuture:      day.After(today),
 		DateError:     dateErr,
 		Query:         query,

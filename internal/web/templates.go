@@ -45,6 +45,11 @@ var funcMap = template.FuncMap{
 		}
 		return t.Format("02.01.2006")
 	},
+	// crossing hands the dashboard's border form one row; where tells the
+	// table ("t") from the phone cards ("k"), which both render every row.
+	"crossing": func(st status.DriverStatus, page pregledData, where string) crossingRow {
+		return crossingRow{Status: st, Page: page, Where: where}
+	},
 	"deref": func(t *time.Time) time.Time {
 		if t == nil {
 			return time.Time{}

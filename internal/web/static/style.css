@@ -706,3 +706,21 @@ table.sample-table td { font-family: var(--font-mono); font-size: 0.875rem; }
 .doc-upload { display: grid; gap: 0.5rem; justify-items: start; margin-bottom: 1rem; }
 .doc-upload label { font-weight: 400; }
 .doc-upload input[type="file"] { max-width: 100%; }
+
+/* Pregled: unos granice iz reda (datum + jedno dugme). */
+.crossing-form { display: flex; gap: 0.4rem; align-items: center; flex-wrap: nowrap; }
+.crossing-form input[type=date] {
+  min-height: 36px;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--field-border);
+  border-radius: 5px;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  background: var(--card-bg);
+  color: var(--text);
+}
+.crossing-form .btn { white-space: nowrap; }
+.driver-table .crossing-form { margin-top: 0.35rem; }
+.driver-cards .crossing-form { margin-top: 0.35rem; padding: 0 0.2rem; }
+.driver-cards .crossing-form input[type=date] { flex: 1; min-height: 44px; font-size: 1rem; }
+.driver-cards .crossing-form .btn { min-height: 44px; }

@@ -112,6 +112,7 @@
       <span class="dc-line muted">Plan: <span class="num">{{fmtDate $ps.Next.From}} – {{fmtDate $ps.Next.To}}</span></span>
       {{end}}
     </a>
+    {{if $.IsToday}}{{template "crossing" (crossing . $ "k")}}{{end}}
   </li>
   {{else}}
   <li class="driver-card-empty muted">
@@ -140,6 +141,7 @@
       <td><a href="/vozaci/{{.Driver.ID}}">{{.Driver.Name}}</a><br><span class="muted">{{.Driver.VehicleLabel}}</span></td>
       <td>
         {{if .InSchengen}}U Šengenu od {{fmtDate (deref .CurrentSince)}}{{else}}U Srbiji / van Šengena{{end}}
+        {{if $.IsToday}}{{template "crossing" (crossing . $ "t")}}{{end}}
       </td>
       <td>
         <span class="bar-track"><span class="bar-fill{{if ge .UsedDays 90}} danger{{end}}" style="width: {{barPct .UsedDays}}%;"></span></span>
@@ -170,4 +172,17 @@
 </table>
 </div>
 {{end}}
+{{end}}
+
+{{/* Unos granice iz reda: vozač u Šengenu dobija „Izašao“, ostali „Ušao“.
+     Datum je danas, a može se promeniti pre klika. */}}
+{{define "crossing"}}
+<form class="crossing-form" method="post" action="/vozaci/{{.Status.Driver.ID}}/granica">
+  <input type="hidden" name="csrf_token" value="{{.Page.CSRFToken}}">
+  <input type="hidden" name="back" value="{{.Page.BackURL}}">
+  <input type="hidden" name="smer" value="{{if .Status.InSchengen}}izlaz{{else}}ulaz{{end}}">
+  <label class="sr-only" for="granica-{{.Status.Driver.ID}}-{{.Where}}">Datum {{if .Status.InSchengen}}izlaska{{else}}ulaska{{end}} — {{.Status.Driver.Name}}</label>
+  <input type="date" id="granica-{{.Status.Driver.ID}}-{{.Where}}" name="date" value="{{fmtDateInput .Page.AsOf}}" max="{{fmtDateInput .Page.AsOf}}" required>
+  <button type="submit" class="btn btn-sm">{{if .Status.InSchengen}}◀ Izašao{{else}}▶ Ušao{{end}}</button>
+</form>
 {{end}}
