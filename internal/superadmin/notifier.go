@@ -37,6 +37,7 @@ const (
 
 	newTenantWindow     = 24 * time.Hour      // a firm this young counts as a new registration
 	newSignupWindow     = 24 * time.Hour      // a sign-up started this recently is reported
+	mailProblemWindow   = 24 * time.Hour      // an unsent email this recent is reported
 	firstActivityWindow = 24 * time.Hour      // the first stay must be this recent to report
 	newFirmAge          = 30 * 24 * time.Hour // "first activity" is reported for firms this young only
 	webhookCheckEvery   = 15 * time.Minute
@@ -51,6 +52,7 @@ func (n *Notifier) Tick(ctx context.Context) {
 	now := clock.Now()
 
 	n.checkSignups(ctx, now)
+	n.checkMailProblems(ctx, now)
 	n.checkDocImports(ctx, now)
 	firms, err := n.Store.ListTenantOverviews(ctx)
 	if err != nil {
@@ -101,6 +103,37 @@ func (n *Notifier) checkSignups(ctx context.Context, now time.Time) {
 		n.notify(ctx, "signup_started", su.Ref,
 			fmt.Sprintf("📝 Započeta registracija: %s — %s <%s>, %s. Čeka potvrdu mejla.",
 				su.FirmName, su.Name, su.Email, belgrade(su.CreatedAt).Format("02.01.2006 15:04")))
+	}
+}
+
+// mailLabels names what an email was for, in the operator's words.
+var mailLabels = map[string]string{
+	"signup":        "potvrda registracije",
+	"signup_exists": "registracija na postojeći nalog",
+	"reset":         "reset lozinke",
+	"reset_done":    "obaveštenje o novoj lozinci",
+}
+
+// checkMailProblems reports each email that was not sent, once: the person
+// waiting for it does not know, and has to be told to try again.
+func (n *Notifier) checkMailProblems(ctx context.Context, now time.Time) {
+	problems, err := n.Store.ListEmailProblemsSince(ctx, now.Add(-mailProblemWindow))
+	if err != nil {
+		log.Printf("superadmin: list email problems: %v", err)
+		return
+	}
+	for _, p := range problems {
+		what := mailLabels[p.Tag]
+		if what == "" {
+			what = p.Tag
+		}
+		why := "greška: " + p.Error
+		if p.Status == store.EmailOverLimit {
+			why = "dostignut je dnevni limit mejlova"
+		}
+		n.notify(ctx, "mail_problem", strconv.FormatInt(p.ID, 10),
+			fmt.Sprintf("✉️ Mejl nije poslat: %s za %s, %s. %s.",
+				what, p.Recipient, belgrade(p.CreatedAt).Format("02.01.2006 15:04"), why))
 	}
 }
 

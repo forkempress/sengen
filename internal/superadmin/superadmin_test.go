@@ -876,3 +876,40 @@ func TestNotifier_AnthropicKeyReminderDailyFromFiveDays(t *testing.T) {
 		t.Errorf("/zdravlje without key line:\n%s", got)
 	}
 }
+
+func TestNotifier_UnsentMailReportedOnce(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	logMail := func(tag, to, status, errText string, age time.Duration) {
+		t.Helper()
+		if _, err := f.st.DB.ExecContext(ctx,
+			`INSERT INTO email_log (tag, recipient, status, error, created_at) VALUES (?, ?, ?, ?, ?)`,
+			tag, to, status, errText, ago(age)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	logMail("signup", "pera@zeta.rs", store.EmailFailed, "dial tcp: i/o timeout", time.Hour)
+	logMail("reset", "ana@prva.rs", store.EmailOverLimit, "", 2*time.Hour)
+	logMail("signup", "ok@zeta.rs", store.EmailSent, "", time.Hour)
+	logMail("signup", "staro@omega.rs", store.EmailFailed, "staro", 30*time.Hour)
+	n, fake := newNotifier(t, f, freshBackup(t))
+
+	n.Tick(ctx)
+	all := joinTexts(fake.take())
+	assertContains(t, "mail push", all,
+		"✉️ Mejl nije poslat: potvrda registracije za pera@zeta.rs, 14.10.2026 11:00. greška: dial tcp: i/o timeout.",
+		"✉️ Mejl nije poslat: reset lozinke za ana@prva.rs, 14.10.2026 10:00. dostignut je dnevni limit mejlova.")
+	if c := strings.Count(all, "Mejl nije poslat"); c != 4 {
+		t.Errorf("mail pushes = %d, want two per operator (4):\n%s", c, all)
+	}
+	for _, unwanted := range []string{"ok@zeta.rs", "staro@omega.rs"} {
+		if strings.Contains(all, unwanted) {
+			t.Errorf("unexpected %q in:\n%s", unwanted, all)
+		}
+	}
+
+	n.Tick(ctx)
+	if again := joinTexts(fake.take()); strings.Contains(again, "Mejl nije poslat") {
+		t.Errorf("unsent mail reported twice: %s", again)
+	}
+}

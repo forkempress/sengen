@@ -89,7 +89,9 @@ func main() {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		srv.Shutdown(shutdownCtx)
-		// Reset links already promised on a page should still go out.
+		// Reset links already promised on a page should still go out; one
+		// waiting for a retry is logged as failed instead of holding us up.
+		webServer.StopMailRetries()
 		webServer.WaitMail(shutdownCtx)
 		// Updates already answered with 200 will not be redelivered, so
 		// give the ones still being handled a moment to finish.

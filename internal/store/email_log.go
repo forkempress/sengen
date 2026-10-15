@@ -42,6 +42,41 @@ func (s *Store) CountEmailsSentSince(ctx context.Context, t time.Time) (int, err
 	return n, nil
 }
 
+// EmailProblem is a message that never reached the provider: it failed
+// after every attempt, or the daily cap stopped it.
+type EmailProblem struct {
+	ID        int64
+	Tag       string
+	Recipient string
+	Status    string // EmailFailed or EmailOverLimit
+	Error     string
+	CreatedAt time.Time
+}
+
+// ListEmailProblemsSince returns the messages not sent since t, oldest
+// first, for the superadmin bot.
+func (s *Store) ListEmailProblemsSince(ctx context.Context, t time.Time) ([]EmailProblem, error) {
+	rows, err := s.DB.QueryContext(ctx,
+		`SELECT id, tag, recipient, status, error, created_at FROM email_log
+		 WHERE status IN (?, ?) AND created_at >= ? ORDER BY id`,
+		EmailFailed, EmailOverLimit, formatTimestamp(t))
+	if err != nil {
+		return nil, fmt.Errorf("list email problems: %w", err)
+	}
+	defer rows.Close()
+	var out []EmailProblem
+	for rows.Next() {
+		var p EmailProblem
+		var created string
+		if err := rows.Scan(&p.ID, &p.Tag, &p.Recipient, &p.Status, &p.Error, &created); err != nil {
+			return nil, fmt.Errorf("scan email problem: %w", err)
+		}
+		p.CreatedAt, _ = parseTimestamp(created)
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
 // DeleteEmailLogBefore drops log rows older than cutoff.
 func (s *Store) DeleteEmailLogBefore(ctx context.Context, cutoff time.Time) (int64, error) {
 	res, err := s.DB.ExecContext(ctx, `DELETE FROM email_log WHERE created_at < ?`, formatTimestamp(cutoff))

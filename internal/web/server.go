@@ -55,6 +55,11 @@ type Server struct {
 
 	// mailWG tracks messages still being sent in the background.
 	mailWG sync.WaitGroup
+	// MailRetryDelays are the waits between attempts at a failed send.
+	MailRetryDelays []time.Duration
+	// mailStop ends those waits on shutdown (StopMailRetries).
+	mailStop     chan struct{}
+	mailStopOnce sync.Once
 }
 
 // Login limits, per 15 minutes. The IP limit is looser because a firm's
@@ -90,6 +95,8 @@ func New(st *store.Store, authSvc *auth.Service, bot *telegram.Bot) *Server {
 		Mailer:              mail.LogMailer{},
 		MailReady:           true,
 		MailDailyLimit:      defaultMailDailyLimit,
+		MailRetryDelays:     defaultMailRetryDelays,
+		mailStop:            make(chan struct{}),
 		PublicURL:           legal.PublicBaseURL,
 	}
 }
