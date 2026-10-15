@@ -17,6 +17,7 @@ import (
 	"shengen/internal/auth"
 	"shengen/internal/config"
 	"shengen/internal/db"
+	"shengen/internal/docread"
 	"shengen/internal/jobs"
 	"shengen/internal/mail"
 	"shengen/internal/store"
@@ -56,6 +57,10 @@ func main() {
 	webServer.TrustedProxy = cfg.TrustedProxy
 	log.Printf("trusted proxy: %s", cfg.TrustedProxy)
 	configureMail(cfg, webServer)
+	if cfg.AnthropicAPIKey != "" {
+		webServer.DocReader = docread.NewClaude(cfg.AnthropicAPIKey)
+		log.Printf("uvoz dokumenata: uključen")
+	}
 
 	runner := jobs.New(st, bot.Client())
 	if len(cfg.AdminTelegramIDs) > 0 && bot.Client() != nil {

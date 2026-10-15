@@ -3,6 +3,9 @@ package web
 import (
 	"net/http"
 	"strings"
+	"time"
+
+	"shengen/internal/docread"
 )
 
 // Request body caps. Forms are a few kilobytes; only the CSV import (the
@@ -10,6 +13,8 @@ import (
 const (
 	maxBodyBytes       = 1 << 20
 	maxImportBodyBytes = 2 << 20
+	// A scanned PDF or photo: the file limit plus room for the form.
+	maxDocumentBodyBytes = docread.MaxFileBytes + 64<<10
 )
 
 // limitBody caps every request body, so neither an upload nor a form field
@@ -18,7 +23,16 @@ const (
 func limitBody(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		limit := int64(maxBodyBytes)
-		if strings.HasPrefix(r.URL.Path, "/import/") {
+		switch {
+		case r.URL.Path == "/import/dokument":
+			limit = maxDocumentBodyBytes
+			// The upload is bigger and the model call slow: give this one
+			// route longer than the server's 15 s read / 30 s write
+			// timeouts. Set here, before the CSRF check reads the body.
+			rc := http.NewResponseController(w)
+			rc.SetReadDeadline(time.Now().Add(docReadDeadline))
+			rc.SetWriteDeadline(time.Now().Add(docReadDeadline))
+		case strings.HasPrefix(r.URL.Path, "/import/"):
 			limit = maxImportBodyBytes
 		}
 		r.Body = http.MaxBytesReader(w, r.Body, limit)

@@ -30,8 +30,21 @@
   <button type="submit" class="btn btn-primary">Prikaži pregled</button>
 </form>
 
+{{if .DocEnabled}}
+<form method="post" action="/import/dokument" enctype="multipart/form-data" class="panel">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <h2>Ili učitajte skeniranu evidenciju</h2>
+  <p>PDF ili fotografija evidencije u bilo kom obliku: tabela, štampani izveštaj, sveska. Dokument automatski čita Claude (Anthropic) i pravi iste redove kao iz CSV fajla; pre uvoza ih pregledate. Najviše 10 strana i 10 MB. Čitanje traje do minut.</p>
+  <div class="form-grid">
+    <div><label for="import-doc">PDF ili slika</label><input type="file" id="import-doc" name="file" accept=".pdf,application/pdf,image/jpeg,image/png,image/webp" required></div>
+  </div>
+  <button type="submit" class="btn btn-primary">Pročitaj dokument</button>
+</form>
+{{end}}
+
 {{if .HasFile}}
 <h2>Pregled ({{len .Rows}} redova, {{len .ValidRows}} ispravnih)</h2>
+{{if .FromDocument}}<p>Redove je pročitao Claude iz dokumenta. Uporedite ih sa originalom pre potvrde{{if .Uncertain}}, posebno redove označene sa „proverite“{{end}}. Pogrešan red ispravite posle uvoza na stranici vozača.</p>{{end}}
 <div class="table-wrap">
 <table>
   <thead><tr><th>Red</th><th>Vozač</th><th>Ulaz</th><th>Izlaz</th><th>Tip</th><th>Status</th></tr></thead>
@@ -44,6 +57,7 @@
       <td class="num">{{fmtDatePtr .Exit}}</td>
       <td>{{.Type}}</td>
       <td>
+        {{if index $.Uncertain .LineNum}}<span class="badge badge-paznja">proverite</span>{{end}}
         {{if .Valid}}<span class="badge badge-ok">OK</span>
         {{else}}{{range .Errors}}<div class="row-error">{{.}}</div>{{end}}
         {{end}}

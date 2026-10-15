@@ -64,6 +64,10 @@ type Config struct {
 	// quota that password resets depend on.
 	MailDailyLimit int
 
+	// AnthropicAPIKey turns on reading scanned histories (PDF, photo) on
+	// the import page (ANTHROPIC_API_KEY); empty hides that option.
+	AnthropicAPIKey string
+
 	// Cloudflare Turnstile on the public forms; both keys or neither.
 	TurnstileSiteKey   string
 	TurnstileSecretKey string
@@ -96,6 +100,7 @@ func Load() (Config, error) {
 		SMTPPassword:          os.Getenv("SMTP_PASSWORD"),
 		TurnstileSiteKey:      strings.TrimSpace(os.Getenv("TURNSTILE_SITE_KEY")),
 		TurnstileSecretKey:    strings.TrimSpace(os.Getenv("TURNSTILE_SECRET_KEY")),
+		AnthropicAPIKey:       strings.TrimSpace(os.Getenv("ANTHROPIC_API_KEY")),
 	}
 
 	ids, err := parseTelegramIDs(os.Getenv("ADMIN_TELEGRAM_IDS"))

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"shengen/internal/auth"
+	"shengen/internal/docread"
 	"shengen/internal/legal"
 	"shengen/internal/mail"
 	"shengen/internal/store"
@@ -39,6 +40,9 @@ type Server struct {
 	FeedbackEmail string
 	// Turnstile guards the public forms; nil turns the check off.
 	Turnstile *Turnstile
+	// DocReader reads scanned histories (PDF, photo) on the import page;
+	// nil hides that option.
+	DocReader docread.Reader
 
 	templates           templateSet
 	loginIPLimiter      *auth.LoginLimiter
@@ -47,6 +51,7 @@ type Server struct {
 	resetEmailLimiter   *auth.LoginLimiter
 	signupIPLimiter     *auth.LoginLimiter
 	signupEmailLimiter  *auth.LoginLimiter
+	docReadLimiter      *auth.LoginLimiter
 
 	// mailWG tracks messages still being sent in the background.
 	mailWG sync.WaitGroup
@@ -81,6 +86,7 @@ func New(st *store.Store, authSvc *auth.Service, bot *telegram.Bot) *Server {
 		resetEmailLimiter:   auth.NewLoginLimiter(resetLimitPerEmail, resetLimitWindow),
 		signupIPLimiter:     auth.NewLoginLimiter(signupLimitPerIP, signupLimitWindow),
 		signupEmailLimiter:  auth.NewLoginLimiter(signupLimitPerEmail, signupLimitWindow),
+		docReadLimiter:      auth.NewLoginLimiter(docReadLimitPerTenant, docReadLimitWindow),
 		Mailer:              mail.LogMailer{},
 		MailReady:           true,
 		MailDailyLimit:      defaultMailDailyLimit,
@@ -161,6 +167,7 @@ func (s *Server) Routes() http.Handler {
 	protected.HandleFunc("GET /import/primer.csv", s.handleImportSample)
 	protected.HandleFunc("POST /import/preview", s.handleImportPreview)
 	protected.HandleFunc("POST /import/potvrdi", s.handleImportConfirm)
+	protected.HandleFunc("POST /import/dokument", s.handleImportDocument)
 
 	mux.Handle("/", s.Auth.RequireAuth(auth.CSRFProtect(s.requireTerms(protected))))
 

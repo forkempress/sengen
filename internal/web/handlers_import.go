@@ -19,10 +19,22 @@ type importPageData struct {
 	HasFile   bool
 	// Sample is the example file, shown as a table above the upload.
 	Sample [][]string
+	// DocEnabled offers the PDF/photo upload (a Claude API key is set).
+	DocEnabled bool
+	// FromDocument marks a preview read from a scan; Uncertain holds the
+	// line numbers the model was not sure it read correctly.
+	FromDocument bool
+	Uncertain    map[int]bool
+}
+
+func (s *Server) importPage(r *http.Request) importPageData {
+	return importPageData{baseData: s.base(r, "import"), DocEnabled: s.DocReader != nil}
 }
 
 func (s *Server) handleImportPage(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "import.html", importPageData{baseData: s.base(r, "import"), Sample: sampleCSV(s.sampleNames(r), clock.Today())})
+	data := s.importPage(r)
+	data.Sample = sampleCSV(s.sampleNames(r), clock.Today())
+	s.render(w, "import.html", data)
 }
 
 func (s *Server) loadExistingDriversForImport(r *http.Request, tenantID int64) ([]importer.ExistingDriver, error) {
@@ -50,7 +62,7 @@ func (s *Server) handleImportPreview(w http.ResponseWriter, r *http.Request) {
 
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		data := importPageData{baseData: s.base(r, "import")}
+		data := s.importPage(r)
 		data.FlashErr = "Izaberite CSV fajl."
 		s.render(w, "import.html", data)
 		return
@@ -65,13 +77,18 @@ func (s *Server) handleImportPreview(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := importer.Parse(file, existing)
 	if err != nil {
-		data := importPageData{baseData: s.base(r, "import")}
+		data := s.importPage(r)
 		data.FlashErr = "Greška pri čitanju fajla: " + err.Error()
 		s.render(w, "import.html", data)
 		return
 	}
+	s.renderImportPreview(w, r, rows, nil)
+}
 
-	data := importPageData{baseData: s.base(r, "import"), Rows: rows, HasFile: true}
+func (s *Server) renderImportPreview(w http.ResponseWriter, r *http.Request, rows []importer.Row, uncertain map[int]bool) {
+	data := s.importPage(r)
+	data.Rows, data.HasFile = rows, true
+	data.FromDocument, data.Uncertain = uncertain != nil, uncertain
 	for _, row := range rows {
 		if row.Valid() {
 			data.ValidRows = append(data.ValidRows, row)

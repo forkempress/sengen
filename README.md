@@ -253,6 +253,7 @@ Kopija sadrži lične podatke vozača — obrisati je kad proba završi.
 | `MAIL_FROM`, `MAIL_REPLY_TO` | — | pošiljalac (obavezan uz SMTP) i adresa za odgovore |
 | `MAIL_DAILY_LIMIT` | `250` | najviše mejlova u 24h |
 | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | — | Cloudflare Turnstile na javnim formama; oba ili nijedan |
+| `ANTHROPIC_API_KEY` | — | Uključuje čitanje skenirane evidencije (PDF, slika) na stranici „Uvoz istorije“ preko Claude-a; najviše 10 strana / 10 MB, 10 dokumenata dnevno po firmi |
 
 Token i secret idu samo u okruženje (`/etc/dani90/dani90.env`), nikada u repo. Firma u
 **Podešavanja → Telegram** bira samo svoj chat za upozorenja i pragove.
