@@ -1,9 +1,10 @@
 # Cloudflare Pages: bezbednosna zaglavlja za ceo sajt.
 # CSP dozvoljava samo ono što stranica stvarno koristi: sopstvene fajlove
-# (i fontove — hostovani su na sajtu, bez Google Fonts). Zato u HTML-u nema inline stilova
-# ni inline skripti (JSON-LD blokovi se ne izvršavaju, pa ih CSP ne blokira).
+# (i fontove — hostovani su na sajtu, bez Google Fonts) i Cloudflare Web Analytics
+# (skripta sa static.cloudflareinsights.com šalje posete na cloudflareinsights.com).
+# Zato u HTML-u nema inline stilova ni inline skripti (JSON-LD blokovi se ne izvršavaju, pa ih CSP ne blokira).
 /*
-  Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self'; font-src 'self'; script-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self'; font-src 'self'; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; form-action 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
