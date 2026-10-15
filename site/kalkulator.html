@@ -18,40 +18,31 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preload" href="/fonts/ibm-plex-sans-400-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/css/fonts.css">
-  <link rel="stylesheet" href="/css/style.css?v=20261015c">
+  <link rel="stylesheet" href="/css/style.css?v=20261015d">
 
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "WebApplication",
-    "name": "Kalkulator 90/180",
-    "url": "https://dani90.rs/kalkulator",
-    "applicationCategory": "UtilitiesApplication",
-    "operatingSystem": "Web",
-    "inLanguage": "sr-Latn",
-    "isAccessibleForFree": true,
-    "offers": {"@type": "Offer", "price": "0", "priceCurrency": "RSD"},
-    "description": "Kalkulator pravila 90/180 za boravak u Šengen zoni: iskorišćeni i preostali dani, datum do kog se sme ostati i dani kad se dani vraćaju.",
-    "publisher": {"@type": "Organization", "name": "Dani90", "url": "https://dani90.rs/"}
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Kalkulator 90/180",
+  "url": "https://dani90.rs/kalkulator",
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "Web",
+  "inLanguage": "sr-Latn",
+  "isAccessibleForFree": true,
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "RSD",
+    "description": "Besplatno, bez registracije"
+  },
+  "description": "Besplatan kalkulator pravila 90/180 za boravak u Šengen zoni, bez registracije: iskorišćeni i preostali dani, datum do kog se sme ostati i dani kad se dani vraćaju.",
+  "publisher": {
+    "@type": "Organization",
+    "name": "Dani90",
+    "url": "https://dani90.rs/"
   }
-  </script>
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      {"@type": "Question", "name": "Kako se računa pravilo 90/180?",
-       "acceptedAnswer": {"@type": "Answer", "text": "Za svaki dan gleda se tih 180 dana unazad, uključujući i taj dan. U tom periodu smete biti u Šengenu najviše 90 dana. Period se pomera svakog dana, pa stari dani ispadaju, a vraćaju vam se postepeno."}},
-      {"@type": "Question", "name": "Da li se dan ulaska i dan izlaska računaju?",
-       "acceptedAnswer": {"@type": "Answer", "text": "Da, oba se računaju kao celi dani. Ako uđete i izađete istog dana, to je jedan dan."}},
-      {"@type": "Question", "name": "Da li se broje Hrvatska, Bugarska i Rumunija?",
-       "acceptedAnswer": {"@type": "Answer", "text": "Da, sve tri su u Šengenu i dani u njima se broje. Ne broje se BiH, Crna Gora, Severna Makedonija, Albanija, Kipar, Irska i Velika Britanija."}},
-      {"@type": "Question", "name": "Zašto mogu da ostanem duže nego što piše u preostalim danima?",
-       "acceptedAnswer": {"@type": "Answer", "text": "Zato što vam tokom boravka stari dani ispadaju iz perioda od 180 dana. Kalkulator zato posebno pokazuje datum do kog smete da ostanete bez prekida."}},
-      {"@type": "Question", "name": "Da li je rezultat kalkulatora zvaničan?",
-       "acceptedAnswer": {"@type": "Answer", "text": "Ne. Kalkulator služi za informisanje i planiranje. Zvanično stanje vodi EES sistem na granici."}}
-    ]
-  }
+}
   </script>
 </head>
 <body>
@@ -70,6 +61,7 @@
       <a href="/#kako-radi">Kako radi</a>
       <a href="/#mogucnosti">Mogućnosti</a>
       <a href="/kalkulator" aria-current="page">Kalkulator</a>
+      <a href="/#vodici">Vodiči</a>
       <a href="/#pitanja">Pitanja</a>
       <a href="https://app.dani90.rs/login" class="nav-login">Prijava</a>
       <a href="https://app.dani90.rs/registracija" class="btn btn-yellow nav-cta">Probajte besplatno</a>
@@ -153,14 +145,14 @@
       </ul>
 
       <h3>Primer</h3>
-      <p>Vozač je od 1. jula do 29. avgusta bio u Šengenu bez prekida — to je 60 dana. Dana 1. septembra ostaje mu još 30 dana. Ako ništa ne putuje, ti dani se ne vraćaju sve do kraja decembra: 1. jul ispada iz računice tek 28. decembra, kad se navrši 180 dana. Od tada mu se vraća po jedan dan svakog dana.</p>
+      <p>Vozač je od 1. jula do 29. avgusta bio u Šengenu bez prekida — to je 60 dana. Dana 1. septembra ostaje mu još 30 dana. Ako ništa ne putuje, ti dani se ne vraćaju sve do kraja decembra: 1. jul ispada iz računice tek 28. decembra, kad se navrši 180 dana. Od tada mu se vraća po jedan dan svakog dana. Još primera sa datumima naći ćete u vodiču <a href="/kako-se-racuna-90-180">kako se računa 90/180</a>.</p>
 
       <h3>Šengen nije isto što i EU</h3>
       <p><strong>Broje se:</strong> Austrija, Belgija, Bugarska, Češka, Danska, Estonija, Finska, Francuska, Grčka, Holandija, Hrvatska, Island, Italija, Letonija, Lihtenštajn, Litvanija, Luksemburg, Mađarska, Malta, Nemačka, Norveška, Poljska, Portugal, Rumunija, Slovačka, Slovenija, Španija, Švajcarska i Švedska.</p>
-      <p><strong>Ne broje se:</strong> BiH, Crna Gora, Severna Makedonija, Albanija, Kipar, Irska i Velika Britanija. Ako vozač ide preko BiH, upisuje se ulazak u Hrvatsku, a ne izlazak iz Srbije.</p>
+      <p><strong>Ne broje se:</strong> BiH, Crna Gora, Severna Makedonija, Albanija, Kipar, Irska i Velika Britanija. Ako vozač ide preko BiH, upisuje se ulazak u Hrvatsku, a ne izlazak iz Srbije. Više u vodiču <a href="/zemlje-sengen">koje zemlje se broje</a>.</p>
 
       <h3>Granica sada broji sama</h3>
-      <p>EES (Entry/Exit System) elektronski beleži svaki ulazak i izlazak iz Šengena, umesto pečata u pasošu. Prekoračenje se više ne previdi, pa je važno znati stanje unapred, a ne na granici.</p>
+      <p>EES (Entry/Exit System) elektronski beleži svaki ulazak i izlazak iz Šengena, umesto pečata u pasošu. Prekoračenje se više ne previdi, pa je važno znati stanje unapred, a ne na granici. Pročitajte <a href="/ees">šta EES menja za vozače</a> i <a href="/kazna-prekoracenje-90-dana">šta sledi posle prekoračenja</a>.</p>
 
       <p class="disclaimer">Kalkulator služi za informisanje i planiranje. Zvanično stanje vodi EES sistem na granici. Pravila za boravak proverite i u zvaničnim izvorima ispod.</p>
 
@@ -168,6 +160,15 @@
       <ul class="sources">
         <li><a href="https://home-affairs.ec.europa.eu/policies/schengen/border-crossing/short-stay-calculator_en" rel="noopener">Kalkulator kratkog boravka — Evropska komisija</a> (na engleskom)</li>
         <li><a href="https://travel-europe.europa.eu/en/ees" rel="noopener">EES — zvanični sajt Evropske unije</a></li>
+      </ul>
+
+      <h3>Vodiči</h3>
+      <ul class="sources">
+        <li><a href="/kako-se-racuna-90-180">Kako se računa 90/180: primeri sa datumima</a></li>
+        <li><a href="/pravilo-90-180-vozaci">Pravilo 90/180 za vozače kombija</a></li>
+        <li><a href="/zemlje-sengen">Koje zemlje se broje u Šengenu, a koje ne</a></li>
+        <li><a href="/ees">EES: šta se menja za vozače iz Srbije</a></li>
+        <li><a href="/kazna-prekoracenje-90-dana">Šta se dešava ako se prekorači 90/180</a></li>
       </ul>
     </div>
   </section>
@@ -218,6 +219,13 @@
       <a href="https://app.dani90.rs/uslovi">Uslovi korišćenja</a>
       <a href="https://app.dani90.rs/obrada-podataka">Obrada podataka</a>
     </nav>
+    <nav aria-label="Vodiči">
+      <a href="/kako-se-racuna-90-180">Kako se računa 90/180</a>
+      <a href="/pravilo-90-180-vozaci">90/180 za vozače</a>
+      <a href="/zemlje-sengen">Zemlje Šengena</a>
+      <a href="/ees">EES za vozače</a>
+      <a href="/kazna-prekoracenje-90-dana">Kazna za prekoračenje</a>
+    </nav>
     <div>
       <p><a href="https://app.dani90.rs/kontakt">Pišite nam email</a></p>
       <p class="small">© <span id="year">2026</span> Dani90</p>
@@ -236,7 +244,7 @@
   </a>
 </div>
 
-<script src="/js/main.js?v=20261015c" defer></script>
+<script src="/js/main.js?v=20261015d" defer></script>
 <script src="/js/calc90.js" defer></script>
 <script src="/js/kalkulator.js" defer></script>
 </body>

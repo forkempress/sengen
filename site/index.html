@@ -18,39 +18,41 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preload" href="/fonts/ibm-plex-sans-400-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/css/fonts.css">
-  <link rel="stylesheet" href="/css/style.css?v=20261015c">
+  <link rel="stylesheet" href="/css/style.css?v=20261015d">
 
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "Dani90",
-    "alternateName": "Evidencija 90/180",
-    "applicationCategory": "BusinessApplication",
-    "operatingSystem": "Web, Telegram",
-    "inLanguage": "sr-Latn",
-    "url": "https://dani90.rs/",
-    "description": "Evidencija dana vozača u Šengen zoni po pravilu 90/180 za prevozničke firme. Dispečer unosi prelaske granice na webu ili ih vozači javljaju preko Telegram bota, a stanje celog voznog parka je na jednom ekranu.",
-    "screenshot": "https://dani90.rs/images/pregled.jpg"
-  }
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://dani90.rs/#organizacija",
+  "name": "Dani90",
+  "url": "https://dani90.rs/",
+  "logo": "https://dani90.rs/favicon.svg"
+}
   </script>
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      {"@type": "Question", "name": "Da li vozači moraju da instaliraju aplikaciju?",
-       "acceptedAnswer": {"@type": "Answer", "text": "Ne. Ulaske i izlaske možete da unosite sami, pa vozači ne moraju ništa da rade. Ako želite da javljaju sami, koriste Telegram koji već imaju: dobiju link, tapnu ga i povezani su sa botom."}},
-      {"@type": "Question", "name": "Šta ako vozač zaboravi da pritisne dugme?",
-       "acceptedAnswer": {"@type": "Answer", "text": "Ako boravak ostane otvoren 7 dana, bot vozača pita da li je još u EU. Dispečer u aplikaciji ispravlja datum, a svaka izmena se beleži."}},
-      {"@type": "Question", "name": "Da li se računaju privatna putovanja?",
-       "acceptedAnswer": {"@type": "Answer", "text": "Da. Pravilo 90/180 važi za osobu, ne za vozilo, pa se broje i privatni boravci u Šengenu."}},
-      {"@type": "Question", "name": "Da li je ovo zvanično stanje sa granice?",
-       "acceptedAnswer": {"@type": "Answer", "text": "Ne. Dani90 služi za internu kontrolu i planiranje. Zvanično stanje vodi EES sistem na granici."}},
-      {"@type": "Question", "name": "Koliko košta?",
-       "acceptedAnswer": {"@type": "Answer", "text": "Cena zavisi od broja vozača. Javite se za ponudu."}}
-    ]
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Dani90",
+  "alternateName": "Evidencija 90/180",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "inLanguage": "sr-Latn",
+  "url": "https://dani90.rs/",
+  "description": "Evidencija dana vozača u Šengen zoni po pravilu 90/180 za prevozničke firme. Dispečer unosi prelaske granice na webu ili ih vozači javljaju preko Telegram bota, a stanje celog voznog parka je na jednom ekranu.",
+  "screenshot": "https://dani90.rs/images/pregled.jpg",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "RSD",
+    "description": "Besplatna proba 30 dana, bez kartice",
+    "url": "https://app.dani90.rs/registracija"
+  },
+  "publisher": {
+    "@id": "https://dani90.rs/#organizacija"
   }
+}
   </script>
 </head>
 <body>
@@ -70,6 +72,7 @@
       <a href="#mogucnosti">Mogućnosti</a>
       <a href="#vozaci">Za vozače</a>
       <a href="/kalkulator">Kalkulator</a>
+      <a href="#vodici">Vodiči</a>
       <a href="#pitanja">Pitanja</a>
       <a href="https://app.dani90.rs/login" class="nav-login">Prijava</a>
       <a href="https://app.dani90.rs/registracija" class="btn btn-yellow nav-cta">Probajte besplatno</a>
@@ -114,7 +117,7 @@
       <div class="cards-3">
         <article class="card">
           <h3>Granica sada broji sama</h3>
-          <p>EES (Entry/Exit System) elektronski beleži svaki ulazak i izlazak iz Šengena. Prekoračenje se više ne previdi pri pečatiranju pasoša.</p>
+          <p>EES (Entry/Exit System) elektronski beleži svaki ulazak i izlazak iz Šengena. Prekoračenje se više ne previdi pri pečatiranju pasoša. <a href="/ees">Šta EES menja za vozače</a></p>
         </article>
         <article class="card">
           <h3>Računica se menja svakog jutra</h3>
@@ -122,7 +125,7 @@
         </article>
         <article class="card">
           <h3>Prekoračenje je skupo</h3>
-          <p>Kazna, zabrana ulaska u Šengen i vozilo koje stoji dok se stvar ne reši — a vozač koji ne sme da uđe ne može ni da vozi.</p>
+          <p>Kazna, zabrana ulaska u Šengen i vozilo koje stoji dok se stvar ne reši — a vozač koji ne sme da uđe ne može ni da vozi. <a href="/kazna-prekoracenje-90-dana">Šta sledi posle prekoračenja</a></p>
         </article>
       </div>
     </div>
@@ -183,7 +186,7 @@
         </article>
         <article class="feature">
           <h3>Šengen, a ne EU</h3>
-          <p>Hrvatska, Bugarska i Rumunija se broje. BiH, Crna Gora, Makedonija, Albanija i Kipar se ne broje. Računaju se i privatna putovanja.</p>
+          <p>Hrvatska, Bugarska i Rumunija se broje. BiH, Crna Gora, Makedonija, Albanija i Kipar se ne broje. Računaju se i privatna putovanja. <a href="/zemlje-sengen">Spisak zemalja</a></p>
         </article>
         <article class="feature">
           <h3>Uvoz stare evidencije</h3>
@@ -259,7 +262,21 @@
         <li>Datum je lokalni datum u Srbiji.</li>
       </ul>
       <p class="disclaimer">Dani90 služi za internu kontrolu i planiranje. Zvanično stanje vodi EES sistem na granici.</p>
-      <p>Hoćete da proverite jednog vozača odmah? Probajte <a href="/kalkulator">besplatni kalkulator 90/180</a>.</p>
+      <p>Hoćete da proverite jednog vozača odmah? Probajte <a href="/kalkulator">besplatni kalkulator 90/180</a>. Primere sa datumima, korak po korak, naći ćete u vodiču <a href="/kako-se-racuna-90-180">kako se računa 90/180</a>.</p>
+    </div>
+  </section>
+
+  <section class="section" id="vodici" aria-labelledby="vodici-naslov">
+    <div class="wrap">
+      <h2 id="vodici-naslov">Vodiči za prevoznike</h2>
+      <ul class="guides">
+        <li><a href="/kako-se-racuna-90-180"><strong>Kako se računa 90/180</strong><span>Primeri sa datumima, korak po korak: period od 180 dana, vraćanje dana, do kog dana sme da ostane.</span></a></li>
+        <li><a href="/pravilo-90-180-vozaci"><strong>Pravilo 90/180 za vozače</strong><span>Ture, rotacije, privatna putovanja i promena vozila iz ugla dispečera.</span></a></li>
+        <li><a href="/zemlje-sengen"><strong>Koje zemlje se broje</strong><span>29 šengenskih zemalja i zamke: Hrvatska, Bugarska i Rumunija se broje, Kipar i BiH ne.</span></a></li>
+        <li><a href="/ees"><strong>EES za vozače iz Srbije</strong><span>Šta se od 10. aprila 2026. menja na granici: otisci, fotografija i automatsko brojanje dana.</span></a></li>
+        <li><a href="/kazna-prekoracenje-90-dana"><strong>Kazna za prekoračenje</strong><span>Postupak vraćanja, zabrana ulaska u SIS-u, kazne po zemljama i posledice za firmu.</span></a></li>
+        <li><a href="/kalkulator"><strong>Kalkulator 90/180</strong><span>Unesite ulaske i izlaske i odmah vidite koliko je ostalo i do kog dana. Besplatno.</span></a></li>
+      </ul>
     </div>
   </section>
 
@@ -281,7 +298,7 @@
         </details>
         <details>
           <summary>Da li se računaju privatna putovanja?</summary>
-          <p>Da. Pravilo važi za osobu, ne za vozilo, pa se broje i privatni boravci u Šengenu.</p>
+          <p>Da. Pravilo važi za osobu, ne za vozilo, pa se broje i privatni boravci u Šengenu. Primer kako letovanje pomera sledeću turu je u vodiču <a href="/pravilo-90-180-vozaci">pravilo 90/180 za vozače</a>.</p>
         </details>
         <details>
           <summary>Imamo istoriju u Excelu. Šta sa njom?</summary>
@@ -329,6 +346,13 @@
       <a href="https://app.dani90.rs/uslovi">Uslovi korišćenja</a>
       <a href="https://app.dani90.rs/obrada-podataka">Obrada podataka</a>
     </nav>
+    <nav aria-label="Vodiči">
+      <a href="/kako-se-racuna-90-180">Kako se računa 90/180</a>
+      <a href="/pravilo-90-180-vozaci">90/180 za vozače</a>
+      <a href="/zemlje-sengen">Zemlje Šengena</a>
+      <a href="/ees">EES za vozače</a>
+      <a href="/kazna-prekoracenje-90-dana">Kazna za prekoračenje</a>
+    </nav>
     <div>
       <p><a href="https://app.dani90.rs/kontakt">Pišite nam email</a></p>
       <p class="small">© <span id="year">2026</span> Dani90</p>
@@ -347,6 +371,6 @@
   </a>
 </div>
 
-<script src="/js/main.js?v=20261015c" defer></script>
+<script src="/js/main.js?v=20261015d" defer></script>
 </body>
 </html>
