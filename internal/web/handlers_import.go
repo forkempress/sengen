@@ -1,6 +1,7 @@
 package web
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -25,6 +26,8 @@ type importPageData struct {
 	// line numbers the model was not sure it read correctly.
 	FromDocument bool
 	Uncertain    map[int]bool
+	// DocImportID ties the confirm form back to the recorded read.
+	DocImportID int64
 }
 
 func (s *Server) importPage(r *http.Request) importPageData {
@@ -82,13 +85,13 @@ func (s *Server) handleImportPreview(w http.ResponseWriter, r *http.Request) {
 		s.render(w, "import.html", data)
 		return
 	}
-	s.renderImportPreview(w, r, rows, nil)
+	s.renderImportPreview(w, r, rows, nil, 0)
 }
 
-func (s *Server) renderImportPreview(w http.ResponseWriter, r *http.Request, rows []importer.Row, uncertain map[int]bool) {
+func (s *Server) renderImportPreview(w http.ResponseWriter, r *http.Request, rows []importer.Row, uncertain map[int]bool, docImportID int64) {
 	data := s.importPage(r)
 	data.Rows, data.HasFile = rows, true
-	data.FromDocument, data.Uncertain = uncertain != nil, uncertain
+	data.FromDocument, data.Uncertain, data.DocImportID = uncertain != nil, uncertain, docImportID
 	for _, row := range rows {
 		if row.Valid() {
 			data.ValidRows = append(data.ValidRows, row)
@@ -150,6 +153,16 @@ func (s *Server) handleImportConfirm(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.redirectErr(w, r, "/import", "Uvoz neuspešan: "+err.Error())
 		return
+	}
+
+	if docID, err := strconv.ParseInt(r.Form.Get("doc_import_id"), 10, 64); err == nil {
+		drivers := map[string]bool{}
+		for _, d := range driverIDs {
+			drivers[d] = true
+		}
+		if err := s.Store.ConfirmDocumentImport(r.Context(), t.ID, docID, len(driverIDs), len(drivers)); err != nil {
+			log.Printf("import dokumenta (firma %d): %v", t.ID, err)
+		}
 	}
 
 	s.redirectOk(w, r, "/import", "Uvoz završen ("+strconv.Itoa(len(driverIDs))+" boravaka).")

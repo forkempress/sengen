@@ -3,12 +3,16 @@ package web
 import (
 	"bytes"
 	"context"
+	"errors"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"shengen/internal/auth"
 	"shengen/internal/clock"
@@ -163,5 +167,66 @@ func TestImportDocument_DailyLimitPerFirm(t *testing.T) {
 	app.mustLogin(b).uploadDocument(fakePDF)
 	if reader.calls != docReadLimitPerTenant+1 {
 		t.Error("one firm's quota blocked another firm")
+	}
+}
+
+var docImportIDRe = regexp.MustCompile(`name="doc_import_id" value="(\d+)"`)
+
+func TestImportDocument_RecordsCostAndConfirmation(t *testing.T) {
+	day := clock.Today().AddDate(0, 0, -20).Format("02.01.2006")
+	day2 := clock.Today().AddDate(0, 0, -15).Format("02.01.2006")
+	reader := &fakeReader{res: docread.Result{
+		Stays: []docread.Stay{{Driver: "ana prva", Entry: day, Exit: day2, Type: "posao"}},
+		Usage: docread.Usage{Model: "claude-opus-5-5", InputTokens: 1000, OutputTokens: 100, CostMicroUSD: 6000},
+	}}
+	app, a, b := docApp(t, reader)
+	sa := app.mustLogin(a)
+	ctx := context.Background()
+
+	body := sa.uploadDocument(fakePDF).Body.String()
+	m := docImportIDRe.FindStringSubmatch(body)
+	if m == nil {
+		t.Fatal("confirm form has no doc_import_id")
+	}
+	reads, err := app.st.ListDocumentImportsSince(ctx, clock.Now().Add(-time.Hour))
+	if err != nil || len(reads) != 1 {
+		t.Fatalf("recorded reads: %v, %v", reads, err)
+	}
+	d := reads[0]
+	if d.TenantID != a.tenant.ID || d.Status != store.DocImportOK || d.CostMicroUSD != 6000 || d.StaysRead != 1 || d.DriversRead != 1 || d.RowsValid != 1 {
+		t.Errorf("recorded %+v", d)
+	}
+
+	confirm := url.Values{
+		"doc_import_id": {m[1]}, "row_driver_id": {id(a.driver.ID)},
+		"row_entry": {clock.Today().AddDate(0, 0, -20).Format("2006-01-02")},
+		"row_exit":  {clock.Today().AddDate(0, 0, -15).Format("2006-01-02")},
+		"row_type":  {"work"}, "row_note": {""},
+	}
+	// Another firm posting this id does not mark it confirmed.
+	sb := app.mustLogin(b)
+	bConfirm := url.Values{}
+	for k, v := range confirm {
+		bConfirm[k] = v
+	}
+	bConfirm.Set("row_driver_id", id(b.driver.ID))
+	sb.post("/import/potvrdi", bConfirm)
+	if got, _ := app.st.ListDocumentImportsConfirmedSince(ctx, clock.Now().Add(-time.Hour)); len(got) != 0 {
+		t.Errorf("another firm confirmed this read: %+v", got)
+	}
+
+	sa.post("/import/potvrdi", confirm)
+	got, _ := app.st.ListDocumentImportsConfirmedSince(ctx, clock.Now().Add(-time.Hour))
+	if len(got) != 1 || got[0].StaysWritten != 1 || got[0].DriversWritten != 1 {
+		t.Errorf("confirmed reads: %+v", got)
+	}
+}
+
+func TestImportDocument_FailedCallIsRecorded(t *testing.T) {
+	app, a, _ := docApp(t, &fakeReader{err: errors.New("mreža")})
+	app.mustLogin(a).uploadDocument(fakePDF)
+	reads, _ := app.st.ListDocumentImportsSince(context.Background(), clock.Now().Add(-time.Hour))
+	if len(reads) != 1 || reads[0].Status != store.DocImportError {
+		t.Errorf("recorded %+v, want one error", reads)
 	}
 }

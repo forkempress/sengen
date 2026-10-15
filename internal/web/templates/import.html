@@ -71,6 +71,7 @@
 {{if .ValidRows}}
 <form method="post" action="/import/potvrdi" style="margin-top:1rem;">
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  {{if .DocImportID}}<input type="hidden" name="doc_import_id" value="{{.DocImportID}}">{{end}}
   {{range .ValidRows}}
   <input type="hidden" name="row_driver_id" value="{{.DriverID}}">
   <input type="hidden" name="row_entry" value="{{fmtDateInput .Entry}}">

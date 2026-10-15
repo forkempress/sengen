@@ -746,3 +746,68 @@ func TestWebhookProblem(t *testing.T) {
 		t.Errorf("missing webhook: %q", p)
 	}
 }
+
+func TestNotifier_DocumentImportCostAndOutcome(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	record := func(tenant *store.Tenant, d store.DocumentImport) int64 {
+		t.Helper()
+		d.TenantID = tenant.ID
+		id, err := f.st.RecordDocumentImport(ctx, d)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	// 18.200 input + 2.100 output tokens on Opus 5.5: 18.200×4 + 2.100×20 = 114.800 µ$.
+	okID := record(f.alfa, store.DocumentImport{Status: store.DocImportOK, Model: "claude-opus-5-5",
+		InputTokens: 18200, OutputTokens: 2100, CostMicroUSD: 114800, StaysRead: 14, DriversRead: 3, RowsValid: 12})
+	record(f.beta, store.DocumentImport{Status: store.DocImportError})
+	n, fake := newNotifier(t, f, freshBackup(t))
+
+	n.Tick(ctx)
+	all := joinTexts(fake.take())
+	assertContains(t, "doc import push", all,
+		fmt.Sprintf("📄 Uvoz dokumenta: #%d Alfa", f.alfa.ID),
+		"pročitano 14 boravaka za 3 vozača, 12 ispravno. Čeka potvrdu.",
+		"Trošak: $0,115 (claude-opus-5-5, 18.200 + 2.100 tokena). Firma ovog meseca: $0,115 (1 dokument).",
+		fmt.Sprintf("❌ Uvoz dokumenta nije uspeo: #%d Beta Trans", f.beta.ID),
+		"Trošak: $0,000. Firma ovog meseca: $0,000 (1 dokument).",
+	)
+	assertNoDriverNames(t, "doc import", all)
+
+	// Another firm's id and a second confirmation are both ignored.
+	if err := f.st.ConfirmDocumentImport(ctx, f.beta.ID, okID, 99, 9); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.st.ConfirmDocumentImport(ctx, f.alfa.ID, okID, 12, 3); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.st.ConfirmDocumentImport(ctx, f.alfa.ID, okID, 1, 1); err != nil {
+		t.Fatal(err)
+	}
+	n.Tick(ctx)
+	all = joinTexts(fake.take())
+	assertContains(t, "confirm push", all, fmt.Sprintf("✅ Uvoz dokumenta upisan: #%d Alfa", f.alfa.ID), "— 12 boravaka za 3 vozača.")
+	if strings.Contains(all, "📄") || strings.Count(all, "upisan") != 2 {
+		t.Errorf("want only the confirmation, once per operator:\n%s", all)
+	}
+
+	n.Tick(ctx)
+	if again := fake.take(); len(again) != 0 {
+		t.Errorf("repeated: %s", joinTexts(again))
+	}
+
+	// The next morning's digest counts yesterday's documents.
+	setNow(t, time.Date(2026, 10, 15, 8, 5, 0, 0, fixedNow.Location()))
+	n.Tick(ctx)
+	assertContains(t, "digest", joinTexts(fake.take()), "Uvoz dokumenata juče: 2 ($0,115), ovog meseca $0,115")
+}
+
+func TestPlural(t *testing.T) {
+	for n, want := range map[int]string{1: "1 boravak", 2: "2 boravka", 5: "5 boravaka", 11: "11 boravaka", 12: "12 boravaka", 21: "21 boravak", 24: "24 boravka"} {
+		if got := plural(n, "boravak", "boravka", "boravaka"); got != want {
+			t.Errorf("plural(%d) = %q, want %q", n, got, want)
+		}
+	}
+}

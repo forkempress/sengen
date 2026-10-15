@@ -9,8 +9,10 @@ import (
 	"strconv"
 	"time"
 
+	"shengen/internal/auth"
 	"shengen/internal/docread"
 	"shengen/internal/importer"
+	"shengen/internal/store"
 	"shengen/internal/tenant"
 )
 
@@ -89,20 +91,42 @@ func (s *Server) handleImportDocument(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res, err := s.DocReader.Read(r.Context(), data, mediaType, names)
+	// Every call is recorded, failed ones too: the superadmins hear about
+	// each one and what it cost.
+	record := func(status string, rowsValid int) int64 {
+		var userID *int64
+		if u, ok := auth.UserFromContext(r.Context()); ok {
+			userID = &u.ID
+		}
+		id, err := s.Store.RecordDocumentImport(r.Context(), store.DocumentImport{
+			TenantID: t.ID, UserID: userID, Status: status,
+			Model: res.Usage.Model, InputTokens: res.Usage.InputTokens, OutputTokens: res.Usage.OutputTokens,
+			CostMicroUSD: res.Usage.CostMicroUSD,
+			StaysRead:    len(res.Stays), DriversRead: docread.DriverCount(res.Stays), RowsValid: rowsValid,
+		})
+		if err != nil {
+			log.Printf("import dokumenta (firma %d): %v", t.ID, err)
+		}
+		return id
+	}
 	if errors.Is(err, docread.ErrTooLarge) {
+		record(store.DocImportTooLarge, 0)
 		tooLarge()
 		return
 	}
 	if err != nil {
 		log.Printf("import dokumenta (firma %d): %v", t.ID, err)
+		record(store.DocImportError, 0)
 		fail("Dokument trenutno ne možemo da pročitamo. Pokušajte ponovo za par minuta ili nam ga pošaljite na mejl.")
 		return
 	}
 	if err := docread.CheckResult(res); err != nil {
+		record(store.DocImportTooLarge, 0)
 		tooLarge()
 		return
 	}
 	if len(res.Stays) == 0 {
+		record(store.DocImportEmpty, 0)
 		msg := "U dokumentu nismo našli nijedan boravak."
 		if res.Reason != "" {
 			msg += " " + res.Reason
@@ -114,9 +138,17 @@ func (s *Server) handleImportDocument(w http.ResponseWriter, r *http.Request) {
 	rows, err := importer.Parse(bytes.NewReader(docread.CSV(res.Stays)), existing)
 	if err != nil {
 		log.Printf("import dokumenta (firma %d): %v", t.ID, err)
+		record(store.DocImportError, 0)
 		s.serverError(w, r)
 		return
 	}
+	valid := 0
+	for _, row := range rows {
+		if row.Valid() {
+			valid++
+		}
+	}
+	importID := record(store.DocImportOK, valid)
 	// docread.CSV puts stay i on line i+2 (after the header).
 	uncertain := map[int]bool{}
 	for i, st := range res.Stays {
@@ -124,5 +156,5 @@ func (s *Server) handleImportDocument(w http.ResponseWriter, r *http.Request) {
 			uncertain[i+2] = true
 		}
 	}
-	s.renderImportPreview(w, r, rows, uncertain)
+	s.renderImportPreview(w, r, rows, uncertain, importID)
 }

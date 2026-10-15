@@ -51,6 +51,7 @@ func (n *Notifier) Tick(ctx context.Context) {
 	now := clock.Now()
 
 	n.checkSignups(ctx, now)
+	n.checkDocImports(ctx, now)
 	firms, err := n.Store.ListTenantOverviews(ctx)
 	if err != nil {
 		log.Printf("superadmin: list firms: %v", err)
@@ -192,12 +193,26 @@ func (n *Notifier) Digest(ctx context.Context, firms []store.TenantOverview, now
 		return "", err
 	}
 	inactive := len(Inactive(firms, now))
+	docsYesterday, err := n.Store.DocumentImportSpendSince(ctx, 0, yesterday)
+	if err != nil {
+		return "", err
+	}
+	docsToday, err := n.Store.DocumentImportSpendSince(ctx, 0, today)
+	if err != nil {
+		return "", err
+	}
+	docsMonth, err := n.Store.DocumentImportSpendSince(ctx, 0, monthStart(now))
+	if err != nil {
+		return "", err
+	}
 
 	var b strings.Builder
 	fmt.Fprintf(&b, "☀️ Dnevni pregled — %s\n\n", now.Format("02.01.2006"))
 	fmt.Fprintf(&b, "Juče: %d novih firmi, %d unetih boravaka\n", newFirms, newStays)
 	fmt.Fprintf(&b, "Registracije juče: %s\n", signupsLine(signups))
 	fmt.Fprintf(&b, "MRR: %s (%d plaćenih firmi), trial potencijal %s\n", formatEUR(m.PaidCents), m.PaidTenants, formatEUR(m.TrialCents))
+	fmt.Fprintf(&b, "Uvoz dokumenata juče: %d (%s), ovog meseca %s\n",
+		docsYesterday.Count-docsToday.Count, formatUSD(docsYesterday.CostMicroUSD-docsToday.CostMicroUSD), formatUSD(docsMonth.CostMicroUSD))
 	fmt.Fprintf(&b, "Neaktivne 14+ dana: %d\n", inactive)
 	fmt.Fprintf(&b, "Greške (24h): %s\n\n", errorsLine(health.ErrorsSince(now.Add(-24*time.Hour))))
 	// The stats header repeats the date; drop it.

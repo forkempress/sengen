@@ -34,7 +34,7 @@ const (
 // tunnel waits for a response.
 const Timeout = 90 * time.Second
 
-const model = "claude-opus-5-5"
+const defaultModel = "claude-opus-5-5"
 
 // Media types the model accepts.
 var mediaTypes = map[string]bool{
@@ -59,9 +59,40 @@ type Stay struct {
 }
 
 // Result is what the model read. Reason is set when it found no stays.
+// Usage is filled whenever the model answered, even if Read then fails.
 type Result struct {
 	Stays  []Stay `json:"stays"`
 	Reason string `json:"reason"`
+	Usage  Usage  `json:"-"`
+}
+
+// Usage is what one call cost.
+type Usage struct {
+	Model        string
+	InputTokens  int64
+	OutputTokens int64
+	CostMicroUSD int64
+}
+
+// prices are US dollars per million input and output tokens. A refused
+// request may be answered by a fallback model, so the answering model is
+// priced, not the one asked for. An unknown model is priced as the default.
+var prices = map[string][2]int64{
+	"claude-opus-5-5":   {4, 20},
+	"claude-opus-5":     {5, 25},
+	"claude-opus-4-8":   {5, 25},
+	"claude-sonnet-5-5": {2, 10},
+	"claude-fable-5-1":  {10, 50},
+}
+
+// cost prices a call in millionths of a dollar: tokens × $/Mtok is exactly
+// that unit.
+func cost(model string, in, out int64) int64 {
+	p, ok := prices[model]
+	if !ok {
+		p = prices[defaultModel]
+	}
+	return in*p[0] + out*p[1]
 }
 
 // ErrTooLarge means the file or what was read from it is over the limits.
@@ -156,7 +187,7 @@ func (c *Claude) Read(ctx context.Context, data []byte, mediaType string, driver
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	resp, err := c.client.Beta.Messages.New(ctx, anthropic.BetaMessageNewParams{
-		Model:     model,
+		Model:     defaultModel,
 		MaxTokens: 16000,
 		System:    []anthropic.BetaTextBlockParam{{Text: systemPrompt}},
 		Messages: []anthropic.BetaMessageParam{anthropic.NewBetaUserMessage(
@@ -174,12 +205,18 @@ func (c *Claude) Read(ctx context.Context, data []byte, mediaType string, driver
 	if err != nil {
 		return Result{}, err
 	}
+	usage := Usage{
+		Model:        string(resp.Model),
+		InputTokens:  resp.Usage.InputTokens + resp.Usage.CacheCreationInputTokens + resp.Usage.CacheReadInputTokens,
+		OutputTokens: resp.Usage.OutputTokens,
+	}
+	usage.CostMicroUSD = cost(usage.Model, usage.InputTokens, usage.OutputTokens)
 	switch resp.StopReason {
 	case anthropic.BetaStopReasonEndTurn:
 	case anthropic.BetaStopReasonMaxTokens:
-		return Result{}, ErrTooLarge
+		return Result{Usage: usage}, ErrTooLarge
 	default:
-		return Result{}, fmt.Errorf("model je stao: %s", resp.StopReason)
+		return Result{Usage: usage}, fmt.Errorf("model je stao: %s", resp.StopReason)
 	}
 	var text strings.Builder
 	for _, block := range resp.Content {
@@ -187,26 +224,28 @@ func (c *Claude) Read(ctx context.Context, data []byte, mediaType string, driver
 			text.WriteString(t.Text)
 		}
 	}
-	var res Result
+	res := Result{Usage: usage}
 	if err := json.Unmarshal([]byte(text.String()), &res); err != nil {
-		return Result{}, fmt.Errorf("neispravan odgovor modela: %w", err)
+		return Result{Usage: usage}, fmt.Errorf("neispravan odgovor modela: %w", err)
 	}
 	return res, nil
 }
 
 // CheckResult applies the driver and stay limits to what was read.
 func CheckResult(res Result) error {
-	if len(res.Stays) > MaxStays {
-		return ErrTooLarge
-	}
-	drivers := map[string]bool{}
-	for _, s := range res.Stays {
-		drivers[strings.ToLower(strings.TrimSpace(s.Driver))] = true
-	}
-	if len(drivers) > MaxDrivers {
+	if len(res.Stays) > MaxStays || DriverCount(res.Stays) > MaxDrivers {
 		return ErrTooLarge
 	}
 	return nil
+}
+
+// DriverCount counts distinct driver names, ignoring case and spaces.
+func DriverCount(stays []Stay) int {
+	drivers := map[string]bool{}
+	for _, s := range stays {
+		drivers[strings.ToLower(strings.TrimSpace(s.Driver))] = true
+	}
+	return len(drivers)
 }
 
 // CSV writes the stays in the importer's column order (vozač, ulaz, izlaz,
