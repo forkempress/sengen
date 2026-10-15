@@ -18,7 +18,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preload" href="/fonts/ibm-plex-sans-400-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/css/fonts.css">
-  <link rel="stylesheet" href="/css/style.css?v=20261015b">
+  <link rel="stylesheet" href="/css/style.css?v=20261015c">
 
   <script type="application/ld+json">
   {
@@ -87,7 +87,7 @@
         <p class="lead">Dani90 broji dane svakog vozača po pravilu 90/180. Ulazak i izlazak unesete za par sekundi, a ako želite, vozač ih javlja sam jednim dugmetom u Telegramu. Na jednom ekranu vidite ko sme na turu, do kog dana, i ko je blizu limita.</p>
         <div class="hero-actions" data-cta-anchor>
           <a href="https://app.dani90.rs/registracija" class="btn btn-primary btn-lg">Probajte besplatno 30 dana</a>
-          <a href="#demo" class="btn btn-ghost btn-lg">Zakažite demo</a>
+          <a href="#kontakt" class="btn btn-ghost btn-lg">Pišite nam</a>
         </div>
         <ul class="hero-points">
           <li>30 dana besplatno, bez kartice</li>
@@ -293,64 +293,20 @@
         </details>
         <details>
           <summary>Koliko košta?</summary>
-          <p>Prvih 30 dana je besplatno, bez kartice: <a href="https://app.dani90.rs/registracija">registrujte firmu</a> i probajte sa svojim vozačima. Posle toga cena zavisi od broja vozača; <a href="#demo">javite se</a> i poslaćemo ponudu.</p>
+          <p>Prvih 30 dana je besplatno, bez kartice: <a href="https://app.dani90.rs/registracija">registrujte firmu</a> i probajte sa svojim vozačima. Posle toga cena zavisi od broja vozača; <a href="https://app.dani90.rs/kontakt">pišite nam</a> i poslaćemo ponudu.</p>
         </details>
       </div>
     </div>
   </section>
 
-  <section class="section demo" id="demo" aria-labelledby="demo-naslov">
-    <div class="wrap demo-inner">
-      <div class="demo-copy">
-        <h2 id="demo-naslov">Zakažite demo</h2>
-        <p>Pokazaćemo vam kako bi Dani90 izgledao na vašem voznom parku i odgovoriti na sva pitanja.</p>
-        <p class="contact-alt">Ili nam se javite direktno: <a href="https://app.dani90.rs/kontakt">pišite nam email</a>.</p>
+  <section class="section contact" id="kontakt" aria-labelledby="kontakt-naslov">
+    <div class="wrap narrow contact-inner">
+      <h2 id="kontakt-naslov">Imate pitanje ili želite demo?</h2>
+      <p>Pišite nam sa svog emaila. Pokazaćemo vam kako bi Dani90 izgledao na vašem voznom parku, odgovoriti na pitanja i poslati ponudu.</p>
+      <div class="hero-actions">
+        <a href="https://app.dani90.rs/kontakt" class="btn btn-primary btn-lg">Pišite nam email</a>
+        <a href="https://app.dani90.rs/registracija" class="btn btn-ghost btn-lg">Probajte besplatno 30 dana</a>
       </div>
-
-      <form class="demo-form" id="demo-form" action="https://api.web3forms.com/submit" method="POST" novalidate>
-        <!-- TODO-WEB3FORMS: besplatan ključ sa web3forms.com, vezan za email na koji stižu prijave. -->
-        <input type="hidden" name="access_key" value="WEB3FORMS_ACCESS_KEY">
-        <input type="hidden" name="subject" value="Dani90 — zahtev za demo">
-        <input type="hidden" name="from_name" value="dani90.rs">
-        <input type="hidden" name="redirect" value="https://dani90.rs/hvala.html">
-        <input type="checkbox" name="botcheck" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
-
-        <div class="field">
-          <label for="f-name">Ime i prezime</label>
-          <input id="f-name" name="ime" type="text" required autocomplete="name" maxlength="120">
-        </div>
-        <div class="field">
-          <label for="f-company">Firma</label>
-          <input id="f-company" name="firma" type="text" required autocomplete="organization" maxlength="160">
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label for="f-phone">Telefon</label>
-            <input id="f-phone" name="telefon" type="tel" required autocomplete="tel" maxlength="40">
-          </div>
-          <div class="field">
-            <label for="f-drivers">Broj vozača</label>
-            <select id="f-drivers" name="broj_vozaca">
-              <option value="">—</option>
-              <option>1–5</option>
-              <option>6–15</option>
-              <option>16–50</option>
-              <option>više od 50</option>
-            </select>
-          </div>
-        </div>
-        <div class="field">
-          <label for="f-email">Email <span class="optional">(nije obavezno)</span></label>
-          <input id="f-email" name="email" type="email" autocomplete="email" maxlength="254">
-        </div>
-        <div class="field">
-          <label for="f-msg">Poruka <span class="optional">(nije obavezno)</span></label>
-          <textarea id="f-msg" name="poruka" rows="3" maxlength="2000"></textarea>
-        </div>
-        <button type="submit" class="btn btn-primary btn-lg btn-block">Pošalji</button>
-        <p class="form-note">Podatke koristimo samo da bismo vam se javili povodom demoa. Forma ih šalje preko servisa Web3Forms na naš email. Više u <a href="https://app.dani90.rs/privatnost">politici privatnosti</a>.</p>
-        <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
-      </form>
     </div>
   </section>
 
@@ -368,15 +324,14 @@
       <a href="/kalkulator">Kalkulator 90/180</a>
       <a href="#kako-radi">Kako radi</a>
       <a href="#pitanja">Pitanja</a>
-      <a href="#demo">Zakažite demo</a>
+      <a href="https://app.dani90.rs/kontakt">Kontakt</a>
       <a href="https://app.dani90.rs/privatnost">Privatnost</a>
       <a href="https://app.dani90.rs/uslovi">Uslovi korišćenja</a>
       <a href="https://app.dani90.rs/obrada-podataka">Obrada podataka</a>
     </nav>
     <div>
       <p><a href="https://app.dani90.rs/kontakt">Pišite nam email</a></p>
-      <!-- TODO-FIRMA: naziv firme / preduzetnika i PIB, ako treba da stoji u podnožju. -->
-      <p class="small">© <span id="year">2026</span> Dani90 · <span class="todo">naziv firme i PIB</span></p>
+      <p class="small">© <span id="year">2026</span> Dani90</p>
     </div>
   </div>
   <p class="wrap footer-disclaimer">Dani90 je pomoć za planiranje i računa samo iz unetih datuma. Nije povezan sa EU ni sa državnim organima; o ulasku i boravku odlučuje granična policija, a zvanično stanje proverite u <a href="https://home-affairs.ec.europa.eu/policies/schengen/border-crossing/short-stay-calculator_en" rel="noopener">EU kalkulatoru kratkog boravka</a> i <a href="https://travel-europe.europa.eu/en/ees" rel="noopener">informacijama o EES-u</a>.</p>
@@ -392,6 +347,6 @@
   </a>
 </div>
 
-<script src="/js/main.js?v=20261015b" defer></script>
+<script src="/js/main.js?v=20261015c" defer></script>
 </body>
 </html>

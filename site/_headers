@@ -1,10 +1,9 @@
 # Cloudflare Pages: bezbednosna zaglavlja za ceo sajt.
 # CSP dozvoljava samo ono što stranica stvarno koristi: sopstvene fajlove
-# (i fontove — hostovani su na sajtu, bez Google Fonts) i slanje forme na
-# Web3Forms. Zato u HTML-u nema inline stilova
+# (i fontove — hostovani su na sajtu, bez Google Fonts). Zato u HTML-u nema inline stilova
 # ni inline skripti (JSON-LD blokovi se ne izvršavaju, pa ih CSP ne blokira).
 /*
-  Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self'; font-src 'self'; script-src 'self'; connect-src 'self' https://api.web3forms.com; form-action https://api.web3forms.com; frame-ancestors 'none'; base-uri 'self'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self'; font-src 'self'; script-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin

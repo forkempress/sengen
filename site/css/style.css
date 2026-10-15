@@ -57,7 +57,6 @@ code { font-family: var(--mono); font-size: 0.88em; background: #E3E6E0; padding
 .muted { color: var(--muted); }
 
 /* Placeholders that must be filled in before publishing are impossible to miss. */
-.todo { background: #FFE58A; color: #5A4210; padding: 0 0.35em; border-radius: 3px; font-weight: 600; }
 
 h1, h2, h3 { line-height: 1.2; margin: 0 0 0.6em; }
 h1 { font-size: clamp(2rem, 4.4vw, 3.1rem); letter-spacing: -0.02em; }
@@ -274,13 +273,10 @@ h3 { font-size: 1.1rem; }
 .faq details[open] summary::after { content: "−"; }
 .faq details p { margin: 0; padding: 0 1.1rem 1rem; color: #3A4652; }
 
-/* demo form */
-.demo { background: #E5E8E2; }
-.demo-inner { display: grid; gap: 32px; grid-template-columns: 1fr; }
-@media (min-width: 900px) { .demo-inner { grid-template-columns: 0.8fr 1.2fr; align-items: start; } }
-.contact-alt { font-size: 0.95rem; color: var(--muted); }
-
-.demo-form { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; }
+/* kontakt */
+.contact { background: #E5E8E2; }
+.contact-inner { text-align: center; }
+.contact-inner .hero-actions { justify-content: center; }
 .field { margin-bottom: 0.95rem; }
 .field-row { display: grid; gap: 0 14px; grid-template-columns: 1fr; }
 @media (min-width: 520px) { .field-row { grid-template-columns: 1fr 1fr; } }
@@ -297,11 +293,6 @@ h3 { font-size: 1.1rem; }
 }
 .field textarea { resize: vertical; }
 .field input[aria-invalid="true"] { border-color: var(--red); }
-.hp { position: absolute; left: -9999px; }
-.form-note { font-size: 0.82rem; color: var(--muted); margin: 0.7rem 0 0; text-align: center; }
-.form-status { margin: 0.8rem 0 0; font-weight: 600; text-align: center; }
-.form-status.ok { color: var(--green); }
-.form-status.err { color: var(--red); }
 
 /* footer */
 .site-footer { background: var(--ink); color: #AEB8C2; padding: 44px 0 28px; font-size: 0.92rem; }
@@ -311,6 +302,8 @@ h3 { font-size: 1.1rem; }
 .site-footer nav { display: flex; flex-direction: column; gap: 0.45rem; }
 .site-footer nav a { color: #DCE2E8; text-decoration: none; }
 .site-footer nav a:hover { color: #fff; }
+.footer-inner p a { color: var(--yellow); font-weight: 600; }
+.footer-inner p a:hover { color: #fff; }
 .footer-disclaimer { margin-top: 2rem; padding-top: 1.2rem; border-top: 1px solid #2A3644; font-size: 0.82rem; color: #8592A0; }
 
 /* --- kalkulator 90/180 --- */

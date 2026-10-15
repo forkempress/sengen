@@ -36,10 +36,11 @@ i ovaj pregled i te stranice.
 - **Backup** (Cloudflare R2): cela baza. Rok: [POPUNITI].
 - **Telegram**: sadržaj poruka bota (ime, datumi, broj dana) prolazi kroz
   Telegram.
-- **Sajt dani90.rs**: forma za demo šalje ime, firmu, telefon, email i poruku
-  servisu Web3Forms, koji ih prosleđuje emailom. Kalkulator čuva datume samo
+- **Sajt dani90.rs**: nema formi. Dugme „Pišite nam“ preko
+  `app.dani90.rs/kontakt` otvara email program posetioca na adresu iz
+  `MAIL_REPLY_TO`, pa upit stiže kao običan email. Kalkulator čuva datume samo
   u `localStorage` pregledača. Nema analitike ni kolačića u kodu sajta
-  (CSP dozvoljava samo sopstvene fajlove i Web3Forms).
+  (CSP dozvoljava samo sopstvene fajlove).
 
 ## Kolačići
 
