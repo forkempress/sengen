@@ -12,9 +12,11 @@ import (
 type DayCell struct {
 	Day   int // 0 for a padding cell outside the month
 	Date  time.Time
-	Class string // "day-work" | "day-private" | "day-projection" | "day-outside" | ""
+	Class string // "day-work" | "day-private" | "day-projection" | "day-planned" | "day-planned-over" | "day-outside" | ""
 	Today bool
 	Freed bool
+	// Title explains a planned day: days used on it, counting the plans.
+	Title string
 }
 
 type MonthGrid struct {
@@ -33,8 +35,10 @@ var srMonthNames = [...]string{
 //   - stays (or parts of stays) before the window: muted grey ("van prozora")
 //   - days after today that belong to the still-open stay, projected through
 //     MaxContinuousUntil: hatched yellow
+//   - days of saved plans still ahead: hatched light blue, or hatched red
+//     on a day the projection (stays plus plans) goes over 90
 //   - days on which FreeUpSchedule reports allowance growing: green border
-func buildMonthGrids(stays []store.Stay, today time.Time, monthsBefore, monthsAfter int) []MonthGrid {
+func buildMonthGrids(stays []store.Stay, plans []status.PlanView, today time.Time, monthsBefore, monthsAfter int) []MonthGrid {
 	cstays := status.ToCalcStays(stays)
 	windowStart := today.AddDate(0, 0, -(calc.WindowDays - 1))
 
@@ -63,6 +67,31 @@ func buildMonthGrids(stays []store.Stay, today time.Time, monthsBefore, monthsAf
 		}
 	}
 
+	// Planned days, from today on: what is already recorded stays as it is.
+	var active []store.PlannedStay
+	for _, v := range plans {
+		if v.Active() {
+			active = append(active, v.PlannedStay)
+		}
+	}
+	if len(active) > 0 {
+		proj := calc.Projection(cstays, status.PlansToCalc(active), today)
+		for _, p := range active {
+			for d := p.From; !d.After(p.To); d = d.AddDate(0, 0, 1) {
+				key := d.Format(dateKeyLayout)
+				if d.Before(today) {
+					continue
+				}
+				if _, real := byDate[key]; real && !d.After(today) {
+					continue
+				}
+				used := calc.UsedDays(proj, d)
+				info := dayInfo{planned: true, used: used}
+				byDate[key] = info
+			}
+		}
+	}
+
 	freed := make(map[string]bool)
 	for _, ev := range calc.FreeUpSchedule(cstays, today, 400) {
 		freed[ev.Date.Format(dateKeyLayout)] = true
@@ -81,7 +110,9 @@ func buildMonthGrids(stays []store.Stay, today time.Time, monthsBefore, monthsAf
 const dateKeyLayout = "2006-01-02"
 
 type dayInfo struct {
-	typ string
+	typ     string
+	planned bool
+	used    int // planned days: days used on that day, counting the plans
 }
 
 func buildOneMonth(monthStart, today time.Time, byDate map[string]dayInfo, freed map[string]bool, hasOpenStay bool, projectionEnd, windowStart time.Time) MonthGrid {
@@ -103,6 +134,12 @@ func buildOneMonth(monthStart, today time.Time, byDate map[string]dayInfo, freed
 
 		if info, ok := byDate[key]; ok {
 			switch {
+			case info.planned && info.used > calc.MaxDays:
+				cell.Class = "day-planned-over"
+				cell.Title = "Plan: " + strconv.Itoa(info.used) + "/90 — preko limita"
+			case info.planned:
+				cell.Class = "day-planned"
+				cell.Title = "Plan: " + strconv.Itoa(info.used) + "/90"
 			case d.Before(windowStart):
 				cell.Class = "day-outside"
 			case info.typ == "private":

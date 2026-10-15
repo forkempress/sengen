@@ -18,6 +18,10 @@ type pregledData struct {
 	// from the headline numbers.
 	Statuses      []status.DriverStatus
 	UrgentDrivers []status.DriverStatus
+	// Plans: each driver's saved plans still ahead, by driver id; PlanProblems
+	// counts the drivers with a plan over 90/180.
+	Plans        map[int64]status.PlanSummary
+	PlanProblems int
 
 	TotalDrivers  int
 	InSchengenNow int
@@ -119,6 +123,12 @@ func (s *Server) handlePregled(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	plans, err := s.Store.ListPlannedStaysFrom(r.Context(), t.ID, today)
+	if err != nil {
+		s.serverError(w, r)
+		return
+	}
+
 	statuses := status.ComputeAll(drivers, status.AsOf(allStays, day, today), day)
 	for i := range statuses {
 		statuses[i].ApplyThresholds(thresholds)
@@ -135,6 +145,12 @@ func (s *Server) handlePregled(w http.ResponseWriter, r *http.Request) {
 		Query:         query,
 		Severity:      severity,
 		FiltersActive: query != "" || severity != "",
+	}
+	data.Plans = status.SummarizeAll(allStays, plans, today)
+	for _, ps := range data.Plans {
+		if ps.Problem != nil {
+			data.PlanProblems++
+		}
 	}
 	data.NoAlertRecipient = len(drivers) > 0 && settings.TelegramAlertChatID == 0
 	data.IsOwner = data.User != nil && data.User.Role == "owner"

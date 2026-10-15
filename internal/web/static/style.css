@@ -364,8 +364,8 @@ a.card.kpi.kpi-active { outline: 2px solid var(--text); outline-offset: -1px; ba
 form.inline { display: inline; }
 
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem; margin-bottom: 0.75rem; }
-.form-grid label { display: block; font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.25rem; }
-.form-grid input, .form-grid select {
+.form-grid label, .plan-save label { display: block; font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.25rem; }
+.form-grid input, .form-grid select, .plan-save input[type=text] {
   width: 100%;
   min-height: 44px;
   padding: 0.45rem 0.55rem;
@@ -433,6 +433,18 @@ h2 { font-size: 1.125rem; font-weight: 600; margin: 1.75rem 0 0.75rem; }
 .day-projection {
   background: repeating-linear-gradient(45deg, var(--yellow), var(--yellow) 3px, #fff6e2 3px, #fff6e2 6px);
   color: #5a4210;
+}
+/* Planirane ture: svetla šrafura, da se ne pomeša sa stvarnim boravkom. */
+.day-planned, .swatch-planned {
+  background: repeating-linear-gradient(-45deg, #C9D5F0, #C9D5F0 3px, #fff 3px, #fff 6px);
+  color: #10264f;
+  outline: 1px dashed var(--accent); outline-offset: -1px;
+}
+.day-planned-over, .swatch-planned-over {
+  background: repeating-linear-gradient(-45deg, #F3C2B9, #F3C2B9 3px, #fff 3px, #fff 6px);
+  color: var(--status-urgent);
+  outline: 1px dashed var(--status-red); outline-offset: -1px;
+  font-weight: 700;
 }
 .day-outside { background: #E3E6E0; color: #9aa09a; }
 .day-freed { border: 2px solid var(--status-green); }
@@ -542,11 +554,26 @@ td.wrap { white-space: normal; }
   table.stack .row-actions { display: flex; padding-top: 0.5rem; }
 }
 
-/* Provera ture (stranica vozača) */
+/* Planer: provera ture i sačuvani planovi (stranica vozača, /planer) */
 .plan-form { margin-bottom: 1rem; }
-.plan-form .form-grid { max-width: 420px; }
-.plan-result { margin-bottom: 1.5rem; }
+.plan-form .form-grid { max-width: 640px; }
+.plan-result { margin-bottom: 1rem; }
 .plan-result p { margin: 0.3rem 0; }
+.plan-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.5rem 1rem; margin: 0.75rem 0; }
+.plan-facts div { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 4px; padding: 0.5rem 0.7rem; }
+.plan-facts dt { font-size: 0.8125rem; color: var(--text-muted); }
+.plan-facts dd { margin: 0.15rem 0 0; font-size: 1.05rem; font-weight: 600; }
+.plan-note { color: var(--status-orange); }
+.plan-save { display: flex; flex-wrap: wrap; gap: 0.5rem 0.75rem; align-items: flex-end; margin-bottom: 1.5rem; }
+.plan-save > div { flex: 1 1 220px; max-width: 360px; }
+.plan-badge { display: inline-block; padding: 0.05rem 0.45rem; border-radius: 3px; font-size: 0.8125rem; border: 1px solid var(--card-border); white-space: nowrap; }
+.plan-badge-planned { border-color: var(--accent); color: var(--accent); }
+.plan-badge-progress { background: #fff6e2; border-color: var(--yellow); color: #5a4210; }
+.plan-badge-realized { background: var(--status-green-bg); border-color: var(--status-green); color: var(--status-green); }
+.plan-badge-missed { color: var(--text-muted); }
+.plan-badge-over { background: var(--status-red-bg); border-color: var(--status-red); color: var(--status-red); }
+tr.row-warn td { background: #fdf4f2; }
+tr.row-muted td { color: var(--text-muted); }
 
 /* Prazna stanja (UX-06, UX-17). */
 .checklist { list-style: none; padding: 0; margin: 0.5rem 0 1rem; }
@@ -616,3 +643,4 @@ table.sample-table td { font-family: var(--font-mono); font-size: 0.875rem; }
 .error-page { max-width: 560px; margin: 3rem auto; text-align: center; }
 .error-page .error-code { font-size: 4rem; font-weight: 700; color: var(--field-border); margin: 0; line-height: 1; }
 .error-page .actions-row { justify-content: center; }
+

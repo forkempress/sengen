@@ -27,13 +27,15 @@ type AuditEntry struct {
 	OccurredAt time.Time
 }
 
-// ListRecentAudit returns the most recent audit entries for a tenant,
-// newest first — backs the Telegram admin /ispravi command.
-func (s *Store) ListRecentAudit(ctx context.Context, tenantID int64, limit int) ([]AuditEntry, error) {
+// ListRecentAudit returns a tenant's most recent audit entries for one kind
+// of entity, newest first — backs the Telegram admin /ispravi command, which
+// must only ever see stays: its undo button takes the entry's id for a
+// stay's.
+func (s *Store) ListRecentAudit(ctx context.Context, tenantID int64, entity string, limit int) ([]AuditEntry, error) {
 	rows, err := s.DB.QueryContext(ctx,
 		`SELECT id, actor_type, actor_id, entity, entity_id, action, occurred_at
-		 FROM audit_log WHERE tenant_id = ? ORDER BY occurred_at DESC LIMIT ?`,
-		tenantID, limit)
+		 FROM audit_log WHERE tenant_id = ? AND entity = ? ORDER BY occurred_at DESC, id DESC LIMIT ?`,
+		tenantID, entity, limit)
 	if err != nil {
 		return nil, fmt.Errorf("list recent audit: %w", err)
 	}

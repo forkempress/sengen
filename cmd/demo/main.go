@@ -2,10 +2,12 @@
 // for showing the app to prospective clients. Dates are relative to today, so
 // the data always looks current: the overview shows every situation at once —
 // red, orange and green drivers, some currently in Schengen, one over the
-// limit and one with no history yet.
+// limit and one with no history yet — and a few planned trips: ones that
+// fit, one that goes over 90/180 and two that overlap.
 //
 // Drivers that already exist (by name) are skipped, so running it twice adds
-// nothing. Stays go through the same validation as in the app.
+// nothing; a driver who has no plans yet still gets his. Stays and plans go
+// through the same validation as in the app.
 package main
 
 import (
@@ -20,6 +22,7 @@ import (
 	"shengen/internal/clock"
 	"shengen/internal/config"
 	"shengen/internal/db"
+	"shengen/internal/status"
 	"shengen/internal/store"
 )
 
@@ -34,17 +37,28 @@ type profile struct {
 	endedAgo          int
 	privateEvery      int // every n-th trip is private; 0 = none
 	telegram          bool
+	plans             []demoPlan
+}
+
+// demoPlan is a planned trip, in days from today.
+type demoPlan struct {
+	from, to int
+	note     string
 }
 
 var profiles = []profile{
 	{name: "Marko Jovanović", vehicle: "BG 1234-AB", tripDays: 10, gapDays: 12, open: true, openSince: 9, telegram: true},
 	{name: "Nikola Petrović", vehicle: "BG 2271-KM", tripDays: 8, gapDays: 14, open: true, openSince: 4, telegram: true},
-	{name: "Stefan Nikolić", vehicle: "NS 0412-TR", tripDays: 6, gapDays: 20, endedAgo: 5},
-	{name: "Miloš Đorđević", vehicle: "BG 9930-ZX", tripDays: 11, gapDays: 10, open: true, openSince: 7, telegram: true},
+	{name: "Stefan Nikolić", vehicle: "NS 0412-TR", tripDays: 6, gapDays: 20, endedAgo: 5,
+		plans: []demoPlan{{7, 18, "Lion, tura 14"}, {35, 48, "Milano"}}},
+	{name: "Miloš Đorđević", vehicle: "BG 9930-ZX", tripDays: 11, gapDays: 10, open: true, openSince: 7, telegram: true,
+		plans: []demoPlan{{12, 60, "Skandinavija — preko limita"}}},
 	{name: "Dragan Ilić", vehicle: "ČA 118-PD", tripDays: 10, gapDays: 13, endedAgo: 2, telegram: true},
-	{name: "Ivan Stojanović", vehicle: "KG 0577-LJ", tripDays: 5, gapDays: 35, endedAgo: 12, privateEvery: 2},
+	{name: "Ivan Stojanović", vehicle: "KG 0577-LJ", tripDays: 5, gapDays: 35, endedAgo: 12, privateEvery: 2,
+		plans: []demoPlan{{3, 12, "Beč"}}},
 	{name: "Nemanja Pavlović", vehicle: "BG 4410-NN", tripDays: 7, gapDays: 18, open: true, openSince: 2, telegram: true},
-	{name: "Aleksandar Marković", vehicle: "NI 2093-BB", tripDays: 9, gapDays: 15, endedAgo: 1, privateEvery: 4},
+	{name: "Aleksandar Marković", vehicle: "NI 2093-BB", tripDays: 9, gapDays: 15, endedAgo: 1, privateEvery: 4,
+		plans: []demoPlan{{10, 20, "Minhen"}, {18, 25, "Prag — preklapa se"}}},
 	{name: "Dejan Kostić", vehicle: "ČA 774-RS", tripDays: 6, gapDays: 17, open: true, openSince: 6},
 	{name: "Vladimir Todorović", vehicle: "BG 6650-VT"}, // nov vozač, bez istorije
 }
@@ -85,28 +99,67 @@ func main() {
 		if *dry {
 			continue
 		}
-		if _, err := st.FindDriverByName(ctx, t.ID, p.name); err == nil {
-			fmt.Println("    već postoji — preskačem")
-			continue
-		} else if !errors.Is(err, store.ErrNotFound) {
+		d, err := st.FindDriverByName(ctx, t.ID, p.name)
+		switch {
+		case err == nil:
+			fmt.Println("    već postoji — preskačem boravke")
+		case errors.Is(err, store.ErrNotFound):
+			if d, err = st.CreateDriver(ctx, t.ID, p.name, p.vehicle); err != nil {
+				log.Fatalf("vozač %s: %v", p.name, err)
+			}
+			for i, s := range stays {
+				source := "import"
+				if p.telegram && i >= len(stays)-3 { // novije boravke je javio vozač
+					source = "telegram_button"
+				}
+				if _, err := st.CreateStay(ctx, t.ID, d.ID, s.Entry, s.Exit, string(s.Type), source, "", nil); err != nil {
+					log.Fatalf("boravak %s %s: %v", p.name, s.Entry.Format("02.01.2006"), err)
+				}
+			}
+		default:
 			log.Fatalf("pretraga vozača: %v", err)
 		}
-		d, err := st.CreateDriver(ctx, t.ID, p.name, p.vehicle)
-		if err != nil {
-			log.Fatalf("vozač %s: %v", p.name, err)
-		}
-		for i, s := range stays {
-			source := "import"
-			if p.telegram && i >= len(stays)-3 { // novije boravke je javio vozač
-				source = "telegram_button"
-			}
-			if _, err := st.CreateStay(ctx, t.ID, d.ID, s.Entry, s.Exit, string(s.Type), source, "", nil); err != nil {
-				log.Fatalf("boravak %s %s: %v", p.name, s.Entry.Format("02.01.2006"), err)
-			}
-		}
+		addPlans(ctx, st, t.ID, d.ID, p, today)
 	}
 	if *dry {
 		fmt.Println("\n-dry: ništa nije upisano.")
+	}
+}
+
+// addPlans saves the profile's planned trips, unless the driver already has
+// plans, and prints how each fares in 90/180.
+func addPlans(ctx context.Context, st *store.Store, tenantID, driverID int64, p profile, today time.Time) {
+	if len(p.plans) == 0 {
+		return
+	}
+	existing, err := st.ListPlannedStaysByDriver(ctx, tenantID, driverID)
+	if err != nil {
+		log.Fatalf("planovi %s: %v", p.name, err)
+	}
+	if len(existing) > 0 {
+		fmt.Println("    planovi već postoje — preskačem")
+		return
+	}
+	for _, pl := range p.plans {
+		from, to := today.AddDate(0, 0, pl.from), today.AddDate(0, 0, pl.to)
+		if _, err := st.CreatePlannedStay(ctx, tenantID, driverID, from, to, pl.note, nil); err != nil {
+			log.Fatalf("plan %s %s: %v", p.name, from.Format("02.01.2006"), err)
+		}
+	}
+	stays, err := st.ListStaysByDriver(ctx, tenantID, driverID)
+	if err != nil {
+		log.Fatalf("boravci %s: %v", p.name, err)
+	}
+	plans, err := st.ListPlannedStaysByDriver(ctx, tenantID, driverID)
+	if err != nil {
+		log.Fatalf("planovi %s: %v", p.name, err)
+	}
+	for _, v := range status.EvaluatePlans(stays, plans, today) {
+		verdict := fmt.Sprintf("posle ostaje %d", v.RemainingAfter)
+		if !v.OK {
+			verdict = "PRELAZI LIMIT " + v.FirstOverstay.Format("02.01.2006")
+		}
+		fmt.Printf("    plan %s (%d dana): %s\n", status.PlanDates(v.PlannedStay), v.Length, verdict)
 	}
 }
 

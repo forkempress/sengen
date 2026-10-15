@@ -5,11 +5,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
-	"shengen/internal/calc"
 	"shengen/internal/clock"
 	"shengen/internal/idgen"
 	"shengen/internal/importer"
@@ -122,68 +120,6 @@ func (b *Bot) cmdVozac(ctx context.Context, client *Client, t *store.Tenant, cha
 	client.SendMessage(ctx, chatID, driver.Name+" — "+driver.VehicleLabel+"\n"+formatDriverDays(ds), nil)
 }
 
-func (b *Bot) cmdPlaner(ctx context.Context, client *Client, t *store.Tenant, chatID int64, args string) {
-	fields := strings.Fields(args)
-	if len(fields) < 3 {
-		client.SendMessage(ctx, chatID, "Upotreba: /planer <ime> <dd.mm> <broj_dana>", nil)
-		return
-	}
-	length, err := strconv.Atoi(fields[len(fields)-1])
-	if err != nil || length <= 0 {
-		client.SendMessage(ctx, chatID, "Neispravan broj dana.", nil)
-		return
-	}
-	if length > calc.MaxDays {
-		client.SendMessage(ctx, chatID, fmt.Sprintf("Tura ne može biti duža od %d dana.", calc.MaxDays), nil)
-		return
-	}
-	dateStr := fields[len(fields)-2]
-	name := strings.Join(fields[:len(fields)-2], " ")
-
-	today := clock.Today()
-	start, err := resolveFutureDate(dateStr, today)
-	if err != nil {
-		client.SendMessage(ctx, chatID, "Neispravan datum: "+err.Error(), nil)
-		return
-	}
-
-	driver, err := b.Store.FindDriverByName(ctx, t.ID, name)
-	if err != nil {
-		client.SendMessage(ctx, chatID, "Vozač nije pronađen: "+errMsg(err), nil)
-		return
-	}
-	stays, err := b.Store.ListStaysByDriver(ctx, t.ID, driver.ID)
-	if err != nil {
-		client.SendMessage(ctx, chatID, "Greška pri učitavanju.", nil)
-		return
-	}
-	p := status.PlanTrip(stays, today, start, length)
-
-	if p.StartsWhileAway {
-		msg := driver.Name + " je trenutno u Šengenu — nova tura može početi tek kad se vrati."
-		if p.MaxContinuousUntil != nil {
-			msg += fmt.Sprintf(" U ovom boravku sme da ostane do %s.", p.MaxContinuousUntil.Format("02.01.2006"))
-		}
-		client.SendMessage(ctx, chatID, msg, nil)
-		return
-	}
-
-	var b2 strings.Builder
-	if p.OK {
-		fmt.Fprintf(&b2, "%s MOŽE na turu %s, %d dana (najviše iskorišćeno: %d/90).\n", driver.Name, start.Format("02.01.2006"), length, p.PeakUsed)
-	} else {
-		fmt.Fprintf(&b2, "%s NE MOŽE na turu %s, %d dana — prekoračenje od %s.\n", driver.Name, start.Format("02.01.2006"), length, p.FirstOverstay.Format("02.01.2006"))
-		if !p.EarliestStart.IsZero() {
-			fmt.Fprintf(&b2, "Najraniji polazak za %d dana: %s.\n", length, p.EarliestStart.Format("02.01.2006"))
-		}
-	}
-	fmt.Fprintf(&b2, "Najduža moguća tura od %s: %d dana.", start.Format("02.01.2006"), p.MaxLength)
-	if p.InSchengen {
-		b2.WriteString("\nVozač je sada u Šengenu — računato je kao da se vraća danas. Svaki dan kasnijeg povratka skraćuje ovu turu.")
-	}
-	client.SendMessage(ctx, chatID, b2.String(), nil)
-}
-
 func (b *Bot) cmdDodaj(ctx context.Context, client *Client, t *store.Tenant, chatID int64, name string) {
 	name = strings.TrimSpace(name)
 	if name == "" {
@@ -226,7 +162,7 @@ func (b *Bot) cmdLink(ctx context.Context, client *Client, t *store.Tenant, chat
 }
 
 func (b *Bot) cmdIspravi(ctx context.Context, client *Client, t *store.Tenant, chatID int64) {
-	entries, err := b.Store.ListRecentAudit(ctx, t.ID, 5)
+	entries, err := b.Store.ListRecentAudit(ctx, t.ID, "stay", 5)
 	if err != nil || len(entries) == 0 {
 		client.SendMessage(ctx, chatID, "Nema skorašnjih izmena.", nil)
 		return

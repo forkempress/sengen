@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 	"unicode/utf8"
 
 	"shengen/internal/auth"
-	"shengen/internal/calc"
 	"shengen/internal/clock"
 	"shengen/internal/status"
 	"shengen/internal/store"
@@ -31,12 +29,12 @@ type driverDetailData struct {
 	EarlierMonths []MonthGrid
 	Stays         []store.Stay // most recent first
 
-	// "Provera ture": the form's values as entered, and either a result or
-	// an error message once the form has been submitted.
-	PlanStart string
-	PlanDays  string
-	Plan      *status.TripPlan
-	PlanErr   string
+	// Saved plans, earliest first, and the quick check once its form has
+	// been submitted.
+	Plans    []status.PlanView
+	PlanSum  status.PlanSummary
+	Trip     tripCheckView
+	HasPlans bool
 }
 
 func (s *Server) loadDriverOr404(w http.ResponseWriter, r *http.Request) (*store.Driver, int64, bool) {
@@ -74,8 +72,15 @@ func (s *Server) handleDriverDetail(w http.ResponseWriter, r *http.Request) {
 		settings, _ := t.ParsedSettings()
 		driverStatus.ApplyThresholds(status.ThresholdsFor(settings))
 	}
+	plans, err := s.Store.ListPlannedStaysByDriver(r.Context(), tenantID, driver.ID)
+	if err != nil {
+		s.serverError(w, r)
+		return
+	}
+	views := status.EvaluatePlans(stays, plans, today)
+
 	const monthsBefore = 3
-	months := buildMonthGrids(stays, today, monthsBefore, 2)
+	months := buildMonthGrids(stays, views, today, monthsBefore, monthsAhead(views, today))
 
 	reversed := make([]store.Stay, len(stays))
 	for i, st := range stays {
@@ -89,30 +94,32 @@ func (s *Server) handleDriverDetail(w http.ResponseWriter, r *http.Request) {
 		Months:        months[monthsBefore:],
 		EarlierMonths: months[:monthsBefore],
 		Stays:         reversed,
+		Plans:         views,
+		PlanSum:       status.Summarize(views),
+		HasPlans:      len(plans) > 0,
 	}
-	data.PlanStart, data.PlanDays = r.URL.Query().Get("polazak"), r.URL.Query().Get("dana")
-	if data.PlanStart != "" || data.PlanDays != "" {
-		data.Plan, data.PlanErr = planFromForm(stays, today, data.PlanStart, data.PlanDays)
+	if from, to := tripQuery(r); from != "" || to != "" {
+		data.Trip = checkTrip(stays, plans, today, from, to)
 	}
+	data.Trip.DriverID, data.Trip.DriverName, data.Trip.CSRFToken = driver.ID, driver.Name, data.CSRFToken
 	s.render(w, "vozac_detalj.html", data)
 }
 
-// planFromForm validates the "Provera ture" form (a GET, so the result can
-// be bookmarked or sent to a colleague) and evaluates the trip.
-func planFromForm(stays []store.Stay, today time.Time, startStr, daysStr string) (*status.TripPlan, string) {
-	start, err := time.Parse("2006-01-02", startStr)
-	if err != nil {
-		return nil, "Izaberite datum polaska."
+// monthsAhead is how many months after the current one the calendar shows:
+// two, or as many as it takes to reach the end of the last plan still ahead
+// (at most a year).
+func monthsAhead(views []status.PlanView, today time.Time) int {
+	n := 2
+	for _, v := range views {
+		if !v.Active() {
+			continue
+		}
+		m := (v.To.Year()-today.Year())*12 + int(v.To.Month()) - int(today.Month())
+		if m > n {
+			n = m
+		}
 	}
-	if start.Before(today) {
-		return nil, "Polazak ne može biti u prošlosti."
-	}
-	days, err := strconv.Atoi(strings.TrimSpace(daysStr))
-	if err != nil || days < 1 || days > calc.MaxDays {
-		return nil, fmt.Sprintf("Trajanje upišite kao broj dana, od 1 do %d.", calc.MaxDays)
-	}
-	p := status.PlanTrip(stays, today, start, days)
-	return &p, ""
+	return min(n, 12)
 }
 
 func (s *Server) handleDriverReturned(w http.ResponseWriter, r *http.Request) {

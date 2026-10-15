@@ -268,13 +268,7 @@ func driverDaysLeftMsg(icon string, daysLeft int, until string) string {
 	return msg
 }
 
-// daysWord is "dan" or "dana" for n days: 1, 21, 31 dan; 11 dana.
-func daysWord(n int) string {
-	if n%10 == 1 && n%100 != 11 {
-		return "dan"
-	}
-	return "dana"
-}
+func daysWord(n int) string { return status.DaysWord(n) }
 
 func (r *Runner) checkOpenStayReminders(ctx context.Context, client *telegram.Client, t store.Tenant, drivers []store.Driver, allStays []store.Stay, today time.Time, dateStr string) {
 	byDriver := make(map[int64]*store.Driver, len(drivers))

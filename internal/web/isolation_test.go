@@ -428,3 +428,56 @@ func TestIsolation_CannotManageAnotherFirmsUsers(t *testing.T) {
 		t.Error("firm A's users page lists firm B's owner")
 	}
 }
+
+// Plans: firm A guessing firm B's driver and plan ids can neither read nor
+// change them, through B's driver or through its own.
+func TestIsolation_Plans(t *testing.T) {
+	app, a, b := twoFirmApp(t)
+	ctx := context.Background()
+	today := clock.Today()
+	bPlan, err := app.st.CreatePlannedStay(ctx, b.tenant.ID, b.driver.ID, today.AddDate(0, 0, 10), today.AddDate(0, 0, 15), "Tajna tura B", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sa := app.mustLogin(a)
+	day := func(offset int) string { return today.AddDate(0, 0, offset).Format("2006-01-02") }
+	form := url.Values{"od": {day(20)}, "do": {day(25)}, "napomena": {"podmetnuto"}}
+
+	for _, path := range []string{
+		"/vozaci/" + id(b.driver.ID) + "/planovi",
+		"/vozaci/" + id(b.driver.ID) + "/planovi/" + id(bPlan.ID),
+		"/vozaci/" + id(a.driver.ID) + "/planovi/" + id(bPlan.ID),
+		"/vozaci/" + id(b.driver.ID) + "/planovi/" + id(bPlan.ID) + "/obrisi",
+		"/vozaci/" + id(a.driver.ID) + "/planovi/" + id(bPlan.ID) + "/obrisi",
+	} {
+		if w := sa.post(path, form); w.Code != http.StatusNotFound {
+			t.Errorf("POST %s as firm A = %d, want 404", path, w.Code)
+		}
+	}
+	got, err := app.st.GetPlannedStay(ctx, b.tenant.ID, bPlan.ID)
+	if err != nil {
+		t.Fatalf("firm B's plan is gone: %v", err)
+	}
+	if !got.From.Equal(bPlan.From) || got.Note != "Tajna tura B" {
+		t.Errorf("firm B's plan was changed: %+v", got)
+	}
+	if n := len(app.plans(b.tenant.ID, b.driver.ID)); n != 1 {
+		t.Errorf("firm B's driver has %d plans, want 1", n)
+	}
+	if _, err := app.st.GetPlannedStay(ctx, a.tenant.ID, bPlan.ID); err == nil {
+		t.Error("the store returns firm B's plan to firm A")
+	}
+
+	// Reading: the planner treats B's driver as no choice, and neither page
+	// shows B's plan.
+	for _, path := range []string{
+		"/planer?vozac=" + id(b.driver.ID) + "&od=" + day(5) + "&do=" + day(9),
+		"/planer",
+		"/pregled",
+	} {
+		body := sa.get(path).Body.String()
+		if strings.Contains(body, "Boris Drugi") || strings.Contains(body, "Tajna tura B") {
+			t.Errorf("GET %s as firm A shows firm B's driver or plan", path)
+		}
+	}
+}

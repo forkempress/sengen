@@ -67,6 +67,10 @@ func (s *Server) Routes() http.Handler {
 	protected.HandleFunc("POST /vozaci/{id}/boravci", s.handleStayCreate)
 	protected.HandleFunc("POST /vozaci/{id}/boravci/{stay_id}", s.handleStayUpdate)
 	protected.HandleFunc("POST /vozaci/{id}/boravci/{stay_id}/obrisi", s.handleStayDelete)
+	protected.HandleFunc("POST /vozaci/{id}/planovi", s.handlePlanCreate)
+	protected.HandleFunc("POST /vozaci/{id}/planovi/{plan_id}", s.handlePlanUpdate)
+	protected.HandleFunc("POST /vozaci/{id}/planovi/{plan_id}/obrisi", s.handlePlanDelete)
+	protected.HandleFunc("GET /planer", s.handlePlanner)
 
 	protected.HandleFunc("GET /podesavanja/vozaci", s.handleSettingsDriversPage)
 	protected.HandleFunc("POST /podesavanja/vozaci", s.handleSettingsDriverCreate)

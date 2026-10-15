@@ -87,6 +87,7 @@ func flashFrom(s *session, w *httptest.ResponseRecorder, kind string) string {
 		s.app.t.Fatalf("want a redirect, got %d", w.Code)
 	}
 	re := regexp.MustCompile(`<div class="flash flash-` + kind + `">([^<]*)</div>`)
+	loc, _, _ = strings.Cut(loc, "#") // a browser never sends the fragment
 	m := re.FindStringSubmatch(s.get(loc).Body.String())
 	if m == nil {
 		return ""

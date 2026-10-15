@@ -35,7 +35,7 @@
     <button type="submit" class="btn btn-primary">Vratio se danas</button>
   </form>
   {{end}}
-  <a href="#provera-ture" class="btn" data-open-details>Provera ture</a>
+  <a href="#planovi" class="btn" data-open-details>Planiraj turu</a>
 </div>
 
 <section class="panel" id="dodaj-boravak">
@@ -73,6 +73,8 @@
   <span><span class="swatch" style="background:var(--accent);"></span>Posao</span>
   <span><span class="swatch" style="background:#9FB3DE;"></span>Privatno</span>
   <span><span class="swatch" style="background:var(--yellow);"></span>Projekcija boravka</span>
+  <span><span class="swatch swatch-planned"></span>Plan</span>
+  <span><span class="swatch swatch-planned-over"></span>Plan preko limita</span>
   <span><span class="swatch" style="background:#E3E6E0;"></span>Van prozora (180 dana)</span>
   <span><span class="swatch" style="border:2px solid var(--status-green);"></span>Dan oslobađanja</span>
 </div>
@@ -129,32 +131,63 @@
 </div>
 {{end}}
 
-<details class="plan-block" id="provera-ture"{{if or .PlanStart .PlanDays}} open{{end}}>
-<summary><h2>Provera ture</h2> <span class="muted">da li planirana tura staje u 90/180</span></summary>
-<form method="get" action="/vozaci/{{.Driver.ID}}#provera-ture" class="plan-form">
+<details class="plan-block" id="planovi"{{if or .Trip.Submitted .HasPlans}} open{{end}}>
+<summary><h2>Planirane ture</h2> <span class="muted">{{with .PlanSum}}{{if .Problem}}<span class="plan-badge plan-badge-over">⚠️ plan prelazi 90/180</span>{{else if .Ahead}}{{.Ahead}} {{if eq .Ahead 1}}plan{{else}}planova{{end}} pred nama{{else}}da li tura staje u 90/180{{end}}{{end}}</span></summary>
+
+{{if .Plans}}
+<div class="table-wrap">
+<table class="stack">
+  <thead>
+    <tr><th>Od – do</th><th>Dana</th><th>Stanje</th><th>Iskorišćeno na povratku</th><th>Ostaje posle</th><th>Napomena</th><th><span class="sr-only">Akcije</span></th></tr>
+  </thead>
+  <tbody>
+    {{$driverID := .Driver.ID}}
+    {{$csrf := .CSRFToken}}
+    {{range .Plans}}
+    <tr class="{{if not .Active}}row-muted{{else if not .OK}}row-warn{{end}}">
+      <td class="num" data-label="Od – do">{{fmtDate .From}} – {{fmtDate .To}}</td>
+      <td class="num" data-label="Dana">{{.Length}}</td>
+      <td data-label="Stanje">{{template "planBadge" .}}</td>
+      <td class="num" data-label="Iskorišćeno na povratku">{{if .Active}}{{.UsedOnReturn}}/90{{else}}—{{end}}</td>
+      <td class="num" data-label="Ostaje posle">{{if .Active}}{{.RemainingAfter}} {{dana .RemainingAfter}}{{else}}—{{end}}</td>
+      <td class="muted wrap" data-label="Napomena">{{.Note}}</td>
+      <td><div class="row-actions">
+        {{if .Active}}
+        <details>
+          <summary class="btn btn-sm">Izmeni</summary>
+          <form method="post" action="/vozaci/{{$driverID}}/planovi/{{.ID}}" class="edit-form">
+            <input type="hidden" name="csrf_token" value="{{$csrf}}">
+            <div class="form-grid">
+              <div><label for="p{{.ID}}-from">Polazak</label><input id="p{{.ID}}-from" type="date" name="od" value="{{fmtDateInput .From}}" required></div>
+              <div><label for="p{{.ID}}-to">Povratak</label><input id="p{{.ID}}-to" type="date" name="do" value="{{fmtDateInput .To}}" required></div>
+              <div><label for="p{{.ID}}-note">Napomena</label><input id="p{{.ID}}-note" type="text" name="napomena" value="{{.Note}}" maxlength="500"></div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Sačuvaj</button>
+          </form>
+        </details>
+        {{end}}
+        <form class="inline" method="post" action="/vozaci/{{$driverID}}/planovi/{{.ID}}/obrisi" data-confirm="Obrisati plan {{fmtDate .From}} – {{fmtDate .To}}?">
+          <input type="hidden" name="csrf_token" value="{{$csrf}}">
+          <button type="submit" class="btn btn-sm btn-quiet-danger">Obriši</button>
+        </form>
+      </div></td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+</div>
+<p class="muted">Kad vozač javi ulazak u periodu plana, plan je „u toku“; kad javi izlazak, „realizovan“ i više se ne računa — umesto njega broji se stvarni boravak.</p>
+{{end}}
+
+<h3>Proveri turu</h3>
+<form method="get" action="/vozaci/{{.Driver.ID}}#planovi" class="plan-form">
   <div class="form-grid">
-    <div><label for="plan-start">Polazak</label><input id="plan-start" type="date" name="polazak" value="{{.PlanStart}}" required></div>
-    <div><label for="plan-days">Trajanje (dana)</label><input id="plan-days" type="number" name="dana" min="1" max="90" inputmode="numeric" value="{{.PlanDays}}" required></div>
+    <div><label for="plan-from">Polazak (ulazak u Šengen)</label><input id="plan-from" type="date" name="od" value="{{.Trip.From}}" required></div>
+    <div><label for="plan-to">Povratak (izlazak)</label><input id="plan-to" type="date" name="do" value="{{.Trip.To}}" required></div>
   </div>
   <button type="submit" class="btn btn-primary">Proveri</button>
 </form>
-{{if .PlanErr}}
-  <div class="flash flash-err">{{.PlanErr}}</div>
-{{else if .Plan}}{{with .Plan}}
-  {{if .StartsWhileAway}}
-  <div class="flash flash-err">Vozač je trenutno u Šengenu — nova tura može početi tek kad se vrati.{{if .MaxContinuousUntil}} U ovom boravku sme da ostane do <strong>{{fmtDate (deref .MaxContinuousUntil)}}</strong>.{{end}}</div>
-  {{else}}
-  <div class="plan-result">
-    {{if .OK}}
-    <div class="flash flash-ok"><strong>Može.</strong> Tura od {{fmtDate .Start}}, {{.Length}} dana — najviše iskorišćeno tokom ture: {{.PeakUsed}}/90.</div>
-    {{else}}
-    <div class="flash flash-err"><strong>Ne može.</strong> Tura od {{fmtDate .Start}}, {{.Length}} dana prelazi limit {{fmtDate .FirstOverstay}}.{{if not .EarliestStart.IsZero}} Najraniji polazak za {{.Length}} dana: <strong>{{fmtDate .EarliestStart}}</strong>.{{end}}</div>
-    {{end}}
-    <p>Najduža moguća tura sa polaskom {{fmtDate .Start}}: <strong>{{.MaxLength}} dana</strong>.</p>
-    {{if .InSchengen}}<p class="muted">Vozač je sada u Šengenu — računato je kao da se vraća danas. Svaki dan kasnijeg povratka skraćuje ovu turu.</p>{{end}}
-  </div>
-  {{end}}
-{{end}}{{end}}
+{{if .Trip.Submitted}}{{template "tripResult" .Trip}}{{end}}
 </details>
 {{end}}
 
@@ -164,7 +197,7 @@
   <div class="month-grid">
     <div class="dow">Pon</div><div class="dow">Uto</div><div class="dow">Sre</div><div class="dow">Čet</div><div class="dow">Pet</div><div class="dow">Sub</div><div class="dow">Ned</div>
     {{range .Weeks}}{{range .}}
-      <div class="day-cell {{.Class}}{{if .Today}} day-today{{end}}{{if .Freed}} day-freed{{end}}{{if eq .Day 0}} day-empty{{end}}">{{if .Day}}{{.Day}}{{end}}</div>
+      <div class="day-cell {{.Class}}{{if .Today}} day-today{{end}}{{if .Freed}} day-freed{{end}}{{if eq .Day 0}} day-empty{{end}}"{{if .Title}} title="{{.Title}}"{{end}}>{{if .Day}}{{.Day}}{{end}}</div>
     {{end}}{{end}}
   </div>
 </div>

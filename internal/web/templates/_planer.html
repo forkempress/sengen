@@ -1,0 +1,43 @@
+{{/* The quick check's result, shared by the driver page and /planer.
+     Takes a tripCheckView. */}}
+{{define "tripResult"}}
+{{if .Err}}
+  <div class="flash flash-err">{{.Err}}</div>
+{{else if .Away}}{{with .Check}}
+  <div class="flash flash-err">Vozač je trenutno u Šengenu — nova tura može početi tek kad se vrati.{{if .MaxContinuousUntil}} U ovom boravku sme da ostane do <strong class="num">{{fmtDate (deref .MaxContinuousUntil)}}</strong>.{{end}}</div>
+{{end}}{{else if .Check}}{{$v := .}}{{with .Check}}
+  <div class="plan-result">
+    {{if .OK}}
+    <div class="flash flash-ok"><strong>Može.</strong> {{$v.DriverName}}, <span class="num">{{fmtDate .From}} – {{fmtDate .To}}</span> ({{.Length}} {{dana .Length}}).</div>
+    {{else}}
+    <div class="flash flash-err"><strong>Ne može.</strong> {{$v.DriverName}}, <span class="num">{{fmtDate .From}} – {{fmtDate .To}}</span> ({{.Length}} {{dana .Length}}) prelazi limit <strong class="num">{{fmtDate .FirstOverstay}}</strong>.</div>
+    {{end}}
+    <dl class="plan-facts">
+      <div><dt>Iskorišćeno na dan povratka</dt><dd class="num">{{.UsedOnReturn}}/90</dd></div>
+      <div><dt>Ostaje posle ture</dt><dd class="num">{{.RemainingAfter}} {{dana .RemainingAfter}}</dd></div>
+      <div><dt>Ako krene {{fmtDate .From}}, sme najkasnije do</dt><dd class="num">{{if .MaxLength}}{{fmtDate .LastAllowedDay}} ({{.MaxLength}} {{dana .MaxLength}}){{else}}nema slobodnih dana{{end}}</dd></div>
+      {{if not .OK}}<div><dt>Najraniji polazak za {{.Length}} {{dana .Length}}</dt><dd class="num">{{if .EarliestStart.IsZero}}nije moguće{{else}}{{fmtDate .EarliestStart}}{{end}}</dd></div>{{end}}
+    </dl>
+    {{range $v.Notes}}<p class="plan-note"><span aria-hidden="true">⚠️</span> {{.}}</p>{{end}}
+    {{if $v.PlansCounted}}<p class="muted">Računato sa sačuvanim planovima ({{$v.PlansCounted}}).</p>{{end}}
+    {{if .AssumedReturn}}<p class="muted">Vozač je sada u Šengenu — računato je kao da se vraća {{fmtDate (deref .AssumedReturn)}}. Svaki dan kasnijeg povratka skraćuje ovu turu.</p>{{end}}
+  </div>
+  {{if $v.CanSave}}
+  <form method="post" action="/vozaci/{{$v.DriverID}}/planovi" class="plan-save">
+    <input type="hidden" name="csrf_token" value="{{$v.CSRFToken}}">
+    <input type="hidden" name="od" value="{{fmtDateInput .From}}">
+    <input type="hidden" name="do" value="{{fmtDateInput .To}}">
+    <div><label for="save-note-{{$v.DriverID}}">Napomena (nije obavezno)</label><input id="save-note-{{$v.DriverID}}" type="text" name="napomena" maxlength="500" placeholder="npr. Minhen, tura 14"></div>
+    <button type="submit" class="btn">Sačuvaj kao plan</button>
+  </form>
+  {{end}}
+{{end}}{{end}}
+{{end}}
+
+{{/* A plan's state as a small badge. Takes a status.PlanView. */}}
+{{define "planBadge"}}
+{{if and .Active (not .OK)}}<span class="plan-badge plan-badge-over">⚠️ prelazi limit {{fmtDate .FirstOverstay}}</span>
+{{else}}<span class="plan-badge plan-badge-{{.StateKey}}">{{.StateLabel}}</span>{{end}}
+{{if .OverlapsOther}}<span class="plan-badge plan-badge-over">preklapa se</span>{{end}}
+{{end}}
+

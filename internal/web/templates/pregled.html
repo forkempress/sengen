@@ -58,6 +58,7 @@
   {{end}}
 </nav>
 <p class="muted kpi-summary">Ukupno vozača: <span class="num">{{.TotalDrivers}}</span> · u Šengenu: <span class="num">{{.InSchengenNow}}</span>. Kartica filtrira tabelu; ponovni klik vraća sve.</p>
+{{if .PlanProblems}}<div class="notice notice-warn" role="status"><strong>Planovi:</strong> {{.PlanProblems}} {{if eq .PlanProblems 1}}vozač ima plan{{else}}vozača imaju plan{{end}} koji prelazi 90/180 — vidi kolonu „Plan“. <a href="/planer" class="btn btn-sm">Planer</a></div>{{end}}
 
 <form class="filters" method="get" action="/pregled">
   <div>
@@ -101,6 +102,11 @@
         {{if .InSchengen}}U Šengenu od <span class="num">{{fmtDate (deref .CurrentSince)}}</span> · {{if .OverBy}}rok je bio{{else}}može do{{end}} <span class="num">{{fmtDate (deref .MaxContinuousUntil)}}</span>
         {{else}}U Srbiji · najduža tura <span class="num">{{.MaxTripLengthToday}}</span> {{dana .MaxTripLengthToday}}{{end}}
       </span>
+      {{$ps := index $.Plans .Driver.ID}}{{if $ps.Problem}}
+      <span class="dc-line"><span class="plan-badge plan-badge-over">⚠️ plan {{fmtDate $ps.Problem.From}} prelazi 90/180</span></span>
+      {{else if $ps.Next}}
+      <span class="dc-line muted">Plan: <span class="num">{{fmtDate $ps.Next.From}} – {{fmtDate $ps.Next.To}}</span></span>
+      {{end}}
     </a>
   </li>
   {{else}}
@@ -121,6 +127,7 @@
       <th>Preostalo {{if .IsToday}}danas{{else}}na dan {{fmtDate .AsOf}}{{end}} <a href="/pomoc#boje" class="help-q" aria-label="Pomoć: statusi">?</a></th>
       <th>Može do / najduža tura <a href="/pomoc#pomoc-moze-do" class="help-q" aria-label="Pomoć: može do">?</a></th>
       <th>Sledeće oslobađanje <a href="/pomoc#pomoc-oslobadjanje" class="help-q" aria-label="Pomoć: sledeće oslobađanje">?</a></th>
+      <th>Plan</th>
     </tr>
   </thead>
   <tbody>
@@ -142,9 +149,15 @@
       <td class="num">
         {{if .NextFreeUp}}{{fmtDate .NextFreeUp.Date}} (+{{.NextFreeUp.DaysFreed}}){{else}}—{{end}}
       </td>
+      <td>
+        {{$ps := index $.Plans .Driver.ID}}
+        {{if $ps.Problem}}<a href="/vozaci/{{.Driver.ID}}#planovi" class="plan-badge plan-badge-over">⚠️ plan prekoračuje 90/180</a><br><span class="muted num">{{fmtDate $ps.Problem.From}} – {{fmtDate $ps.Problem.To}}</span>
+        {{else if $ps.Next}}<a href="/vozaci/{{.Driver.ID}}#planovi" class="num">{{fmtDate $ps.Next.From}} – {{fmtDate $ps.Next.To}}</a>{{if $ps.More}} <span class="muted">(+{{$ps.More}})</span>{{end}}
+        {{else}}<span class="muted">—</span>{{end}}
+      </td>
     </tr>
     {{else}}
-    <tr><td colspan="6" class="muted">
+    <tr><td colspan="7" class="muted">
       {{if .FiltersActive}}Nijedan vozač ne odgovara filteru. <a href="/pregled">Poništi filtere</a>.
       {{else}}Nema vozača. Dodajte ih u <a href="/podesavanja/vozaci">podešavanjima</a>.{{end}}
     </td></tr>

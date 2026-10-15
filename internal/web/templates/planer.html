@@ -1,0 +1,60 @@
+{{define "content"}}
+<h1>Planer tura</h1>
+<p class="muted">Može li vozač da bude u Šengenu od–do? Računa se sa stvarnim boravcima i sa već sačuvanim planovima. Provera ništa ne upisuje; plan se čuva tek na dugme „Sačuvaj kao plan“.</p>
+
+{{if not .Drivers}}
+<section class="empty-state panel">
+  <h2>Nema vozača</h2>
+  <p>Dodajte vozače na stranici <a href="/podesavanja/vozaci">Vozači</a>.</p>
+</section>
+{{else}}
+<section class="panel">
+<h2>Brza provera</h2>
+<form method="get" action="/planer" class="plan-form"
+      hx-get="/planer" hx-target="#planer-rezultat" hx-select="#planer-rezultat" hx-swap="outerHTML" hx-push-url="true">
+  <div class="form-grid">
+    <div><label for="pl-driver">Vozač</label>
+      <select id="pl-driver" name="vozac" required>
+        <option value="">— izaberite —</option>
+        {{$sel := .DriverID}}
+        {{range .Drivers}}<option value="{{.ID}}"{{if eq .ID $sel}} selected{{end}}>{{.Name}}{{if .VehicleLabel}} ({{.VehicleLabel}}){{end}}</option>
+        {{end}}
+      </select>
+    </div>
+    <div><label for="pl-from">Polazak (ulazak u Šengen)</label><input id="pl-from" type="date" name="od" value="{{.Trip.From}}" required></div>
+    <div><label for="pl-to">Povratak (izlazak)</label><input id="pl-to" type="date" name="do" value="{{.Trip.To}}" required></div>
+  </div>
+  <button type="submit" class="btn btn-primary">Proveri</button>
+</form>
+<div id="planer-rezultat" aria-live="polite">
+  {{if .Trip.Submitted}}{{template "tripResult" .Trip}}{{end}}
+  {{if .DriverID}}<p><a href="/vozaci/{{.DriverID}}#planovi">Kalendar i planovi vozača {{.Trip.DriverName}} →</a></p>{{end}}
+</div>
+</section>
+
+<h2>Predstojeće ture</h2>
+{{if .Upcoming}}
+<div class="table-wrap">
+<table class="stack">
+  <thead>
+    <tr><th>Vozač</th><th>Od – do</th><th>Dana</th><th>Stanje</th><th>Ostaje posle</th><th>Napomena</th></tr>
+  </thead>
+  <tbody>
+    {{range .Upcoming}}
+    <tr{{if not .View.OK}} class="row-warn"{{end}}>
+      <td data-label="Vozač"><a href="/vozaci/{{.DriverID}}#planovi">{{.DriverName}}</a></td>
+      <td class="num" data-label="Od – do">{{fmtDate .View.From}} – {{fmtDate .View.To}}</td>
+      <td class="num" data-label="Dana">{{.View.Length}}</td>
+      <td data-label="Stanje">{{template "planBadge" .View}}</td>
+      <td class="num" data-label="Ostaje posle">{{.View.RemainingAfter}} {{dana .View.RemainingAfter}}</td>
+      <td class="muted wrap" data-label="Napomena">{{.View.Note}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+</div>
+{{else}}
+<p class="muted">Nema sačuvanih planova. Proverite turu iznad i sačuvajte je kao plan.</p>
+{{end}}
+{{end}}
+{{end}}

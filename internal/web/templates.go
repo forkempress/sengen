@@ -23,15 +23,7 @@ var funcMap = template.FuncMap{
 	"qrSVG":      qrSVG,
 	"asset":      assetURL,
 	// dana picks "dan" or "dana" for a count: 1 dan, 21 dan, 11 dana, 5 dana.
-	"dana": func(n int) string {
-		if n < 0 {
-			n = -n
-		}
-		if n%10 == 1 && n%100 != 11 {
-			return "dan"
-		}
-		return "dana"
-	},
+	"dana": status.DaysWord,
 	"fmtDate": func(t time.Time) string {
 		if t.IsZero() {
 			return ""
@@ -72,24 +64,7 @@ var funcMap = template.FuncMap{
 		}
 		return role
 	},
-	"sourceLabel": func(source string) string {
-		switch source {
-		case "manual":
-			return "ručno"
-		case "import":
-			return "uvoz"
-		case "telegram_button":
-			return "Telegram"
-		case "telegram_admin":
-			return "Telegram (admin)"
-		case "telegram_location":
-			return "Telegram (lokacija)"
-		case "":
-			return "—"
-		default:
-			return source
-		}
-	},
+	"sourceLabel": sourceLabel,
 }
 
 // pages lists every top-level template that gets rendered inside layout.html.
@@ -97,6 +72,7 @@ var pages = []string{
 	"login.html",
 	"pregled.html",
 	"vozac_detalj.html",
+	"planer.html",
 	"podesavanja_vozaci.html",
 	"podesavanja_telegram.html",
 	"podesavanja_korisnici.html",
@@ -109,8 +85,28 @@ var pages = []string{
 func loadTemplates() templateSet {
 	out := make(templateSet, len(pages))
 	for _, p := range pages {
-		t := template.Must(template.New("layout.html").Funcs(funcMap).ParseFS(templateFS, "templates/layout.html", "templates/"+p))
+		t := template.Must(template.New("layout.html").Funcs(funcMap).ParseFS(templateFS, "templates/layout.html", "templates/_planer.html", "templates/"+p))
 		out[p] = t
 	}
 	return out
+}
+
+// sourceLabel names where a stay came from, for the page and the export.
+func sourceLabel(source string) string {
+	switch source {
+	case "manual":
+		return "ručno"
+	case "import":
+		return "uvoz"
+	case "telegram_button":
+		return "Telegram"
+	case "telegram_admin":
+		return "Telegram (admin)"
+	case "telegram_location":
+		return "Telegram (lokacija)"
+	case "":
+		return "—"
+	default:
+		return source
+	}
 }

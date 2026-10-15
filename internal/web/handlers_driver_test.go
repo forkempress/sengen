@@ -19,10 +19,13 @@ func TestDriverPage_TripCheck(t *testing.T) {
 		name, query string
 		want        []string
 	}{
-		{"moze", "?polazak=" + day(10) + "&dana=20", []string{"Može.", "Najduža moguća tura"}},
-		{"predugo", "?polazak=" + day(10) + "&dana=120", []string{"od 1 do 90"}},
-		{"u prošlosti", "?polazak=" + day(-1) + "&dana=5", []string{"ne može biti u prošlosti"}},
-		{"bez datuma", "?dana=5", []string{"Izaberite datum polaska"}},
+		{"moze", "?od=" + day(10) + "&do=" + day(29), []string{"Može.", "(20 dana)", "Ostaje posle ture", "sme najkasnije do", "Sačuvaj kao plan"}},
+		{"stari link", "?polazak=" + day(10) + "&dana=20", []string{"Može.", "(20 dana)"}},
+		{"predugo", "?od=" + day(10) + "&do=" + day(130), []string{"najviše 90 dana"}},
+		{"u prošlosti", "?od=" + day(-1) + "&do=" + day(5), []string{"ne može biti u prošlosti"}},
+		{"povratak pre polaska", "?od=" + day(10) + "&do=" + day(5), []string{"Povratak ne može biti pre polaska"}},
+		{"bez polaska", "?do=" + day(5), []string{"Izaberite datum polaska"}},
+		{"bez povratka", "?od=" + day(5), []string{"Izaberite datum povratka"}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -56,13 +59,14 @@ func TestDriverPage_TripCheckWhileInSchengen(t *testing.T) {
 	s := app.mustLogin(f)
 	page := "/vozaci/" + id(f.driver.ID)
 
-	body := s.get(page + "?polazak=" + today.AddDate(0, 0, 30).Format("2006-01-02") + "&dana=20").Body.String()
-	if !strings.Contains(body, "Može.") || !strings.Contains(body, "vraća danas") {
+	day := func(n int) string { return today.AddDate(0, 0, n).Format("2006-01-02") }
+	body := s.get(page + "?od=" + day(30) + "&do=" + day(49)).Body.String()
+	if !strings.Contains(body, "Može.") || !strings.Contains(body, "kao da se vraća "+today.Format("02.01.2006")) {
 		t.Errorf("expected a positive plan that assumes return today")
 	}
 
-	body = s.get(page + "?polazak=" + today.Format("2006-01-02") + "&dana=5").Body.String()
-	if !strings.Contains(body, "tek kad se vrati") {
+	body = s.get(page + "?od=" + day(0) + "&do=" + day(4)).Body.String()
+	if !strings.Contains(body, "tek kad se vrati") || strings.Contains(body, "Sačuvaj kao plan") {
 		t.Errorf("expected a refusal for a trip starting while he is away")
 	}
 }

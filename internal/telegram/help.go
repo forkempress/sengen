@@ -31,7 +31,8 @@ Evidencija služi za internu kontrolu. Zvanično stanje vodi EES sistem na grani
 const adminHelpText = `Komande:
 /pregled — semafor svih vozača, sortiran po riziku
 /vozac <ime> — dani, do kada sme da ostane, sledeće oslobađanje
-/planer <ime> <dd.mm> <broj dana> — može li na turu
+/planer <ime> <dd.mm>-<dd.mm> — može li na turu (ili <dd.mm> <broj dana>)
+/planer <ime> — sačuvani planovi vozača
 /dodaj <ime> — dodaj vozača
 /link <ime> — link za povezivanje vozača sa botom
 /ispravi — poslednjih 5 izmena, sa poništavanjem

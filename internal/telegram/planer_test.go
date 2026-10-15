@@ -152,3 +152,127 @@ func TestDateParsing(t *testing.T) {
 		}
 	}
 }
+
+func addPlan(t *testing.T, bot *Bot, tn *store.Tenant, d *store.Driver, fromIn, toIn int, note string) {
+	t.Helper()
+	today := clock.Today()
+	if _, err := bot.Store.CreatePlannedStay(context.Background(), tn.ID, d.ID, today.AddDate(0, 0, fromIn), today.AddDate(0, 0, toIn), note, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestPlaner_DateRange(t *testing.T) {
+	fake := newFakeTelegram(t)
+	bot, _, _ := planerSetup(t)
+	today := clock.Today()
+	from, to := today.AddDate(0, 0, 10), today.AddDate(0, 0, 29)
+
+	postWebhook(t, bot, testSecret, textUpdate(444, "/planer Marko Planić "+from.Format("02.01.2006")+"-"+to.Format("02.01.2006")))
+	texts := fake.texts()
+	if len(texts) != 1 {
+		t.Fatalf("expected one reply, got %v", texts)
+	}
+	for _, want := range []string{"MOŽE na turu", "(20 dana)", "iskorišćeno 20/90", "ostaje 70 dana", "sme da ostane najkasnije do"} {
+		if !strings.Contains(texts[0], want) {
+			t.Errorf("reply %q does not contain %q", texts[0], want)
+		}
+	}
+}
+
+// The trip is checked together with the saved plans, and the reply says
+// when it collides with one.
+func TestPlaner_CountsSavedPlans(t *testing.T) {
+	fake := newFakeTelegram(t)
+	bot, tn, d := planerSetup(t)
+	addPlan(t, bot, tn, d, 5, 60, "Minhen") // 56 days
+
+	from := clock.Today().AddDate(0, 0, 61)
+	postWebhook(t, bot, testSecret, textUpdate(444, "/planer Marko "+from.Format("02.01.2006")+" 40"))
+	texts := fake.texts()
+	if len(texts) != 1 || !strings.Contains(texts[0], "NE MOŽE") || !strings.Contains(texts[0], "sačuvanim planovima (1)") {
+		t.Errorf("40 days after a 56-day plan must not fit: %v", texts)
+	}
+
+	fake.reset()
+	start := clock.Today().AddDate(0, 0, 50)
+	postWebhook(t, bot, testSecret, textUpdate(444, "/planer Marko "+start.Format("02.01.")+" "+start.AddDate(0, 0, 3).Format("02.01.")))
+	if texts := fake.texts(); len(texts) != 1 || !strings.Contains(texts[0], "Preklapa se sa sačuvanim planom") {
+		t.Errorf("expected an overlap warning, got %v", texts)
+	}
+}
+
+func TestPlaner_ListsSavedPlans(t *testing.T) {
+	fake := newFakeTelegram(t)
+	bot, tn, d := planerSetup(t)
+
+	postWebhook(t, bot, testSecret, textUpdate(444, "/planer Marko"))
+	if texts := fake.texts(); len(texts) != 1 || !strings.Contains(texts[0], "nema sačuvanih planova") {
+		t.Errorf("driver without plans: %v", texts)
+	}
+
+	addPlan(t, bot, tn, d, 5, 14, "Lion")
+	addPlan(t, bot, tn, d, 20, 105, "")
+	fake.reset()
+	postWebhook(t, bot, testSecret, textUpdate(444, "/planer Marko"))
+	texts := fake.texts()
+	if len(texts) != 1 {
+		t.Fatalf("expected one reply, got %v", texts)
+	}
+	for _, want := range []string{"Planovi — Marko Planić", "planiran", "posle ostaje 80 dana", "Lion", "prelazi limit"} {
+		if !strings.Contains(texts[0], want) {
+			t.Errorf("reply %q does not contain %q", texts[0], want)
+		}
+	}
+}
+
+func TestPlaner_ArgumentForms(t *testing.T) {
+	today := time.Date(2026, 10, 14, 0, 0, 0, 0, time.UTC)
+	day := func(s string) time.Time { t, _ := time.Parse("02.01.2006", s); return t }
+	for _, tc := range []struct {
+		in, name string
+		from, to time.Time
+		trip     bool
+	}{
+		{"Marko 20.12-05.01", "Marko", day("20.12.2026"), day("05.01.2027"), true},
+		{"Marko Planić 01.11 10.11", "Marko Planić", day("01.11.2026"), day("10.11.2026"), true},
+		{"Marko 01.11 10", "Marko", day("01.11.2026"), day("10.11.2026"), true},
+		{"Marko Planić", "Marko Planić", time.Time{}, time.Time{}, false},
+	} {
+		a := parsePlanerArgs(tc.in)
+		if a.name != tc.name || a.hasTrip != tc.trip {
+			t.Errorf("%q: name %q trip %v", tc.in, a.name, a.hasTrip)
+			continue
+		}
+		if !tc.trip {
+			continue
+		}
+		from, to, msg := a.resolveTrip(today)
+		if msg != "" || !from.Equal(tc.from) || !to.Equal(tc.to) {
+			t.Errorf("%q: %v–%v %q, want %v–%v", tc.in, from, to, msg, tc.from, tc.to)
+		}
+	}
+	for _, bad := range []string{"Marko 01.11 0", "Marko 01.11 91", "Marko 31.11-05.12", "Marko 01.11-31.11"} {
+		if _, _, msg := parsePlanerArgs(bad).resolveTrip(today); msg == "" {
+			t.Errorf("%q accepted", bad)
+		}
+	}
+}
+
+// /ispravi offers undo only for stays: an undo button on a plan or a user
+// would treat its id as a stay's.
+func TestIspravi_IgnoresPlans(t *testing.T) {
+	fake := newFakeTelegram(t)
+	bot, tn, _ := planerSetup(t)
+	bot.Store.RecordAudit(context.Background(), tn.ID, "user", nil, "planned_stay", 1, "create", nil, nil)
+
+	postWebhook(t, bot, testSecret, textUpdate(444, "/ispravi"))
+	if texts := fake.texts(); len(texts) != 1 || !strings.Contains(texts[0], "Nema skorašnjih izmena") {
+		t.Errorf("plan audit entry shown by /ispravi: %v", texts)
+	}
+}
+
+func (f *fakeTelegram) reset() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls = nil
+}
