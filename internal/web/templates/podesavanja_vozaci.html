@@ -32,13 +32,15 @@
 {{if .ActiveCount}}<p class="muted">Sa Telegram botom povezano: <span class="num">{{.Linked}}</span> od <span class="num">{{.ActiveCount}}</span> aktivnih vozača.</p>{{end}}
 <div class="table-wrap">
 <table class="stack">
-  <thead><tr><th>Ime</th><th>Vozilo</th><th>Telegram</th><th>Status</th><th><span class="sr-only">Akcije</span></th></tr></thead>
+  <thead><tr><th>Ime</th><th>Vozilo</th><th>Gde je</th><th>Telegram</th><th>Status</th><th><span class="sr-only">Akcije</span></th></tr></thead>
   <tbody>
     {{$csrf := .CSRFToken}}
+    {{$where := .Where}}
     {{range .Drivers}}
     <tr>
       <td><a href="/vozaci/{{.ID}}">{{.Name}}</a></td>
       <td data-label="Vozilo">{{.VehicleLabel}}</td>
+      <td data-label="Gde je">{{if .Active}}{{with index $where .ID}}{{template "where" .}}{{template "crossing" (driverCrossing . $csrf)}}{{end}}{{end}}</td>
       <td data-label="Telegram">{{if .TelegramChatID}}<span class="tg tg-on"><span aria-hidden="true">✓</span> povezan</span>{{else}}<span class="tg tg-off"><span aria-hidden="true">✗</span> nije</span>{{end}}</td>
       <td data-label="Status">{{if .Active}}aktivan{{else}}<span class="muted">deaktiviran</span>{{end}}</td>
       <td><div class="row-actions">
@@ -60,7 +62,7 @@
       </div></td>
     </tr>
     {{else}}
-    <tr><td colspan="5" class="muted">Još nema vozača. Dodajte prvog dugmetom „Dodaj vozača“ — ime je dovoljno.</td></tr>
+    <tr><td colspan="6" class="muted">Još nema vozača. Dodajte prvog dugmetom „Dodaj vozača“ — ime je dovoljno.</td></tr>
     {{end}}
   </tbody>
 </table>

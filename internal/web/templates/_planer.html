@@ -44,3 +44,20 @@
 
 {{/* The short "not legal advice" notice under a result. */}}
 {{define "disclaimer"}}{{$L := legal}}<p class="result-disclaimer">{{$L.Disclaimer}} <a href="{{$L.EUCalculatorURL}}" rel="noopener">EU kalkulator</a> · <a href="{{$L.EESInfoURL}}" rel="noopener">EES</a> · <a href="/uslovi#proracun">više</a></p>{{end}}
+
+{{/* Unos granice iz reda (Pregled i Vozači): vozač u Šengenu dobija „Izašao“, ostali „Ušao“.
+     Datum je danas, a može se promeniti pre klika. */}}
+{{define "crossing"}}
+<form class="crossing-form" method="post" action="/vozaci/{{.Status.Driver.ID}}/granica">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <input type="hidden" name="back" value="{{.BackURL}}">
+  <input type="hidden" name="smer" value="{{if .Status.InSchengen}}izlaz{{else}}ulaz{{end}}">
+  <label class="sr-only" for="granica-{{.Status.Driver.ID}}-{{.Where}}">Datum {{if .Status.InSchengen}}izlaska{{else}}ulaska{{end}} — {{.Status.Driver.Name}}</label>
+  <input type="date" id="granica-{{.Status.Driver.ID}}-{{.Where}}" name="date" value="{{fmtDateInput .AsOf}}" max="{{fmtDateInput .AsOf}}" required>
+  <button type="submit" class="btn btn-sm">{{if .Status.InSchengen}}◀ Izašao{{else}}▶ Ušao{{end}}</button>
+</form>
+{{end}}
+
+{{/* Gde je vozač sada: ikonica i tekst iz istog mesta za Pregled i Vozače.
+     Takes a status.DriverStatus. */}}
+{{define "where"}}{{if .InSchengen}}<span class="where where-in"><span class="where-dot" aria-hidden="true"></span>U Šengenu od <span class="num">{{fmtDate (deref .CurrentSince)}}</span></span>{{else}}<span class="where where-out"><span class="where-dot" aria-hidden="true"></span>Van Šengena</span>{{end}}{{end}}

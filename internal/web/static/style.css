@@ -799,3 +799,12 @@ table.sample-table td { font-family: var(--font-mono); font-size: 0.875rem; }
 /* Sa JS-om promena se čuva odmah; dugme „Promeni“ treba samo bez JS-a. */
 html:not(.no-js) .role-submit { display: none; }
 .role-form { display: inline-flex; gap: 0.5rem; align-items: center; }
+
+/* Gde je vozač: puna plava tačka = u Šengenu, prazan krug = van Šengena. */
+.where { display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap; }
+.where-dot { width: 0.7rem; height: 0.7rem; border-radius: 50%; flex: none; }
+.where-in { color: var(--accent); font-weight: 600; }
+.where-in .where-dot { background: var(--accent); }
+.where-out { color: var(--text-muted); }
+.where-out .where-dot { border: 2px solid var(--field-border); }
+td[data-label="Gde je"] .crossing-form { margin-top: 0.35rem; }

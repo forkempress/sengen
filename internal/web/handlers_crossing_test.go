@@ -84,6 +84,7 @@ func TestCrossing_ReturnsToTheSameDashboardViewOnly(t *testing.T) {
 		"https://zlo.example/x":  "/pregled",
 		"//zlo.example/pregled":  "/pregled",
 		"/podesavanja/korisnici": "/pregled",
+		"/podesavanja/vozaci":    "/podesavanja/vozaci",
 	} {
 		w := s.post(path, url.Values{"smer": {"ulaz"}, "date": {"x"}, "back": {back}})
 		if w.Code != http.StatusSeeOther || w.Header().Get("Location") != want {

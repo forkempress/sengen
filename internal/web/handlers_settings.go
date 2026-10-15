@@ -7,6 +7,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"shengen/internal/clock"
+	"shengen/internal/status"
 	"shengen/internal/store"
 	"shengen/internal/tenant"
 )
@@ -17,6 +19,8 @@ type settingsDriversData struct {
 	Link    *telegramLink // set right after generating a driver's link
 	// Linked counts active drivers connected to the bot.
 	Linked, ActiveCount int
+	// Where is each driver's status today, for the "Ušao/Izašao" button.
+	Where map[int64]status.DriverStatus
 }
 
 func (s *Server) handleSettingsDriversPage(w http.ResponseWriter, r *http.Request) {
@@ -36,7 +40,16 @@ func (s *Server) renderDriversPageFlash(w http.ResponseWriter, r *http.Request, 
 		s.serverError(w, r)
 		return
 	}
-	data := settingsDriversData{baseData: s.base(r, "vozaci"), Drivers: drivers, Link: link}
+	allStays, err := s.Store.ListStaysForTenant(r.Context(), t.ID)
+	if err != nil {
+		s.serverError(w, r)
+		return
+	}
+	data := settingsDriversData{baseData: s.base(r, "vozaci"), Drivers: drivers, Link: link,
+		Where: make(map[int64]status.DriverStatus, len(drivers))}
+	for _, st := range status.ComputeAll(drivers, allStays, clock.Today()) {
+		data.Where[st.Driver.ID] = st
+	}
 	if ok != "" {
 		data.Flash = ok
 	}

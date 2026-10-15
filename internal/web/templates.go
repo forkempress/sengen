@@ -62,7 +62,11 @@ var funcMap = template.FuncMap{
 	// crossing hands the dashboard's border form one row; where tells the
 	// table ("t") from the phone cards ("k"), which both render every row.
 	"crossing": func(st status.DriverStatus, page pregledData, where string) crossingRow {
-		return crossingRow{Status: st, Page: page, Where: where}
+		return crossingRow{Status: st, CSRFToken: page.CSRFToken, BackURL: page.BackURL, AsOf: page.AsOf, Where: where}
+	},
+	// driverCrossing is the same form on the drivers page, dated today.
+	"driverCrossing": func(st status.DriverStatus, csrf string) crossingRow {
+		return crossingRow{Status: st, CSRFToken: csrf, BackURL: "/podesavanja/vozaci", AsOf: clock.Today(), Where: "v"}
 	},
 	"deref": func(t *time.Time) time.Time {
 		if t == nil {

@@ -12,11 +12,14 @@ import (
 	"shengen/internal/store"
 )
 
-// crossingRow is what the dashboard's "crossing" template gets for one row.
+// crossingRow is what the "crossing" template gets for one row of the
+// dashboard or the drivers page.
 type crossingRow struct {
-	Status status.DriverStatus
-	Page   pregledData
-	Where  string
+	Status    status.DriverStatus
+	CSRFToken string
+	BackURL   string
+	AsOf      time.Time
+	Where     string
 }
 
 // handleCrossing records a border crossing straight from the dashboard row,
@@ -30,7 +33,7 @@ func (s *Server) handleCrossing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	u, _ := auth.UserFromContext(r.Context())
-	back := pregledBackURL(r.FormValue("back"))
+	back := crossingBackURL(r.FormValue("back"))
 
 	date, err := time.Parse("2006-01-02", r.FormValue("date"))
 	if err != nil {
@@ -100,10 +103,11 @@ func (s *Server) crossingFailed(w http.ResponseWriter, r *http.Request, back, na
 	return true
 }
 
-// pregledBackURL keeps the dashboard filters across the redirect, but only
-// ever to the dashboard itself, never to an address taken from the form.
-func pregledBackURL(back string) string {
-	if back == "/pregled" || strings.HasPrefix(back, "/pregled?") {
+// crossingBackURL keeps the dashboard filters across the redirect, but only
+// ever to the dashboard or the drivers page, never to an address taken from
+// the form.
+func crossingBackURL(back string) string {
+	if back == "/pregled" || strings.HasPrefix(back, "/pregled?") || back == "/podesavanja/vozaci" {
 		return back
 	}
 	return "/pregled"
