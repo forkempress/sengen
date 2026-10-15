@@ -1,0 +1,39 @@
+{{define "content"}}{{$L := legal}}
+<article class="legal">
+<h1>Uslovi korišćenja</h1>
+<p class="muted">Poslednja izmena: {{$L.LastUpdated}} · verzija {{$L.TermsVersion}}</p>
+
+<h2 id="usluga">1. Usluga</h2>
+<p>Dani90 je web aplikacija i Telegram bot za evidenciju dana koje vozači provedu u Šengenskom prostoru i za proračun pravila „najviše 90 dana u bilo kom periodu od 180 dana“. Uslugu pruža {{$L.ProviderName}}, {{$L.ProviderForm}}, {{$L.ProviderAddress}}, {{$L.ProviderIDs}}. Usluga je namenjena firmama (prevoznicima), ne potrošačima.</p>
+
+<h2 id="nalozi">2. Nalozi i odgovornost firme</h2>
+<ul>
+  <li>Nalog firme otvara vlasnik. Vlasnik može da doda dispečere; firma odgovara za sve što se uradi preko njenih naloga i za čuvanje lozinki.</li>
+  <li>Proračun je tačan samo onoliko koliko su tačni uneti datumi. <strong>Firma odgovara za tačnost i potpunost unosa</strong> — svojih i onih koje vozači pošalju preko bota.</li>
+  <li>Firma je rukovalac podacima svojih vozača i zaposlenih: ona obaveštava vozače o obradi, odlučuje o pravnom osnovu i odgovara na njihove zahteve. Odnos u vezi sa tim podacima uređuje <a href="/obrada-podataka">Ugovor o obradi podataka</a>, koji je deo ovih uslova.</li>
+</ul>
+
+<h2 id="naplata">3. Probni period i naplata</h2>
+<p>Nova firma dobija besplatni probni period. Posle njega usluga se plaća po aktivnom vozaču, prema ceni dogovorenoj sa firmom. Ako firma ne plati, nalog može biti pauziran; podaci se tada ne brišu odmah (vidi tačku 7). [POPUNITI: rok plaćanja, način izdavanja računa, obračunski period.]</p>
+
+<h2 id="zabranjeno">4. Zabranjeno korišćenje</h2>
+<p>Zabranjeno je: unositi podatke o osobama bez osnova za to; pokušavati pristup podacima drugih firmi ili tuđim nalozima; ometati rad sistema (automatizovani zahtevi, napadi, zaobilaženje ograničenja); koristiti uslugu suprotno zakonu. Pri ozbiljnom kršenju možemo odmah ograničiti ili ugasiti nalog.</p>
+
+<h2 id="proracun">5. Proračun nije pravni savet</h2>
+<p>{{$L.Disclaimer}}</p>
+<p>Rezultat je procena po pravilu 90/180, izračunata isključivo iz datuma koji su uneti u aplikaciju; dan ulaska i dan izlaska broje se kao celi dani. Proračun ne uzima u obzir vize, boravišne dozvole, bilateralne sporazume, posebna pravila pojedinih država ni boravke koji nisu uneti. Dani90 nije povezan sa Evropskom unijom, sistemom EES ni sa bilo kojim državnim organom. Zvanično stanje vodi EES (Entry/Exit System), a o ulasku i dozvoljenom boravku odlučuje granična policija države članice. Pre puta, naročito kad je preostalo malo dana, korisnik je dužan da stanje proveri u zvaničnim izvorima: <a href="{{$L.EUCalculatorURL}}" rel="noopener">EU kalkulator kratkog boravka</a> i <a href="{{$L.EESInfoURL}}" rel="noopener">informacije o EES-u</a>.</p>
+
+<h2 id="odgovornost">6. Ograničenje odgovornosti</h2>
+<p>Uslugu pružamo „kakva jeste“, sa pažnjom dobrog stručnjaka, ali ne garantujemo da će raditi bez prekida i grešaka (na primer kad ne radi Telegram ili internet). U meri u kojoj zakon dozvoljava, ne odgovaramo za kazne, zabrane ulaska, izgubljenu zaradu ni drugu štetu nastalu zbog oslanjanja na proračun ili zbog netačnih ili nepotpunih unosa. Ukupna odgovornost ograničena je na iznos koji je firma platila za uslugu u poslednjih 12 meseci. Ovo ne ograničava odgovornost za štetu prouzrokovanu namerno ili krajnjom nepažnjom.</p>
+
+<h2 id="raskid">7. Raskid i brisanje podataka</h2>
+<p>Firma može da prestane da koristi uslugu u svakom trenutku, porukom na {{$L.PrivacyEmail}}. Mi možemo raskinuti ugovor uz obaveštenje [POPUNITI: rok obaveštenja] unapred, ili odmah pri ozbiljnom kršenju ovih uslova. Po prestanku firma može da izveze podatke vozača (CSV) u roku od [POPUNITI: npr. 30] dana; posle toga brišemo podatke firme, osim onih koje moramo da čuvamo po zakonu (na primer računi). Podaci nestaju iz rezervnih kopija kad kopije isteknu.</p>
+
+<h2 id="pravo">8. Merodavno pravo i sporovi</h2>
+<p>Na ove uslove primenjuje se pravo Republike Srbije. Za sporove je nadležan stvarno nadležni sud u [POPUNITI: grad].</p>
+
+<h2 id="izmene">9. Izmene uslova</h2>
+<p>Uslove možemo izmeniti. O bitnim izmenama obaveštavamo vlasnika naloga u aplikaciji; pri sledećoj prijavi vlasnik prihvata novu verziju. Ako se ne slaže, može raskinuti ugovor po tački 7.</p>
+<p class="muted">Vidi i: <a href="/privatnost">Politika privatnosti</a> · <a href="/obrada-podataka">Ugovor o obradi podataka</a></p>
+</article>
+{{end}}

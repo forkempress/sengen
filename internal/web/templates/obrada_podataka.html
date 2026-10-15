@@ -1,0 +1,37 @@
+{{define "content"}}{{$L := legal}}
+<article class="legal">
+<h1>Ugovor o obradi podataka</h1>
+<p class="muted">Poslednja izmena: {{$L.LastUpdated}} · verzija {{$L.TermsVersion}}</p>
+<p>Ovaj ugovor zaključuju firma koja koristi Dani90 (<strong>rukovalac</strong>) i {{$L.ProviderName}}, {{$L.ProviderForm}}, {{$L.ProviderAddress}}, {{$L.ProviderIDs}} (<strong>obrađivač</strong>), u skladu sa čl. 45 Zakona o zaštiti podataka o ličnosti. Smatra se zaključenim kad vlasnik naloga firme prihvati <a href="/uslovi">Uslove korišćenja</a> i ovaj ugovor u aplikaciji.</p>
+
+<h2>1. Predmet i trajanje</h2>
+<p>Obrađivač za rukovaoca vodi evidenciju dana koje vozači rukovaoca provedu u Šengenskom prostoru, računa preostale dane po pravilu 90/180, šalje upozorenja i poruke preko Telegram bota i čuva planirane ture. Ugovor traje dok rukovalac koristi uslugu, i još dok se podaci ne vrate ili obrišu po tački 4.</p>
+
+<h2>2. Vrste podataka i lica</h2>
+<ul>
+  <li><strong>Lica:</strong> vozači rukovaoca; korisnici naloga rukovaoca (vlasnik i dispečeri).</li>
+  <li><strong>Podaci vozača:</strong> ime i prezime, oznaka vozila, datumi ulaska u Šengen i izlaska iz njega, vrsta boravka (posao ili privatno), napomene, planirane ture, Telegram ID i vreme potvrde obaveštenja, evidencija poslatih upozorenja.</li>
+  <li><strong>Podaci korisnika:</strong> ime, email, uloga, Telegram ID ako ga povežu, evidencija izmena koje su napravili.</li>
+  <li>Lokacija se ne obrađuje. Uvođenje te opcije zahtevalo bi izmenu ovog ugovora i posebno obaveštenje vozačima.</li>
+</ul>
+
+<h2>3. Obaveze obrađivača</h2>
+<ol>
+  <li><strong>Samo po nalogu:</strong> podatke obrađuje samo radi pružanja usluge i po uputstvima rukovaoca koja su data kroz aplikaciju ili pisano, osim ako mu zakon nalaže drugačije.</li>
+  <li><strong>Poverljivost:</strong> pristup podacima imaju samo lica koja održavaju uslugu i obavezana su na poverljivost.</li>
+  <li><strong>Bezbednost:</strong> šifrovana veza, lozinke i tokeni samo kao heš, odvojeni podaci svake firme, rezervne kopije, ograničen pristup serveru.</li>
+  <li><strong>Podobrađivači:</strong> rukovalac daje opšte ovlašćenje za podobrađivače navedene u <a href="/privatnost#primaoci">Politici privatnosti</a> (Netcup, Cloudflare, Telegram{{/* , email provajder */}}). O dodavanju ili zameni podobrađivača obrađivač obaveštava rukovaoca najmanje [POPUNITI: npr. 15] dana unapred; rukovalac može da uloži prigovor i, ako se ne dogovore, da raskine ugovor. Obrađivač podobrađivačima nameće iste obaveze zaštite.</li>
+  <li><strong>Pomoć pri zahtevima lica:</strong> aplikacija omogućava rukovaocu da vidi, ispravi, izveze (CSV) i trajno obriše podatke vozača; obrađivač pomaže i u ostalim zahtevima. Zahtev koji stigne direktno obrađivaču prosleđuje rukovaocu bez odlaganja.</li>
+  <li><strong>Povreda podataka:</strong> o povredi podataka obaveštava rukovaoca bez nepotrebnog odlaganja, a najkasnije u roku od [POPUNITI: npr. 48] sati od saznanja, sa podacima koji su mu tada poznati.</li>
+  <li><strong>Brisanje ili vraćanje:</strong> po prestanku usluge rukovalac može da izveze podatke u roku iz <a href="/uslovi#raskid">Uslova korišćenja</a>; posle toga obrađivač briše podatke rukovaoca, osim ako zakon nalaže čuvanje. Podaci nestaju iz rezervnih kopija kad kopije isteknu ([POPUNITI: rok]).</li>
+  <li><strong>Kontrola:</strong> obrađivač rukovaocu stavlja na raspolaganje informacije potrebne da pokaže da poštuje ovaj ugovor.</li>
+</ol>
+
+<h2>4. Obaveze rukovaoca</h2>
+<p>Rukovalac odgovara za zakonitost obrade, za pravni osnov i za obaveštavanje vozača (bot vozaču pri povezivanju šalje kratko obaveštenje u ime rukovaoca), kao i za tačnost unetih podataka.</p>
+
+<h2>5. Prenos van Srbije i EU</h2>
+<p>Telegram i Cloudflare obrađuju podatke i van Srbije i EU (vidi Politiku privatnosti). [POPUNITI: pravni osnov i mere za prenos.]</p>
+<p class="muted">Kontakt obrađivača: {{$L.PrivacyEmail}}</p>
+</article>
+{{end}}

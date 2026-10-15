@@ -21,6 +21,7 @@
     {{range $v.Notes}}<p class="plan-note"><span aria-hidden="true">⚠️</span> {{.}}</p>{{end}}
     {{if $v.PlansCounted}}<p class="muted">Računato sa sačuvanim planovima ({{$v.PlansCounted}}).</p>{{end}}
     {{if .AssumedReturn}}<p class="muted">Vozač je sada u Šengenu — računato je kao da se vraća {{fmtDate (deref .AssumedReturn)}}. Svaki dan kasnijeg povratka skraćuje ovu turu.</p>{{end}}
+    {{template "disclaimer"}}
   </div>
   {{if $v.CanSave}}
   <form method="post" action="/vozaci/{{$v.DriverID}}/planovi" class="plan-save">
@@ -41,3 +42,5 @@
 {{if .OverlapsOther}}<span class="plan-badge plan-badge-over">preklapa se</span>{{end}}
 {{end}}
 
+{{/* The short "not legal advice" notice under a result. */}}
+{{define "disclaimer"}}{{$L := legal}}<p class="result-disclaimer">{{$L.Disclaimer}} <a href="{{$L.EUCalculatorURL}}" rel="noopener">EU kalkulator</a> · <a href="{{$L.EESInfoURL}}" rel="noopener">EES</a> · <a href="/uslovi#proracun">više</a></p>{{end}}

@@ -109,9 +109,11 @@ func (s *Store) DeleteExpiredLinkTokens(ctx context.Context, now time.Time) (int
 	return res.RowsAffected()
 }
 
+// SetDriverTelegramChatID links a driver's Telegram account. The new account
+// has not seen the privacy notice yet, so the confirmation is cleared.
 func (s *Store) SetDriverTelegramChatID(ctx context.Context, tenantID, driverID, chatID int64) error {
 	_, err := s.DB.ExecContext(ctx,
-		`UPDATE drivers SET telegram_chat_id = ? WHERE tenant_id = ? AND id = ?`, chatID, tenantID, driverID)
+		`UPDATE drivers SET telegram_chat_id = ?, privacy_ack_at = NULL WHERE tenant_id = ? AND id = ?`, chatID, tenantID, driverID)
 	if isUniqueConstraintErr(err) {
 		// One Telegram account maps to one driver across all firms — the
 		// shared bot relies on that to know whose message it is.

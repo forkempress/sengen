@@ -320,12 +320,9 @@ func (b *Bot) handleStart(ctx context.Context, client *Client, chatID int64, tex
 			b.reportLinkError(ctx, client, chatID, err)
 			return
 		}
-		driver, _ := b.Store.GetDriver(ctx, t.ID, *lt.DriverID)
-		name := "vozač"
-		if driver != nil {
-			name = driver.Name
-		}
-		client.SendMessage(ctx, chatID, "Zdravo, "+name+"! Povezan si sa botom.\n\n"+driverHelpText, DriverKeyboard())
+		// The welcome and the keyboard come once the driver confirms
+		// the notice about his data.
+		b.sendPrivacyNotice(ctx, client, t, chatID)
 	case lt.UserID != nil:
 		if err := b.Store.SetUserTelegramChatID(ctx, t.ID, *lt.UserID, chatID); err != nil {
 			b.reportLinkError(ctx, client, chatID, err)

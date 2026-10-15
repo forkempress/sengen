@@ -1,0 +1,29 @@
+{{define "content"}}{{$L := legal}}
+<h1>Uslovi korišćenja</h1>
+{{if .Current}}
+<section class="panel">
+  <p>Firma je prihvatila važeće <a href="/uslovi">Uslove korišćenja</a> i <a href="/obrada-podataka">Ugovor o obradi podataka</a> (verzija {{$L.TermsVersion}}){{if .Accepted.AcceptedAt}}, {{fmtDate (deref .Accepted.AcceptedAt)}}{{end}}.</p>
+  <p><a href="/pregled" class="btn btn-primary">Nazad na pregled</a></p>
+</section>
+{{else if .IsOwner}}
+<section class="panel">
+  <p>Pre korišćenja aplikacije, kao vlasnik naloga firme, prihvatite uslove pod kojima Dani90 radi. Firma je rukovalac podacima svojih vozača, a Dani90 ih obrađuje po njenom nalogu — to uređuje ugovor o obradi.</p>
+  <ul>
+    <li><a href="/uslovi" target="_blank" rel="noopener">Uslovi korišćenja</a> (verzija {{$L.TermsVersion}})</li>
+    <li><a href="/obrada-podataka" target="_blank" rel="noopener">Ugovor o obradi podataka</a></li>
+    <li><a href="/privatnost" target="_blank" rel="noopener">Politika privatnosti</a></li>
+  </ul>
+  {{if .Accepted.Version}}<p class="muted">Firma je ranije prihvatila verziju {{.Accepted.Version}}; uslovi su u međuvremenu izmenjeni.</p>{{end}}
+  <form method="post" action="/prihvatanje">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="check-row"><input id="accept-terms" type="checkbox" name="prihvatam" value="da" required> <label for="accept-terms">Prihvatam <a href="/uslovi" target="_blank" rel="noopener">Uslove korišćenja</a> i <a href="/obrada-podataka" target="_blank" rel="noopener">Ugovor o obradi podataka</a> u ime firme.</label></div>
+    <button type="submit" class="btn btn-primary">Prihvatam i nastavljam</button>
+  </form>
+</section>
+{{else}}
+<section class="panel">
+  <p>Vlasnik naloga firme još nije prihvatio važeće <a href="/uslovi">Uslove korišćenja</a> i <a href="/obrada-podataka">Ugovor o obradi podataka</a>. Aplikaciju možete da koristite; zamolite vlasnika da se prijavi i prihvati ih.</p>
+  <p><a href="/pregled" class="btn">Nazad na pregled</a></p>
+</section>
+{{end}}
+{{end}}

@@ -532,9 +532,23 @@ func TestStart_DriverWelcomeIncludesHelp(t *testing.T) {
 
 	bot.handleStart(ctx, fake.client(), 555, "/start tok123")
 
+	// First the notice about his data, with a button; the welcome and the
+	// keyboard come once he confirms it.
 	texts := fake.texts()
-	if len(texts) != 1 || !strings.Contains(texts[0], driverHelpText) {
-		t.Fatalf("welcome = %v, want it to contain the driver help", texts)
+	if len(texts) != 1 || !strings.Contains(texts[0], "Tvoji podaci") || !strings.Contains(texts[0], "/privatnost") || strings.Contains(texts[0], driverHelpText) {
+		t.Fatalf("after linking = %v, want only the privacy notice", texts)
+	}
+	if ack, _ := bot.Store.DriverPrivacyAck(ctx, tn.ID, driver.ID); ack != nil {
+		t.Fatal("privacy ack recorded before the driver confirmed")
+	}
+
+	postWebhook(t, bot, testSecret, callbackUpdate(555, 555, cbPrivacyAck))
+	texts = fake.texts()
+	if !strings.Contains(texts[len(texts)-1], driverHelpText) {
+		t.Fatalf("after confirming = %v, want the welcome with the driver help", texts)
+	}
+	if ack, _ := bot.Store.DriverPrivacyAck(ctx, tn.ID, driver.ID); ack == nil {
+		t.Error("privacy ack not recorded")
 	}
 }
 

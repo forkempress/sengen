@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"time"
 
+	"shengen/internal/legal"
 	"shengen/internal/status"
 )
 
@@ -24,6 +25,8 @@ var funcMap = template.FuncMap{
 	"asset":      assetURL,
 	// dana picks "dan" or "dana" for a count: 1 dan, 21 dan, 11 dana, 5 dana.
 	"dana": status.DaysWord,
+	// legal is the provider's details, the terms version and the disclaimer.
+	"legal": legal.Get,
 	"fmtDate": func(t time.Time) string {
 		if t.IsZero() {
 			return ""
@@ -73,6 +76,10 @@ var pages = []string{
 	"pregled.html",
 	"vozac_detalj.html",
 	"planer.html",
+	"privatnost.html",
+	"uslovi.html",
+	"obrada_podataka.html",
+	"prihvatanje.html",
 	"podesavanja_vozaci.html",
 	"podesavanja_telegram.html",
 	"podesavanja_korisnici.html",

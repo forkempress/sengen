@@ -54,6 +54,9 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /logout", s.handleLogout)
 	mux.HandleFunc("POST /telegram/webhook", s.Bot.HandleWebhook)
 	mux.Handle("GET /static/", staticHandler())
+	mux.HandleFunc("GET /privatnost", s.handlePrivacyPage)
+	mux.HandleFunc("GET /uslovi", s.handleTermsPage)
+	mux.HandleFunc("GET /obrada-podataka", s.handleDPAPage)
 
 	protected := http.NewServeMux()
 	protected.HandleFunc("GET /{$}", s.handleRoot)
@@ -71,12 +74,16 @@ func (s *Server) Routes() http.Handler {
 	protected.HandleFunc("POST /vozaci/{id}/planovi/{plan_id}", s.handlePlanUpdate)
 	protected.HandleFunc("POST /vozaci/{id}/planovi/{plan_id}/obrisi", s.handlePlanDelete)
 	protected.HandleFunc("GET /planer", s.handlePlanner)
+	protected.HandleFunc("GET /prihvatanje", s.handleAcceptPage)
+	protected.Handle("POST /prihvatanje", auth.RequireRole("owner")(http.HandlerFunc(s.handleAcceptSubmit)))
 
 	protected.HandleFunc("GET /podesavanja/vozaci", s.handleSettingsDriversPage)
 	protected.HandleFunc("POST /podesavanja/vozaci", s.handleSettingsDriverCreate)
 	protected.HandleFunc("POST /podesavanja/vozaci/{id}/deaktiviraj", s.handleSettingsDriverDeactivate)
 	protected.HandleFunc("POST /podesavanja/vozaci/{id}/aktiviraj", s.handleSettingsDriverActivate)
 	protected.HandleFunc("POST /podesavanja/vozaci/{id}/telegram-link", s.handleDriverTelegramLink)
+	protected.Handle("GET /vozaci/{id}/izvoz.csv", auth.RequireRole("owner")(http.HandlerFunc(s.handleDriverExport)))
+	protected.Handle("POST /vozaci/{id}/obrisi-trajno", auth.RequireRole("owner")(http.HandlerFunc(s.handleDriverDeletePermanent)))
 	protected.HandleFunc("POST /podesavanja/telegram/poveži-nalog", s.handleTelegramLinkSelf)
 
 	protected.Handle("GET /podesavanja/telegram", auth.RequireRole("owner")(http.HandlerFunc(s.handleTelegramSettingsPage)))
@@ -98,7 +105,7 @@ func (s *Server) Routes() http.Handler {
 	protected.HandleFunc("POST /import/preview", s.handleImportPreview)
 	protected.HandleFunc("POST /import/potvrdi", s.handleImportConfirm)
 
-	mux.Handle("/", s.Auth.RequireAuth(auth.CSRFProtect(protected)))
+	mux.Handle("/", s.Auth.RequireAuth(auth.CSRFProtect(s.requireTerms(protected))))
 
 	return securityHeaders(limitBody(mux))
 }

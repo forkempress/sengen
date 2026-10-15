@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"shengen/internal/legal"
 	"strconv"
 	"strings"
 	"time"
@@ -14,6 +15,14 @@ import (
 )
 
 func (b *Bot) handleDriverMessage(ctx context.Context, client *Client, t *store.Tenant, chatID int64, driver *store.Driver, text string) {
+	switch strings.ToLower(strings.TrimSpace(text)) {
+	case "/moji_podaci":
+		b.cmdMyData(ctx, client, t, chatID, driver)
+		return
+	case "/obrisi_me", "/obriši_me":
+		b.cmdForgetMe(ctx, client, t, chatID)
+		return
+	}
 	if isHelpRequest(text) {
 		client.SendMessage(ctx, chatID, driverHelpText, DriverKeyboard())
 		return
@@ -211,7 +220,7 @@ func (b *Bot) driverMyDays(ctx context.Context, client *Client, t *store.Tenant,
 		return
 	}
 	ds := status.Compute(*driver, stays, clock.Today())
-	client.SendMessage(ctx, chatID, formatMyDays(ds), DriverKeyboard())
+	client.SendMessage(ctx, chatID, formatMyDays(ds)+"\n\n"+legal.DisclaimerBot, DriverKeyboard())
 }
 
 // formatMyDays is the driver's "Moji dani" reply, addressed to him.
@@ -298,6 +307,12 @@ func (b *Bot) handleDriverCallback(ctx context.Context, client *Client, t *store
 	}
 
 	switch data {
+	case cbPrivacyAck:
+		b.handlePrivacyAck(ctx, client, t, chatID, driver, cq.ID)
+	case cbUnlinkConfirm:
+		b.handleUnlinkConfirm(ctx, client, t, chatID, driver, cq.ID)
+	case cbUnlinkCancel:
+		client.AnswerCallbackQuery(ctx, cq.ID, "Otkazano, veza ostaje.")
 	case "reopen_confirm":
 		b.handleReopenConfirm(ctx, client, t, chatID, driver, cq.ID)
 	case "reopen_cancel":

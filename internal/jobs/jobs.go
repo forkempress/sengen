@@ -142,6 +142,25 @@ func (r *Runner) processTenant(ctx context.Context, t store.Tenant) {
 	r.checkDriverWarnings(ctx, client, t, settings, statuses, today, dateStr)
 	r.checkOpenStayReminders(ctx, client, t, drivers, allStays, today, dateStr)
 	r.checkDailyDigest(ctx, client, t, settings, statuses, today, dateStr)
+	r.checkPrivacyNotices(ctx, client, t, today)
+}
+
+// checkPrivacyNotices re-sends the privacy notice, at most once a week, to
+// linked drivers who have not confirmed it — among them every driver linked
+// before the notice existed. It is never sent in reply to a button press,
+// so it cannot get in the way at the border.
+func (r *Runner) checkPrivacyNotices(ctx context.Context, client *telegram.Client, t store.Tenant, today time.Time) {
+	drivers, err := r.Store.DriversAwaitingPrivacyAck(ctx, t.ID)
+	if err != nil {
+		log.Printf("jobs: drivers awaiting privacy ack for tenant %d: %v", t.ID, err)
+		health.ReportError(health.KindJobError)
+		return
+	}
+	year, week := today.ISOWeek()
+	key := fmt.Sprintf("%d-W%02d", year, week)
+	for _, d := range drivers {
+		r.sendOnce(ctx, client, t.ID, d.ID, "privacy_notice", key, *d.TelegramChatID, telegram.PrivacyNotice(t.Name), telegram.PrivacyAckKeyboard())
+	}
 }
 
 func (r *Runner) sendAlert(ctx context.Context, client *telegram.Client, t store.Tenant, settings store.TenantSettings, driverID int64, alertType, dateStr, text string) {

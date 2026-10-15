@@ -66,3 +66,8 @@ type InlineKeyboardButton struct {
 	Text         string `json:"text"`
 	CallbackData string `json:"callback_data"`
 }
+
+// ReplyKeyboardRemove takes the driver's keyboard away (after /obrisi_me).
+type ReplyKeyboardRemove struct {
+	RemoveKeyboard bool `json:"remove_keyboard"`
+}

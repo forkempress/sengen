@@ -24,6 +24,8 @@ Važno:
 • Pogrešno pritisnuto? Dugme „Poništi" ispod potvrde važi 10 minuta.
 • Ako dugo ne javiš izlazak, bot će te pitati da li si još u Šengenu.
 
+Tvoji podaci: /moji_podaci — šta se čuva o tebi, /obrisi_me — prekid veze sa botom.
+
 Evidencija služi za internu kontrolu. Zvanično stanje vodi EES sistem na granici.`
 
 // adminHelpText is shared by the welcome message after linking and /pomoc,

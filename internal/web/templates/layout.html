@@ -38,12 +38,14 @@
   </header>
   {{end}}
   <main class="container">
+    {{if .TermsPending}}<div class="notice notice-warn" role="status">Vlasnik naloga još nije prihvatio važeće <a href="/uslovi">uslove korišćenja</a> i <a href="/obrada-podataka">ugovor o obradi podataka</a>.</div>{{end}}
     {{if .Flash}}<div class="flash flash-ok">{{.Flash}}</div>{{end}}
     {{if .FlashErr}}<div class="flash flash-err">{{.FlashErr}}</div>{{end}}
     {{template "content" .}}
   </main>
   <footer class="app-footer">
-    Evidencija služi za internu kontrolu. Zvanično stanje vodi EES sistem na granici.
+    <p class="disclaimer">{{(legal).Disclaimer}}</p>
+    <nav aria-label="Pravne informacije"><a href="/privatnost">Privatnost</a> · <a href="/uslovi">Uslovi korišćenja</a> · <a href="/obrada-podataka">Obrada podataka</a></nav>
   </footer>
 </body>
 </html>

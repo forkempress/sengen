@@ -15,6 +15,7 @@ import (
 	"shengen/internal/auth"
 	"shengen/internal/clock"
 	"shengen/internal/db"
+	"shengen/internal/legal"
 	"shengen/internal/store"
 	"shengen/internal/telegram"
 )
@@ -63,7 +64,13 @@ func (a *testApp) addFirm(name, slug, email, driverName string, daysAgo int) fir
 	if err != nil {
 		a.t.Fatal(err)
 	}
-	if _, err := a.st.CreateUser(ctx, tn.ID, email, hash, "owner", "Vlasnik "+name); err != nil {
+	owner, err := a.st.CreateUser(ctx, tn.ID, email, hash, "owner", "Vlasnik "+name)
+	if err != nil {
+		a.t.Fatal(err)
+	}
+	// The firm has accepted the current terms; tests of the acceptance step
+	// reset this themselves.
+	if err := a.st.AcceptTerms(ctx, tn.ID, owner.ID, legal.TermsVersion); err != nil {
 		a.t.Fatal(err)
 	}
 	d, err := a.st.CreateDriver(ctx, tn.ID, driverName, "")
@@ -479,5 +486,26 @@ func TestIsolation_Plans(t *testing.T) {
 		if strings.Contains(body, "Boris Drugi") || strings.Contains(body, "Tajna tura B") {
 			t.Errorf("GET %s as firm A shows firm B's driver or plan", path)
 		}
+	}
+}
+
+// Export and permanent deletion: firm A cannot reach firm B's driver.
+func TestIsolation_DriverExportAndDelete(t *testing.T) {
+	app, a, b := twoFirmApp(t)
+	sa := app.mustLogin(a)
+	before := app.stayCount(b.tenant.ID, b.driver.ID)
+
+	w := sa.get("/vozaci/" + id(b.driver.ID) + "/izvoz.csv")
+	if w.Code != http.StatusNotFound || strings.Contains(w.Body.String(), "Boris Drugi") {
+		t.Errorf("firm A exporting firm B's driver = %d, want 404 without his data", w.Code)
+	}
+	if w := sa.post("/vozaci/"+id(b.driver.ID)+"/obrisi-trajno", url.Values{"potvrda": {"Boris Drugi"}}); w.Code != http.StatusNotFound {
+		t.Errorf("firm A deleting firm B's driver = %d, want 404", w.Code)
+	}
+	if _, err := app.st.GetDriver(context.Background(), b.tenant.ID, b.driver.ID); err != nil {
+		t.Fatalf("firm B's driver is gone: %v", err)
+	}
+	if got := app.stayCount(b.tenant.ID, b.driver.ID); got != before {
+		t.Errorf("firm B's driver has %d stays, want %d", got, before)
 	}
 }

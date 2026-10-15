@@ -113,6 +113,11 @@ func newJobsFixture(t *testing.T) (*Runner, *store.Store, *store.Tenant, *store.
 	if err := st.SetDriverTelegramChatID(ctx, tn.ID, driver.ID, driverChat); err != nil {
 		t.Fatal(err)
 	}
+	// The driver has confirmed the privacy notice; the weekly reminder has
+	// its own test.
+	if err := st.SetDriverPrivacyAck(ctx, tn.ID, driver.ID); err != nil {
+		t.Fatal(err)
+	}
 	r := New(st, telegram.NewClient("TEST-TOKEN"))
 	r.lastCleanup = time.Now()
 	return r, st, tn, driver
@@ -268,5 +273,41 @@ func TestAlert_FailedSendIsRetriedOnTheNextTick(t *testing.T) {
 	r.tick(context.Background())
 	if got := fake.to(alertChat); len(got) != n {
 		t.Errorf("third tick sent again: %q", got)
+	}
+}
+
+// A linked driver who has not confirmed the privacy notice gets it again,
+// at most once a week, and never after confirming.
+func TestPrivacyNotice_WeeklyUntilConfirmed(t *testing.T) {
+	fake := newFakeTelegram(t)
+	r, st, tn, d := newJobsFixture(t)
+	ctx := context.Background()
+	if _, err := st.DB.ExecContext(ctx, `UPDATE drivers SET privacy_ack_at = NULL WHERE id = ?`, d.ID); err != nil {
+		t.Fatal(err)
+	}
+	notices := func() int {
+		n := 0
+		for _, m := range fake.to(driverChat) {
+			if strings.Contains(m, "Tvoji podaci") {
+				n++
+			}
+		}
+		return n
+	}
+
+	r.tick(ctx)
+	r.tick(ctx)
+	if n := notices(); n != 1 {
+		t.Fatalf("notices after two ticks = %d, want 1", n)
+	}
+	if err := st.SetDriverPrivacyAck(ctx, tn.ID, d.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.DB.ExecContext(ctx, `DELETE FROM telegram_alert_log WHERE alert_type = 'privacy_notice'`); err != nil {
+		t.Fatal(err)
+	}
+	r.tick(ctx)
+	if n := notices(); n != 1 {
+		t.Errorf("notice sent again after the driver confirmed (%d)", n)
 	}
 }

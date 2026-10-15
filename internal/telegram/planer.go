@@ -10,6 +10,7 @@ import (
 
 	"shengen/internal/calc"
 	"shengen/internal/clock"
+	"shengen/internal/legal"
 	"shengen/internal/status"
 	"shengen/internal/store"
 )
@@ -100,7 +101,7 @@ func (b *Bot) cmdPlaner(ctx context.Context, client *Client, t *store.Tenant, ch
 		client.SendMessage(ctx, chatID, formatPlans(driver.Name, status.EvaluatePlans(stays, plans, today), today), nil)
 		return
 	}
-	client.SendMessage(ctx, chatID, formatTripCheck(driver.Name, stays, plans, today, from, to), nil)
+	client.SendMessage(ctx, chatID, formatTripCheck(driver.Name, stays, plans, today, from, to)+"\n\n"+legal.DisclaimerBot, nil)
 }
 
 func formatTripCheck(name string, stays []store.Stay, plans []store.PlannedStay, today, from, to time.Time) string {

@@ -24,6 +24,7 @@
     <p class="muted">
       Iskorišćeno <span class="num">{{.UsedDays}}/90</span> u poslednjih 180 dana{{if .NextFreeUp}} · sledeće oslobađanje <span class="num">{{fmtDate .NextFreeUp.Date}} (+{{.NextFreeUp.DaysFreed}})</span>{{end}}
     </p>
+    {{template "disclaimer"}}
   </div>
 </section>
 {{end}}
@@ -189,6 +190,25 @@
 </form>
 {{if .Trip.Submitted}}{{template "tripResult" .Trip}}{{end}}
 </details>
+
+{{if eq .User.Role "owner"}}
+<details class="plan-block" id="podaci-vozaca">
+<summary><h2>Podaci vozača</h2> <span class="muted">izvoz i trajno brisanje</span></summary>
+<p>Firma je rukovalac podacima vozača. Na zahtev vozača možete mu dati kopiju svega što se o njemu čuva ili sve trajno obrisati.</p>
+<p><a href="/vozaci/{{.Driver.ID}}/izvoz.csv" class="btn">Izvezi podatke (CSV)</a></p>
+<section class="panel danger-zone">
+  <h3>Trajno brisanje</h3>
+  <p>Briše vozača, sve njegove boravke, planove, vezu sa Telegramom i istoriju upozorenja. <strong>Ne može se poništiti.</strong> Ako podatke morate da čuvate (npr. zbog evidencije rada), umesto brisanja vozača samo deaktivirajte na stranici <a href="/podesavanja/vozaci">Vozači</a>.</p>
+  <form method="post" action="/vozaci/{{.Driver.ID}}/obrisi-trajno" data-confirm="Trajno obrisati vozača {{.Driver.Name}} i sve njegove podatke? Ovo se ne može poništiti.">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="form-grid">
+      <div><label for="delete-confirm">Za potvrdu upišite ime: {{.Driver.Name}}</label><input id="delete-confirm" type="text" name="potvrda" autocomplete="off" required></div>
+    </div>
+    <button type="submit" class="btn btn-quiet-danger">Trajno obriši vozača</button>
+  </form>
+</section>
+</details>
+{{end}}
 {{end}}
 
 {{define "monthCard"}}

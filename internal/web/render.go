@@ -18,6 +18,9 @@ type baseData struct {
 	Active    string
 	Flash     string
 	FlashErr  string
+	// TermsPending: the firm has not accepted the current terms yet (shown
+	// to dispatchers, who cannot accept them).
+	TermsPending bool
 }
 
 // base also takes the session's waiting flash message, so the page being
@@ -25,7 +28,7 @@ type baseData struct {
 func (s *Server) base(r *http.Request, active string) baseData {
 	u, _ := auth.UserFromContext(r.Context())
 	sess, _ := auth.SessionFromContext(r.Context())
-	d := baseData{User: u, Active: active}
+	d := baseData{User: u, Active: active, TermsPending: termsPending(r.Context())}
 	if sess != nil {
 		d.CSRFToken = sess.CSRFSecret
 		ok, errMsg, err := s.Store.TakeSessionFlash(r.Context(), sess.Token)

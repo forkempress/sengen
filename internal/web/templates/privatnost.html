@@ -1,0 +1,70 @@
+{{define "content"}}{{$L := legal}}
+<article class="legal">
+<h1>Politika privatnosti</h1>
+<p class="muted">Poslednja izmena: {{$L.LastUpdated}}</p>
+
+<h2 id="ko-smo">1. Ko smo</h2>
+<p>Uslugu Dani90 (dani90.rs i app.dani90.rs) pruža {{$L.ProviderName}}, {{$L.ProviderForm}}, {{$L.ProviderAddress}}, {{$L.ProviderIDs}} (u daljem tekstu: „Dani90“, „mi“). Kontakt za pitanja o podacima: <strong>{{$L.PrivacyEmail}}</strong>.</p>
+<p>Na obradu se primenjuje Zakon o zaštiti podataka o ličnosti Republike Srbije (ZZPL). Podaci se čuvaju na serveru u Nemačkoj, pa se, gde je to primenljivo, poštuju i pravila Opšte uredbe EU o zaštiti podataka (GDPR).</p>
+
+<h2 id="uloge">2. Dve uloge: rukovalac i obrađivač</h2>
+<ul>
+  <li><strong>Podaci o vozačima</strong> (ime, vozilo, datumi boravka u Šengenu, Telegram nalog): rukovalac je <strong>firma</strong> koja koristi Dani90 i koja je vozača unela. Mi te podatke obrađujemo samo po njenom nalogu, na osnovu <a href="/obrada-podataka">ugovora o obradi podataka</a>. Zahteve u vezi sa ovim podacima vozač upućuje firmi; mi joj pomažemo da ih ispuni.</li>
+  <li><strong>Podaci o firmama i njihovim nalozima</strong> (email i ime korisnika, podaci za naplatu) i podaci sa sajta dani90.rs: rukovalac smo <strong>mi</strong>.</li>
+</ul>
+
+<h2 id="podaci">3. Koje podatke obrađujemo</h2>
+<h3>3.1. Za firmu (obrađivač)</h3>
+<div class="table-wrap"><table class="stack">
+<thead><tr><th>Podaci</th><th>Svrha</th><th>Ko vidi</th><th>Rok čuvanja</th></tr></thead>
+<tbody>
+<tr><td data-label="Podaci">Ime i prezime vozača, oznaka vozila</td><td data-label="Svrha">evidencija dana u Šengenu</td><td data-label="Ko vidi">vlasnik i dispečeri firme</td><td data-label="Rok čuvanja">dok ih firma ne obriše ili do prestanka korišćenja usluge</td></tr>
+<tr><td data-label="Podaci">Datumi ulaska i izlaska iz Šengena, vrsta (posao/privatno), izvor unosa, napomena</td><td data-label="Svrha">proračun pravila 90/180, upozorenja</td><td data-label="Ko vidi">vlasnik i dispečeri firme; vozač svoje podatke u botu</td><td data-label="Rok čuvanja">isto</td></tr>
+<tr><td data-label="Podaci">Planirane ture (datumi, napomena)</td><td data-label="Svrha">planiranje</td><td data-label="Ko vidi">vlasnik i dispečeri firme</td><td data-label="Rok čuvanja">isto</td></tr>
+<tr><td data-label="Podaci">Telegram ID vozača, vreme potvrde obaveštenja</td><td data-label="Svrha">dugmad u botu i poruke vozaču</td><td data-label="Ko vidi">sistem; firma vidi samo da li je vozač povezan</td><td data-label="Rok čuvanja">dok je vozač povezan; briše se kad vozač prekine vezu ili ga firma deaktivira ili obriše</td></tr>
+<tr><td data-label="Podaci">Evidencija poslatih upozorenja (vozač, vrsta, datum)</td><td data-label="Svrha">da se isto upozorenje ne šalje dvaput</td><td data-label="Ko vidi">samo sistem</td><td data-label="Rok čuvanja">do brisanja vozača ili firme</td></tr>
+</tbody></table></div>
+<p>Pravni osnov za obradu podataka vozača određuje firma kao rukovalac. <strong>Lokaciju ne obrađujemo.</strong> Ako se u budućnosti uvede opcija slanja lokacije, ona će biti dobrovoljna i vozač će pre uključivanja dobiti posebno obaveštenje.</p>
+
+<h3>3.2. Kao rukovalac</h3>
+<div class="table-wrap"><table class="stack">
+<thead><tr><th>Podaci</th><th>Svrha</th><th>Pravni osnov</th><th>Rok čuvanja</th></tr></thead>
+<tbody>
+<tr><td data-label="Podaci">Ime, email, uloga korisnika, lozinka (samo kao bcrypt heš), Telegram ID ako ga korisnik poveže</td><td data-label="Svrha">nalog, prijava, upozorenja</td><td data-label="Pravni osnov">izvršenje ugovora sa firmom</td><td data-label="Rok čuvanja">dok traje nalog firme; deaktiviran korisnik ostaje zapisan zbog evidencije izmena</td></tr>
+<tr><td data-label="Podaci">Naziv firme, probni period, način naplate, prihvatanje uslova (verzija, datum, korisnik)</td><td data-label="Svrha">pružanje i naplata usluge</td><td data-label="Pravni osnov">izvršenje ugovora; zakonske obaveze za račune</td><td data-label="Rok čuvanja">dok traje ugovor; računi koliko propisi nalažu</td></tr>
+<tr><td data-label="Podaci">Sesija prijave</td><td data-label="Svrha">da ostanete prijavljeni</td><td data-label="Pravni osnov">neophodno za uslugu</td><td data-label="Rok čuvanja">najviše 14 dana, ili 24 sata bez aktivnosti; istekle sesije briše dnevno čišćenje</td></tr>
+<tr><td data-label="Podaci">Linkovi za povezivanje sa botom</td><td data-label="Svrha">povezivanje Telegram naloga</td><td data-label="Pravni osnov">izvršenje ugovora</td><td data-label="Rok čuvanja">važe 48 sati; dnevno čišćenje briše istekle</td></tr>
+<tr><td data-label="Podaci">Evidencija izmena (ko je, kada i šta promenio)</td><td data-label="Svrha">bezbednost, ispravka grešaka</td><td data-label="Pravni osnov">legitimni interes</td><td data-label="Rok čuvanja">dok traje nalog firme; pri brisanju vozača brišu se kopije njegovih datuma</td></tr>
+<tr><td data-label="Podaci">Tehnički zapisi servera (vreme, greška, ID naloga ili Telegram čata)</td><td data-label="Svrha">rad i bezbednost sistema</td><td data-label="Pravni osnov">legitimni interes</td><td data-label="Rok čuvanja">[POPUNITI: rok čuvanja logova]</td></tr>
+<tr><td data-label="Podaci">Rezervne kopije baze</td><td data-label="Svrha">oporavak posle kvara</td><td data-label="Pravni osnov">legitimni interes</td><td data-label="Rok čuvanja">[POPUNITI: rok čuvanja backupa]; obrisani podaci nestaju iz kopija kad kopije isteknu</td></tr>
+<tr><td data-label="Podaci">Upit sa sajta dani90.rs (ime, firma, telefon, email, poruka)</td><td data-label="Svrha">odgovor na zahtev za demo</td><td data-label="Pravni osnov">radnje na vaš zahtev pre zaključenja ugovora</td><td data-label="Rok čuvanja">[POPUNITI: rok čuvanja upita]</td></tr>
+</tbody></table></div>
+<p>Ne prodajemo podatke i ne koristimo ih za reklame.</p>
+
+<h2 id="kolacici">4. Kolačići</h2>
+<p>Aplikacija koristi samo jedan kolačić, za sesiju prijave; on je neophodan da biste ostali prijavljeni. Zaštita formi (CSRF) ne koristi poseban kolačić. Nema kolačića za praćenje ni analitiku, pa zato nema ni banera za kolačiće. Sajt dani90.rs ne postavlja kolačiće; kalkulator na sajtu čuva unete datume samo u vašem pregledaču (localStorage) i ne šalje ih nama. [POPUNITI: potvrditi da Cloudflare Web Analytics nije uključen za dani90.rs.]</p>
+
+<h2 id="primaoci">5. Podobrađivači i prenos podataka</h2>
+<div class="table-wrap"><table class="stack">
+<thead><tr><th>Ko</th><th>Zašto</th><th>Gde</th></tr></thead>
+<tbody>
+<tr><td data-label="Ko">Netcup GmbH</td><td data-label="Zašto">server na kome rade aplikacija i baza</td><td data-label="Gde">Nemačka (EU)</td></tr>
+<tr><td data-label="Ko">Cloudflare</td><td data-label="Zašto">DNS, šifrovani tunel do servera, rezervne kopije (R2), hosting sajta dani90.rs</td><td data-label="Gde">SAD i globalna mreža; region R2 kopija: [POPUNITI]</td></tr>
+<tr><td data-label="Ko">Telegram FZ-LLC</td><td data-label="Zašto">poruke bota vozačima i dispečerima</td><td data-label="Gde">Ujedinjeni Arapski Emirati (van EU)</td></tr>
+<tr><td data-label="Ko">Web3Forms</td><td data-label="Zašto">prosleđuje upit sa forme na sajtu na naš email</td><td data-label="Gde">[POPUNITI: sedište i lokacija obrade]</td></tr>
+<tr><td data-label="Ko">[POPUNITI: email provajder]</td><td data-label="Zašto">dopisivanje</td><td data-label="Gde">[POPUNITI]</td></tr>
+</tbody></table></div>
+<p>Telegram i Cloudflare obrađuju podatke i van Srbije i EU. Poruke bota (ime vozača, datumi, broj dana) prolaze kroz Telegram. Bot nije obavezan: firma može da vodi evidenciju i samo preko web aplikacije. [POPUNITI: pravni osnov prenosa u treće zemlje po čl. 63–65 ZZPL za Telegram i Cloudflare.]</p>
+
+<h2 id="prava">6. Vaša prava</h2>
+<p>Imate pravo na pristup podacima, ispravku, brisanje, ograničenje obrade, prenosivost i prigovor, pod uslovima iz ZZPL. Za podatke vozača zahtev se upućuje firmi (rukovaocu); vozač u Telegram botu može komandom <code>/moji_podaci</code> da vidi šta se o njemu čuva, a komandom <code>/obrisi_me</code> da prekine vezu sa botom i obavesti firmu. Za ostale podatke pišite nam na {{$L.PrivacyEmail}}; odgovaramo bez odlaganja, a najkasnije u roku od 30 dana.</p>
+<p>Imate pravo da podnesete pritužbu <strong>Povereniku za informacije od javnog značaja i zaštitu podataka o ličnosti</strong> (Bulevar kralja Aleksandra 15, Beograd, <a href="https://www.poverenik.rs" rel="noopener">www.poverenik.rs</a>).</p>
+
+<h2 id="bezbednost">7. Bezbednost</h2>
+<p>Veza je šifrovana (HTTPS), lozinke se čuvaju samo kao bcrypt heš, tokeni sesija i linkova samo kao heš, a podaci svake firme su odvojeni i dostupni samo njenim korisnicima. O povredi podataka bez odlaganja obaveštavamo firmu i, kada zakon to traži, Poverenika.</p>
+
+<h2 id="izmene">8. Izmene</h2>
+<p>Datum poslednje izmene je na vrhu stranice. O bitnim izmenama obaveštavamo vlasnike naloga u aplikaciji.</p>
+<p class="muted">Vidi i: <a href="/uslovi">Uslovi korišćenja</a> · <a href="/obrada-podataka">Ugovor o obradi podataka</a></p>
+</article>
+{{end}}
