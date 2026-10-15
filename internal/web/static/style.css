@@ -724,3 +724,18 @@ table.sample-table td { font-family: var(--font-mono); font-size: 0.875rem; }
 .driver-cards .crossing-form { margin-top: 0.35rem; padding: 0 0.2rem; }
 .driver-cards .crossing-form input[type=date] { flex: 1; min-height: 44px; font-size: 1rem; }
 .driver-cards .crossing-form .btn { min-height: 44px; }
+
+/* Planer: raspored dostupnosti (vozači × polazni dani). */
+.schedule-table th, .schedule-table td { text-align: center; white-space: nowrap; }
+.schedule-table .sched-name, .schedule-table th:first-child { text-align: left; }
+.schedule-table .sched-name a { display: inline; font-weight: 400; color: var(--accent); }
+.schedule-table td a { display: block; font-weight: 600; text-decoration: none; color: inherit; padding: 0.15rem 0; }
+.schedule-table td a:hover { text-decoration: underline; }
+.schedule-table sup { font-size: 0.7em; }
+.sched-ok { background: var(--status-green-bg); color: var(--status-green); }
+.sched-paznja { background: var(--status-orange-bg); color: var(--status-orange); }
+.sched-kriticno { background: var(--status-red-bg); color: var(--status-red); }
+.sched-preko { background: var(--status-urgent); color: #fff; }
+.sched-busy { background: var(--page-bg); font-size: 0.85rem; }
+/* the driver's name stays in view while the weeks scroll sideways */
+.schedule-table .sched-name, .schedule-table thead th:first-child { position: sticky; left: 0; z-index: 1; background: var(--card-bg); }

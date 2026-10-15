@@ -16,6 +16,7 @@
     <div><label for="pl-driver">Vozač</label>
       <select id="pl-driver" name="vozac" required>
         <option value="">— izaberite —</option>
+        <option value="svi"{{if .AllDrivers}} selected{{end}}>Svi vozači — ko može?</option>
         {{$sel := .DriverID}}
         {{range .Drivers}}<option value="{{.ID}}"{{if eq .ID $sel}} selected{{end}}>{{.Name}}{{if .VehicleLabel}} ({{.VehicleLabel}}){{end}}</option>
         {{end}}
@@ -27,9 +28,37 @@
   <button type="submit" class="btn btn-primary">Proveri</button>
 </form>
 <div id="planer-rezultat" aria-live="polite">
-  {{if .Trip.Submitted}}{{template "tripResult" .Trip}}{{end}}
+  {{if .AllDrivers}}{{if .Trip.Err}}<div class="flash flash-err">{{.Trip.Err}}</div>{{else if .Fleet}}{{template "fleetResult" .}}{{end}}
+  {{else if .Trip.Submitted}}{{template "tripResult" .Trip}}{{end}}
   {{if .DriverID}}<p><a href="/vozaci/{{.DriverID}}#planovi">Kalendar i planovi vozača {{.Trip.DriverName}} →</a></p>{{end}}
 </div>
+</section>
+
+<section class="schedule" aria-labelledby="raspored-naslov">
+<h2 id="raspored-naslov">Raspored dostupnosti</h2>
+<p class="muted">Koliko najduže vozač sme da bude u Šengenu ako krene tog dana, računato sa boravcima i sačuvanim planovima. Kliknite broj da proverite tu turu.</p>
+<div class="table-wrap">
+<table class="schedule-table">
+  <thead>
+    <tr>
+      <th scope="col">Vozač</th>
+      {{range $i, $d := .ScheduleStarts}}<th scope="col" class="num">{{if eq $i 0}}danas{{else}}od {{fmtDayMonth $d}}{{end}}</th>{{end}}
+    </tr>
+  </thead>
+  <tbody>
+    {{range .Schedule}}{{$row := .}}
+    <tr>
+      <td class="sched-name"><a href="/vozaci/{{.DriverID}}#planovi">{{.DriverName}}</a></td>
+      {{range .Cells}}
+      {{if .Busy}}<td class="sched-busy"><span aria-hidden="true">🚚</span> <span class="muted">na turi</span></td>
+      {{else}}<td class="sched-{{.Level.Key}}"><a class="num" href="/planer?vozac={{$row.DriverID}}&amp;od={{fmtDateInput .Start}}&amp;do={{fmtDateInput (lastTripDay .Start .MaxLength)}}" aria-label="{{$row.DriverName}}, polazak {{fmtDate .Start}}: najviše {{.MaxLength}} {{dana .MaxLength}}{{if .UntilPlan}}, do sledećeg plana{{end}}">{{.MaxLength}}{{if .UntilPlan}}<sup aria-hidden="true">*</sup>{{end}}</a></td>{{end}}
+      {{end}}
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+</div>
+<p class="muted small">Broj = dana u Šengenu. <span aria-hidden="true">🚚</span> = već je u Šengenu po boravku ili planu. * = tura mora da se završi pre sledećeg sačuvanog plana. Boje su iste kao na Pregledu.</p>
 </section>
 
 <h2>Predstojeće ture</h2>
@@ -57,4 +86,31 @@
 <p class="muted">Nema sačuvanih planova. Proverite turu iznad i sačuvajte je kao plan.</p>
 {{end}}
 {{end}}
+{{end}}
+
+{{/* „Ko može?“: brza provera za sve vozače. Takes plannerData. */}}
+{{define "fleetResult"}}
+{{with (index .Fleet 0).View.Check}}<p><strong>Tura <span class="num">{{fmtDate .From}} – {{fmtDate .To}}</span> ({{.Length}} {{dana .Length}})</strong></p>{{end}}
+<div class="table-wrap">
+<table class="stack">
+  <thead><tr><th>Vozač</th><th>Odgovor</th><th>Ostaje posle ture</th><th>Najduže sa tim polaskom</th><th></th></tr></thead>
+  <tbody>
+  {{range .Fleet}}{{$v := .View}}
+    <tr{{if not (and $v.Check (not $v.Away) $v.Check.OK)}} class="row-warn"{{end}}>
+      <td data-label="Vozač"><a href="/vozaci/{{.DriverID}}#planovi">{{.DriverName}}</a></td>
+      {{if $v.Away}}
+      <td data-label="Odgovor">Ne — sada je u Šengenu</td><td data-label="Ostaje posle ture">—</td>
+      <td data-label="Najduže sa tim polaskom">{{with $v.Check}}{{if .MaxContinuousUntil}}u ovom boravku sme do {{fmtDate (deref .MaxContinuousUntil)}}{{end}}{{end}}</td>
+      {{else}}{{with $v.Check}}
+      <td data-label="Odgovor">{{if .OK}}<strong>Može</strong>{{else}}Ne — prelazi limit {{fmtDate .FirstOverstay}}{{if not .EarliestStart.IsZero}}; najranije {{fmtDate .EarliestStart}}{{end}}{{end}}{{range $v.Notes}}<br><span class="muted"><span aria-hidden="true">⚠️</span> {{.}}</span>{{end}}</td>
+      <td class="num" data-label="Ostaje posle ture">{{if .OK}}{{.RemainingAfter}} {{dana .RemainingAfter}}{{else}}—{{end}}</td>
+      <td class="num" data-label="Najduže sa tim polaskom">{{if .MaxLength}}{{.MaxLength}} {{dana .MaxLength}}{{else}}nema slobodnih dana{{end}}</td>
+      {{end}}{{end}}
+      <td><a href="/planer?vozac={{.DriverID}}&amp;od={{$v.From}}&amp;do={{$v.To}}">Detalji</a></td>
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+</div>
+{{template "disclaimer"}}
 {{end}}

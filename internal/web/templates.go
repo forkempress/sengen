@@ -39,6 +39,14 @@ var funcMap = template.FuncMap{
 		}
 		return t.Format("2006-01-02")
 	},
+	"fmtDayMonth": func(t time.Time) string { return t.Format("02.01.") },
+	// lastTripDay is the last day of a trip of n days starting on start.
+	"lastTripDay": func(start time.Time, n int) time.Time {
+		if n < 1 {
+			return start
+		}
+		return start.AddDate(0, 0, n-1)
+	},
 	"fmtDatePtr": func(t *time.Time) string {
 		if t == nil {
 			return "otvoreno"

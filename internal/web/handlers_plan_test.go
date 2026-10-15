@@ -203,3 +203,43 @@ func TestPlanner_QuickCheckAndUpcoming(t *testing.T) {
 		t.Error("quick check ignores the saved plan")
 	}
 }
+
+func TestPlanner_ScheduleAndWhoCan(t *testing.T) {
+	app := newTestApp(t)
+	f := app.addFirm("Prevoz A", "prevoz-a", "a@prevoz.rs", "Marko Test", 40)
+	ctx := context.Background()
+	other, err := app.st.CreateDriver(ctx, f.tenant.ID, "Jovan Drugi", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Jovan is in Schengen now, so he cannot start a trip today.
+	if _, err := app.st.CreateStay(ctx, f.tenant.ID, other.ID, clock.Today().AddDate(0, 0, -2), nil, "work", "manual", "", nil); err != nil {
+		t.Fatal(err)
+	}
+	s := app.mustLogin(f)
+
+	body := s.get("/planer").Body.String()
+	if !strings.Contains(body, "Raspored dostupnosti") || !strings.Contains(body, "sched-busy") || !strings.Contains(body, "sched-ok") {
+		t.Fatal("schedule missing, or without a busy and a free cell")
+	}
+	if !strings.Contains(body, "/planer?vozac="+id(f.driver.ID)+"&amp;od="+planDay(0)) {
+		t.Error("today's free cell does not link to the quick check")
+	}
+
+	body = s.get("/planer?vozac=svi&od=" + planDay(0) + "&do=" + planDay(9)).Body.String()
+	marko, jovan := strings.Index(body, ">Marko Test<"), strings.Index(body, ">Jovan Drugi<")
+	if marko < 0 || jovan < 0 || !strings.Contains(body, "<strong>Može</strong>") || !strings.Contains(body, "sada je u Šengenu") {
+		t.Fatal("fleet check does not answer for both drivers")
+	}
+	// The driver list and the schedule name drivers too; compare within the
+	// fleet table only.
+	fleet := body[strings.Index(body, `id="planer-rezultat"`):strings.Index(body, "Raspored dostupnosti")]
+	if strings.Index(fleet, ">Marko Test<") > strings.Index(fleet, ">Jovan Drugi<") {
+		t.Error("driver who can go is not listed before the one who is away")
+	}
+
+	body = s.get("/planer?vozac=svi&od=" + planDay(-3) + "&do=" + planDay(2)).Body.String()
+	if strings.Count(body, "Polazak ne može biti u prošlosti.") != 1 {
+		t.Error("a date error for the whole fleet is not said exactly once")
+	}
+}

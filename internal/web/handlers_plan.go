@@ -123,7 +123,35 @@ type plannerData struct {
 	DriverID int64
 	Trip     tripCheckView
 	Upcoming []plannerRow
+
+	// AllDrivers: the quick check was asked for every driver at once
+	// ("ko može?"); Fleet holds one answer per driver, those who can first.
+	AllDrivers bool
+	Fleet      []fleetRow
+
+	// The schedule: one row per driver, one column per start day.
+	ScheduleStarts []time.Time
+	Schedule       []scheduleRow
 }
+
+// fleetRow is one driver's answer to the quick check for the whole fleet.
+type fleetRow struct {
+	DriverID   int64
+	DriverName string
+	View       tripCheckView
+}
+
+type scheduleRow struct {
+	DriverID   int64
+	DriverName string
+	Cells      []status.AvailCell
+}
+
+// scheduleWeeks is how far the schedule looks ahead, past today's column.
+const scheduleWeeks = 8
+
+// allDriversValue picks every driver in the quick check's driver list.
+const allDriversValue = "svi"
 
 func (s *Server) handlePlanner(w http.ResponseWriter, r *http.Request) {
 	t, _ := tenant.FromContext(r.Context())
@@ -155,7 +183,17 @@ func (s *Server) handlePlanner(w http.ResponseWriter, r *http.Request) {
 	}
 
 	from, to := tripQuery(r)
-	if id, err := strconv.ParseInt(r.URL.Query().Get("vozac"), 10, 64); err == nil {
+	if r.URL.Query().Get("vozac") == allDriversValue {
+		data.AllDrivers = true
+		data.Trip.From, data.Trip.To = from, to
+		if from != "" || to != "" {
+			data.Fleet = fleetCheck(drivers, staysBy, plansBy, today, from, to)
+			if len(data.Fleet) > 0 && data.Fleet[0].View.Err != "" {
+				// The same date error for everyone: say it once.
+				data.Trip.Err, data.Fleet = data.Fleet[0].View.Err, nil
+			}
+		}
+	} else if id, err := strconv.ParseInt(r.URL.Query().Get("vozac"), 10, 64); err == nil {
 		// Only the firm's own active drivers can be picked; any other id is
 		// treated as no choice at all.
 		for _, d := range drivers {
@@ -168,7 +206,7 @@ func (s *Server) handlePlanner(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	if data.DriverID == 0 {
+	if data.DriverID == 0 && !data.AllDrivers {
 		data.Trip.From, data.Trip.To = from, to
 		if from != "" || to != "" {
 			data.Trip.Err = "Izaberite vozača."
@@ -184,6 +222,16 @@ func (s *Server) handlePlanner(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	sort.SliceStable(data.Upcoming, func(i, j int) bool { return data.Upcoming[i].View.From.Before(data.Upcoming[j].View.From) })
+
+	settings, _ := t.ParsedSettings()
+	thresholds := status.ThresholdsFor(settings)
+	data.ScheduleStarts = status.ScheduleStarts(today, scheduleWeeks)
+	for _, d := range drivers {
+		data.Schedule = append(data.Schedule, scheduleRow{
+			DriverID: d.ID, DriverName: d.Name,
+			Cells: status.Availability(staysBy[d.ID], plansBy[d.ID], today, data.ScheduleStarts, thresholds),
+		})
+	}
 	s.render(w, "planer.html", data)
 }
 
@@ -387,4 +435,46 @@ func (s *Server) auditPlan(r *http.Request, tenantID, actorID, planID int64, act
 	if err := s.Store.RecordAudit(r.Context(), tenantID, "user", &actorID, "planned_stay", planID, action, asJSON(before), asJSON(after)); err != nil {
 		log.Printf("audit planned_stay %d %s: %v", planID, action, err)
 	}
+}
+
+// fleetCheck runs the quick check for every driver: first those who can
+// make the trip (most days left after it first), then those who could start
+// later (earliest first), then those still away.
+func fleetCheck(drivers []store.Driver, staysBy map[int64][]store.Stay, plansBy map[int64][]store.PlannedStay, today time.Time, from, to string) []fleetRow {
+	rows := make([]fleetRow, 0, len(drivers))
+	for _, d := range drivers {
+		v := checkTrip(staysBy[d.ID], plansBy[d.ID], today, from, to)
+		v.DriverID, v.DriverName = d.ID, d.Name
+		rows = append(rows, fleetRow{DriverID: d.ID, DriverName: d.Name, View: v})
+	}
+	rank := func(v tripCheckView) int {
+		switch {
+		case v.Check == nil:
+			return 3
+		case v.Away:
+			return 2
+		case v.Check.OK:
+			return 0
+		default:
+			return 1
+		}
+	}
+	sort.SliceStable(rows, func(i, j int) bool {
+		a, b := rows[i].View, rows[j].View
+		if ra, rb := rank(a), rank(b); ra != rb {
+			return ra < rb
+		}
+		switch rank(a) {
+		case 0:
+			return a.Check.RemainingAfter > b.Check.RemainingAfter
+		case 1:
+			ea, eb := a.Check.EarliestStart, b.Check.EarliestStart
+			if ea.IsZero() != eb.IsZero() {
+				return eb.IsZero()
+			}
+			return ea.Before(eb)
+		}
+		return false
+	})
+	return rows
 }
