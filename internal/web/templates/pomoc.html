@@ -79,13 +79,15 @@
 
 <section class="help-section" id="uvoz">
   <h2>Uvoz istorije</h2>
-  <p>Da bi brojanje bilo tačno od prvog dana, unesite boravke iz poslednjih 180 dana. Najbrže je preko CSV fajla:</p>
+  <p>Da bi brojanje bilo tačno od prvog dana, unesite boravke iz poslednjih 180 dana.</p>
+  {{if .DocImport}}<p><strong>Najbrže je slikom evidencije.</strong> Na stranici <a href="/import#sken">Uvoz istorije</a> slikajte svesku telefonom ili učitajte PDF, tabelu ili izveštaj. Claude (Anthropic) pročita vozače i datume, vozače koji još ne postoje dodaje sam, a vi pre uvoza pregledate redove i isključite pogrešno pročitano ime. Sa stranice vozača isto radi za jednog vozača: svi redovi idu na njega.</p>
+  <p>Ili preko CSV fajla:</p>{{else}}<p>Najbrže je preko CSV fajla:</p>{{end}}
   <pre class="help-pre">vozac,ulaz,izlaz,tip
 Marko Marković,22.04.2026,29.04.2026,posao
 Marko Marković,08.07.2026,14.07.2026,privatno</pre>
   <ul>
     <li>Datumi su u formatu dd.mm.gggg. Prazan izlazak znači da je vozač još u Šengenu.</li>
-    <li>Vozači moraju već postojati u <a href="/podesavanja/vozaci">Vozači</a>.</li>
+    <li>U CSV fajlu vozači moraju već postojati u <a href="/podesavanja/vozaci">Vozači</a>.</li>
     <li>Prvo dobijete pregled sa greškama po redu. <strong>Ništa se ne upisuje dok ne potvrdite</strong>, a ako i jedan red ne može da se upiše, ne upisuje se nijedan.</li>
   </ul>
 </section>

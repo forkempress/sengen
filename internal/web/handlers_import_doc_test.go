@@ -92,7 +92,7 @@ func TestImportDocument_PreviewWithoutWriting(t *testing.T) {
 		t.Fatalf("status %d", w.Code)
 	}
 	body := w.Body.String()
-	for _, want := range []string{"Pregled (2 redova, 1 ispravnih)", "proverite", "nepoznat vozač", "Potvrdi uvoz (1 boravaka)"} {
+	for _, want := range []string{"Pregled (2 redova, 2 ispravnih)", "proverite", "novi vozač", `name="add_driver" value="Nepoznati Vozač" checked`, "Potvrdi uvoz (2 boravaka)"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("preview is missing %q", want)
 		}
@@ -229,4 +229,97 @@ func TestImportDocument_FailedCallIsRecorded(t *testing.T) {
 	if len(reads) != 1 || reads[0].Status != store.DocImportError {
 		t.Errorf("recorded %+v, want one error", reads)
 	}
+}
+
+func TestImportDocument_ConfirmCreatesCheckedNewDrivers(t *testing.T) {
+	entry := clock.Today().AddDate(0, 0, -20)
+	exit := clock.Today().AddDate(0, 0, -15)
+	app, a, _ := docApp(t, &fakeReader{res: docread.Result{Stays: []docread.Stay{
+		{Driver: "Novi Jedan", Entry: entry.Format("02.01.2006"), Exit: exit.Format("02.01.2006"), Type: "posao"},
+		{Driver: "Novi Dva", Entry: entry.Format("02.01.2006"), Exit: exit.Format("02.01.2006"), Type: "posao"},
+	}}})
+	sa := app.mustLogin(a)
+	ctx := context.Background()
+	sa.uploadDocument(fakePDF)
+
+	row := func(name string) url.Values {
+		return url.Values{"row_driver_id": {"0"}, "row_new_driver": {name},
+			"row_entry": {entry.Format("2006-01-02")}, "row_exit": {exit.Format("2006-01-02")},
+			"row_type": {"work"}, "row_note": {""}}
+	}
+	form := row("Novi Jedan")
+	for k, v := range row("Novi Dva") {
+		form[k] = append(form[k], v...)
+	}
+	// Only the first new driver stays checked.
+	form["add_driver"] = []string{"Novi Jedan"}
+	w := sa.post("/import/potvrdi", form)
+	if msg := flashFrom(sa, w, "ok"); !strings.Contains(msg, "1 boravaka, 1 novih vozača") {
+		t.Errorf("flash %q", msg)
+	}
+
+	drivers, err := app.st.ListDrivers(ctx, a.tenant.ID, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var created *store.Driver
+	for i := range drivers {
+		switch drivers[i].Name {
+		case "Novi Jedan":
+			created = &drivers[i]
+		case "Novi Dva":
+			t.Error("unchecked new driver was created")
+		}
+	}
+	if created == nil {
+		t.Fatal("checked new driver was not created")
+	}
+	if n := app.stayCount(a.tenant.ID, created.ID); n != 1 {
+		t.Errorf("new driver has %d stays, want 1", n)
+	}
+}
+
+func TestImportDocument_FromDriverPagePutsEveryRowOnHim(t *testing.T) {
+	entry := clock.Today().AddDate(0, 0, -20).Format("02.01.2006")
+	exit := clock.Today().AddDate(0, 0, -15).Format("02.01.2006")
+	reader := &fakeReader{res: docread.Result{Stays: []docread.Stay{
+		{Driver: "A. Prva", Entry: entry, Exit: exit, Type: "posao"},
+	}}}
+	app, a, b := docApp(t, reader)
+	sa := app.mustLogin(a)
+
+	body := sa.uploadDocumentFor(fakePDF, a.driver.ID).Body.String()
+	if len(reader.names) != 1 || reader.names[0] != "Ana Prva" {
+		t.Errorf("model got names %v, want only the driver", reader.names)
+	}
+	for _, want := range []string{"Pregled (1 redova, 1 ispravnih)", `name="driver_id" value="` + id(a.driver.ID) + `"`, `name="row_driver_id" value="` + id(a.driver.ID) + `"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("preview missing %q", want)
+		}
+	}
+	if strings.Contains(body, "novi vozač") {
+		t.Error("row from the driver's page offered as a new driver")
+	}
+	// Another firm's driver id is not found.
+	if w := sa.uploadDocumentFor(fakePDF, b.driver.ID); w.Code != http.StatusNotFound {
+		t.Errorf("other firm's driver: status %d, want 404", w.Code)
+	}
+}
+
+// uploadDocumentFor posts a scan from a driver's page.
+func (s *session) uploadDocumentFor(content []byte, driverID int64) *httptest.ResponseRecorder {
+	s.app.t.Helper()
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+	mw.WriteField("csrf_token", s.csrfToken())
+	mw.WriteField("driver_id", id(driverID))
+	fw, _ := mw.CreateFormFile("file", "evidencija.pdf")
+	fw.Write(content)
+	mw.Close()
+	r := httptest.NewRequest(http.MethodPost, "/import/dokument", &body)
+	r.Header.Set("Content-Type", mw.FormDataContentType())
+	r.AddCookie(s.cookie)
+	w := httptest.NewRecorder()
+	s.app.handler.ServeHTTP(w, r)
+	return w
 }

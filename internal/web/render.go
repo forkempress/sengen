@@ -24,6 +24,9 @@ type baseData struct {
 	// FeedbackEmail is where signed-in users send remarks (MAIL_REPLY_TO);
 	// "" hides the link.
 	FeedbackEmail string
+	// DocImport: scanned histories can be read (a Claude API key is set),
+	// so pages offer "upload a scan" next to manual entry and CSV.
+	DocImport bool
 }
 
 // base also takes the session's waiting flash message, so the page being
@@ -36,6 +39,7 @@ func (s *Server) base(r *http.Request, active string) baseData {
 		// Only to signed-in users: a public page would hand the address
 		// to every scraper.
 		d.FeedbackEmail = s.FeedbackEmail
+		d.DocImport = s.DocReader != nil
 	}
 	if sess != nil {
 		d.CSRFToken = sess.CSRFSecret

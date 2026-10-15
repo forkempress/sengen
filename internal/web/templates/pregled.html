@@ -19,14 +19,18 @@
   <h2 id="setup-title">Još {{.Setup.Left}} {{if eq .Setup.Left 1}}korak{{else}}koraka{{end}} do prvog pregleda</h2>
   <ol class="checklist">
     <li class="done"><span class="check" aria-hidden="true">✓</span> Firma je registrovana</li>
-    <li{{if .Setup.HasDrivers}} class="done"{{end}}><span class="check" aria-hidden="true">{{if .Setup.HasDrivers}}✓{{else}}2{{end}}</span> Dodajte vozače{{if .Setup.HasDrivers}} <span class="sr-only">(urađeno)</span>{{else}} — ime i registracija su dovoljni{{end}}</li>
-    <li{{if .Setup.HasStays}} class="done"{{end}}><span class="check" aria-hidden="true">{{if .Setup.HasStays}}✓{{else}}3{{end}}</span> Unesite ulaske i izlaske iz poslednjih 180 dana — ručno na stranici vozača ili iz CSV fajla</li>
+    <li{{if .Setup.HasDrivers}} class="done"{{end}}><span class="check" aria-hidden="true">{{if .Setup.HasDrivers}}✓{{else}}2{{end}}</span> Dodajte vozače{{if .Setup.HasDrivers}} <span class="sr-only">(urađeno)</span>{{else if .DocImport}} — ili ih preskočite: slika evidencije dodaje i vozače{{else}} — ime i registracija su dovoljni{{end}}</li>
+    <li{{if .Setup.HasStays}} class="done"{{end}}><span class="check" aria-hidden="true">{{if .Setup.HasStays}}✓{{else}}3{{end}}</span> Unesite ulaske i izlaske iz poslednjih 180 dana — {{if .DocImport}}slikajte svesku ili učitajte PDF, unesite ručno ili iz CSV fajla{{else}}ručno na stranici vozača ili iz CSV fajla{{end}}</li>
     <li{{if .Setup.HasLinked}} class="done"{{end}}><span class="check" aria-hidden="true">{{if .Setup.HasLinked}}✓{{else}}4{{end}}</span> Povežite vozače sa Telegram botom, da sami javljaju granicu</li>
   </ol>
   <div class="actions-row">
-    {{if not .Setup.HasDrivers}}<a href="/podesavanja/vozaci#dodaj-vozaca" class="btn btn-primary">Dodaj vozača</a>
-    {{else}}<a href="/import" class="btn btn-primary">Uvezi CSV</a>{{end}}
-    {{if not .Setup.HasDrivers}}<a href="/import" class="btn">Uvezi CSV</a>{{end}}
+    {{if and .DocImport (not .Setup.HasStays)}}
+    <a href="/import#sken" class="btn btn-primary">Učitaj sliku ili PDF evidencije</a>
+    {{if not .Setup.HasDrivers}}<a href="/podesavanja/vozaci#dodaj-vozaca" class="btn">Dodaj vozača ručno</a>{{end}}
+    <a href="/import" class="btn">Uvezi CSV</a>
+    {{else if not .Setup.HasDrivers}}<a href="/podesavanja/vozaci#dodaj-vozaca" class="btn btn-primary">Dodaj vozača</a>
+    <a href="/import" class="btn">Uvezi CSV</a>
+    {{else}}<a href="/import" class="btn btn-primary">Uvezi istoriju</a>{{end}}
     <a href="/pomoc" class="btn">Kako se broji</a>
   </div>
 </section>

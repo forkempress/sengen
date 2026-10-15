@@ -22,11 +22,14 @@ type Row struct {
 	LineNum    int
 	DriverName string
 	DriverID   int64 // resolved against existing drivers; 0 if unknown
-	Entry      time.Time
-	Exit       *time.Time
-	Type       string // normalized "work" | "private"
-	Note       string
-	Errors     []string
+	// NewDriver: the name matches no driver and the caller allowed new
+	// ones (ParseAllowingNewDrivers); the driver is created on confirm.
+	NewDriver bool
+	Entry     time.Time
+	Exit      *time.Time
+	Type      string // normalized "work" | "private"
+	Note      string
+	Errors    []string
 }
 
 func (r Row) Valid() bool { return len(r.Errors) == 0 }
@@ -72,6 +75,10 @@ func normalizeType(s string) (string, bool) {
 // few hundred rows; the cap keeps a huge file from tying up the server.
 const MaxRows = 5000
 
+// MaxDriverNameLen matches store.MaxNameLen, so a new driver that previews
+// as valid can also be created.
+const MaxDriverNameLen = 100
+
 // MaxNoteLen matches store.MaxNoteLen, so a row that previews as valid is
 // also accepted when it is written.
 const MaxNoteLen = 500
@@ -87,12 +94,27 @@ const MaxNoteLen = 500
 // It never touches the database — callers insert the Valid() rows themselves,
 // typically inside a single transaction (see store.Store.WithTx).
 func Parse(r io.Reader, existing []ExistingDriver) ([]Row, error) {
+	return parse(r, existing, false)
+}
+
+// ParseAllowingNewDrivers is Parse for a scanned document: a name that
+// matches no driver is not an error but a NewDriver row, still checked for
+// overlaps with the other rows of the same new driver.
+func ParseAllowingNewDrivers(r io.Reader, existing []ExistingDriver) ([]Row, error) {
+	return parse(r, existing, true)
+}
+
+// NameKey is how driver names are compared: case and outer spaces ignored.
+func NameKey(name string) string { return strings.ToLower(strings.TrimSpace(name)) }
+
+func parse(r io.Reader, existing []ExistingDriver, allowNew bool) ([]Row, error) {
 	byName := make(map[string]*ExistingDriver, len(existing))
 	for i := range existing {
-		byName[strings.ToLower(strings.TrimSpace(existing[i].Name))] = &existing[i]
+		byName[NameKey(existing[i].Name)] = &existing[i]
 	}
-	// Running set of rows accepted so far per driver, for in-batch overlap checks.
-	batchByDriver := make(map[int64][]Row)
+	// Running set of rows accepted so far per driver (by name key), for
+	// in-batch overlap checks.
+	batchByDriver := make(map[string][]Row)
 
 	cr := csv.NewReader(r)
 	cr.FieldsPerRecord = -1
@@ -131,13 +153,18 @@ func Parse(r io.Reader, existing []ExistingDriver) ([]Row, error) {
 			}
 		}
 
-		driver, known := byName[strings.ToLower(row.DriverName)]
-		if row.DriverName == "" {
+		driver, known := byName[NameKey(row.DriverName)]
+		switch {
+		case row.DriverName == "":
 			row.Errors = append(row.Errors, "nedostaje ime vozača")
-		} else if !known {
-			row.Errors = append(row.Errors, fmt.Sprintf("nepoznat vozač %q — dodajte ga prvo u Podešavanjima", row.DriverName))
-		} else {
+		case known:
 			row.DriverID = driver.ID
+		case !allowNew:
+			row.Errors = append(row.Errors, fmt.Sprintf("nepoznat vozač %q — dodajte ga prvo u Podešavanjima", row.DriverName))
+		case utf8.RuneCountInString(row.DriverName) > MaxDriverNameLen:
+			row.Errors = append(row.Errors, fmt.Sprintf("ime vozača je duže od %d znakova", MaxDriverNameLen))
+		default:
+			row.NewDriver = true
 		}
 
 		entry, eerr := parseFlexDate(rec[1])
@@ -172,14 +199,17 @@ func Parse(r io.Reader, existing []ExistingDriver) ([]Row, error) {
 			row.Type = typ
 		}
 
-		if known && eerr == nil {
-			if msg := findOverlap(entry, row.Exit, driver.Stays); msg != "" {
-				row.Errors = append(row.Errors, "preklapa se sa postojećim boravkom "+msg)
+		if (known || row.NewDriver) && eerr == nil {
+			if known {
+				if msg := findOverlap(entry, row.Exit, driver.Stays); msg != "" {
+					row.Errors = append(row.Errors, "preklapa se sa postojećim boravkom "+msg)
+				}
 			}
-			if msg := findOverlap(entry, row.Exit, toExistingStays(batchByDriver[driver.ID])); msg != "" {
+			key := NameKey(row.DriverName)
+			if msg := findOverlap(entry, row.Exit, toExistingStays(batchByDriver[key])); msg != "" {
 				row.Errors = append(row.Errors, "preklapa se sa drugim redom iz ovog fajla "+msg)
 			}
-			batchByDriver[driver.ID] = append(batchByDriver[driver.ID], row)
+			batchByDriver[key] = append(batchByDriver[key], row)
 		}
 
 		rows = append(rows, row)

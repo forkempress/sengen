@@ -72,9 +72,18 @@
 <section class="empty-state panel">
   <h2>Još nema unetih boravaka</h2>
   <p>Unesite boravke iz poslednjih 180 dana da bi brojanje bilo tačno. Dok ih nema, aplikacija računa kao da vozač nije bio u Šengenu.</p>
+  {{if .DocImport}}
+  <form method="post" action="/import/dokument" enctype="multipart/form-data" class="doc-upload">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <input type="hidden" name="driver_id" value="{{.Driver.ID}}">
+    <label for="driver-doc">Imate njegovu evidenciju na papiru? Slikajte je ili učitajte PDF — svi redovi idu na vozača {{.Driver.Name}}, a pre uvoza ih pregledate.</label>
+    <input type="file" id="driver-doc" name="file" accept=".pdf,application/pdf,image/jpeg,image/png,image/webp" required>
+    <button type="submit" class="btn btn-primary">Učitaj sliku ili PDF</button>
+  </form>
+  {{end}}
   <div class="actions-row">
-    <a href="#dodaj-boravak" class="btn btn-primary" data-dialog-open="dodaj-boravak">Dodaj boravak</a>
-    <a href="/import" class="btn">Uvezi CSV</a>
+    <a href="#dodaj-boravak" class="btn{{if not .DocImport}} btn-primary{{end}}" data-dialog-open="dodaj-boravak">Dodaj boravak ručno</a>
+    <a href="/import" class="btn">Uvezi istoriju</a>
   </div>
 </section>
 {{else}}

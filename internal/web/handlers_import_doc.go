@@ -89,8 +89,24 @@ func (s *Server) handleImportDocument(w http.ResponseWriter, r *http.Request) {
 	for i, d := range existing {
 		names[i] = d.Name
 	}
+	// From a driver's page the whole document is that driver's history:
+	// the model gets only his name and every row is put on him.
+	var only *store.Driver
+	if id, err := strconv.ParseInt(r.FormValue("driver_id"), 10, 64); err == nil {
+		d, err := s.Store.GetDriver(r.Context(), t.ID, id)
+		if err != nil {
+			s.notFound(w, r)
+			return
+		}
+		only, names = d, []string{d.Name}
+	}
 
 	res, err := s.DocReader.Read(r.Context(), data, mediaType, names)
+	if only != nil {
+		for i := range res.Stays {
+			res.Stays[i].Driver = only.Name
+		}
+	}
 	// Every call is recorded, failed ones too: the superadmins hear about
 	// each one and what it cost.
 	record := func(status string, rowsValid int) int64 {
@@ -135,7 +151,7 @@ func (s *Server) handleImportDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := importer.Parse(bytes.NewReader(docread.CSV(res.Stays)), existing)
+	rows, err := importer.ParseAllowingNewDrivers(bytes.NewReader(docread.CSV(res.Stays)), existing)
 	if err != nil {
 		log.Printf("import dokumenta (firma %d): %v", t.ID, err)
 		record(store.DocImportError, 0)
@@ -156,5 +172,9 @@ func (s *Server) handleImportDocument(w http.ResponseWriter, r *http.Request) {
 			uncertain[i+2] = true
 		}
 	}
-	s.renderImportPreview(w, r, rows, uncertain, importID)
+	var driverID int64
+	if only != nil {
+		driverID = only.ID
+	}
+	s.renderImportPreview(w, r, rows, uncertain, importID, driverID)
 }

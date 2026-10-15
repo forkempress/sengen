@@ -701,3 +701,8 @@ table.sample-table td { font-family: var(--font-mono); font-size: 0.875rem; }
   box-shadow: none; border-radius: 6px;
 }
 .no-js button[data-dialog-open], .no-js [data-dialog-close] { display: none; }
+
+/* Sken evidencije na praznoj stranici vozača. */
+.doc-upload { display: grid; gap: 0.5rem; justify-items: start; margin-bottom: 1rem; }
+.doc-upload label { font-weight: 400; }
+.doc-upload input[type="file"] { max-width: 100%; }

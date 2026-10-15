@@ -60,9 +60,23 @@ func TestDriverDetail_NoStaysShowsNextSteps(t *testing.T) {
 		Driver:   d,
 		Status:   status.Compute(d, nil, mustDate(t, "2026-10-14")),
 	})
-	for _, want := range []string{"Unesite boravke iz poslednjih 180 dana", `href="#dodaj-boravak"`, "Uvezi CSV"} {
+	for _, want := range []string{"Unesite boravke iz poslednjih 180 dana", `href="#dodaj-boravak"`, "Uvezi istoriju"} {
 		if !strings.Contains(html, want) {
 			t.Errorf("driver without stays does not contain %q", want)
+		}
+	}
+	if strings.Contains(html, `action="/import/dokument"`) {
+		t.Error("scan upload offered without a document reader")
+	}
+
+	withDoc := renderPage(t, "vozac_detalj.html", driverDetailData{
+		baseData: baseData{User: &store.User{Name: "V", Role: "owner"}, DocImport: true},
+		Driver:   d,
+		Status:   status.Compute(d, nil, mustDate(t, "2026-10-14")),
+	})
+	for _, want := range []string{`action="/import/dokument"`, `name="driver_id" value="7"`, "svi redovi idu na vozača Vladimir"} {
+		if !strings.Contains(withDoc, want) {
+			t.Errorf("driver page with scans does not contain %q", want)
 		}
 	}
 	if strings.Contains(html, "month-card") {

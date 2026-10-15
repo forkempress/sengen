@@ -1,10 +1,26 @@
 {{define "content"}}
 <h1>Uvoz istorije</h1>
-<p>Uvezite boravke iz Excel-a ili CSV fajla. Ništa se ne upisuje dok ne pregledate redove i potvrdite.</p>
+<p>{{if .DocImport}}Učitajte evidenciju kakvu već imate (slika sveske, PDF, Excel) ili CSV fajl.{{else}}Uvezite boravke iz Excel-a ili CSV fajla.{{end}} Ništa se ne upisuje dok ne pregledate redove i potvrdite.</p>
 
-{{if not .HasFile}}
+{{if .HasFile}}
+<p><a href="{{if .DriverID}}/vozaci/{{.DriverID}}{{else}}/import{{end}}">← Učitajte drugi fajl</a></p>
+{{else}}
+
+{{if .DocImport}}
+<form method="post" action="/import/dokument" enctype="multipart/form-data" class="panel" id="sken">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <h2>Učitajte sliku ili PDF evidencije</h2>
+  <p>Slikajte svesku telefonom ili učitajte sken, tabelu ili štampani izveštaj, u bilo kom obliku. Dokument automatski čita Claude (Anthropic): prepoznaje vozače i datume i pravi redove koje pregledate pre uvoza. Vozače koji još nisu u aplikaciji dodaje odmah, pa ne morate prvo da ih unosite.</p>
+  <div class="form-grid">
+    <div><label for="import-doc">Slika ili PDF</label><input type="file" id="import-doc" name="file" accept=".pdf,application/pdf,image/jpeg,image/png,image/webp" required></div>
+  </div>
+  <button type="submit" class="btn btn-primary">Pročitaj dokument</button>
+  <p class="muted">Najviše 10 strana i 10 MB; čitanje traje do minut.{{if .FeedbackEmail}} Veću evidenciju pošaljite na <a href="mailto:{{.FeedbackEmail}}?subject=Dani90%20%E2%80%94%20uvoz%20evidencije">{{.FeedbackEmail}}</a> i unećemo je mi.{{end}}</p>
+</form>
+{{end}}
+
 <section class="panel">
-  <h2>Kako fajl treba da izgleda <a href="/pomoc#uvoz" class="help-q" aria-label="Pomoć: uvoz istorije">?</a></h2>
+  <h2>{{if .DocImport}}Ili uvezite CSV fajl{{else}}Kako fajl treba da izgleda{{end}} <a href="/pomoc#uvoz" class="help-q" aria-label="Pomoć: uvoz istorije">?</a></h2>
   <ul class="import-rules">
     <li><strong>vozač</strong> — ime tačno kao na stranici <a href="/podesavanja/vozaci">Vozači</a></li>
     <li><strong>ulaz</strong> i <strong>izlaz</strong> — datum kao 05.10.2026; prazan izlaz znači da je vozač još u Šengenu</li>
@@ -19,26 +35,14 @@
   </div>
   <p><a href="/import/primer.csv" class="btn" download>Preuzmi primer CSV</a></p>
 </section>
-{{end}}
 
 <form method="post" action="/import/preview" enctype="multipart/form-data" class="panel">
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-  <h2>Izaberite fajl</h2>
+  <h2>Izaberite CSV fajl</h2>
   <div class="form-grid">
     <div><label for="import-file">CSV fajl</label><input type="file" id="import-file" name="file" accept=".csv,text/csv" required></div>
   </div>
   <button type="submit" class="btn btn-primary">Prikaži pregled</button>
-</form>
-
-{{if .DocEnabled}}
-<form method="post" action="/import/dokument" enctype="multipart/form-data" class="panel">
-  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-  <h2>Ili učitajte skeniranu evidenciju</h2>
-  <p>PDF ili fotografija evidencije u bilo kom obliku: tabela, štampani izveštaj, sveska. Dokument automatski čita Claude (Anthropic) i pravi iste redove kao iz CSV fajla; pre uvoza ih pregledate. Najviše 10 strana i 10 MB. Čitanje traje do minut.</p>
-  <div class="form-grid">
-    <div><label for="import-doc">PDF ili slika</label><input type="file" id="import-doc" name="file" accept=".pdf,application/pdf,image/jpeg,image/png,image/webp" required></div>
-  </div>
-  <button type="submit" class="btn btn-primary">Pročitaj dokument</button>
 </form>
 {{end}}
 
@@ -52,7 +56,7 @@
     {{range .Rows}}
     <tr>
       <td class="num">{{.LineNum}}</td>
-      <td>{{.DriverName}}</td>
+      <td>{{.DriverName}}{{if .NewDriver}} <span class="badge">novi vozač</span>{{end}}</td>
       <td class="num">{{if not .Entry.IsZero}}{{fmtDate .Entry}}{{end}}</td>
       <td class="num">{{fmtDatePtr .Exit}}</td>
       <td>{{.Type}}</td>
@@ -69,11 +73,22 @@
 </div>
 
 {{if .ValidRows}}
-<form method="post" action="/import/potvrdi" style="margin-top:1rem;">
+<form method="post" action="/import/potvrdi" class="panel" style="margin-top:1rem;">
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
   {{if .DocImportID}}<input type="hidden" name="doc_import_id" value="{{.DocImportID}}">{{end}}
+  {{if .DriverID}}<input type="hidden" name="driver_id" value="{{.DriverID}}">{{end}}
+  {{if .NewDrivers}}
+  <fieldset>
+    <legend>Novi vozači — biće dodati u aplikaciju</legend>
+    <p class="muted">Ovih imena nema na stranici Vozači. Isključite ime koje je pogrešno pročitano ili već postoji pod drugim imenom; njegovi redovi se onda ne uvoze.</p>
+    {{range $i, $name := .NewDrivers}}
+    <div><input type="checkbox" id="add-driver-{{$i}}" name="add_driver" value="{{$name}}" checked> <label for="add-driver-{{$i}}">{{$name}}</label></div>
+    {{end}}
+  </fieldset>
+  {{end}}
   {{range .ValidRows}}
   <input type="hidden" name="row_driver_id" value="{{.DriverID}}">
+  <input type="hidden" name="row_new_driver" value="{{if .NewDriver}}{{.DriverName}}{{end}}">
   <input type="hidden" name="row_entry" value="{{fmtDateInput .Entry}}">
   <input type="hidden" name="row_exit" value="{{if .Exit}}{{fmtDateInput (deref .Exit)}}{{end}}">
   <input type="hidden" name="row_type" value="{{.Type}}">
