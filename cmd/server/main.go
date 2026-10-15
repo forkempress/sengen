@@ -123,6 +123,9 @@ func configureMail(cfg config.Config, s *web.Server) {
 	log.Printf("mail: linkovi vode na %s", s.PublicURL)
 
 	s.MailDailyLimit = cfg.MailDailyLimit
+	if cfg.MailReplyTo != nil {
+		s.FeedbackEmail = cfg.MailReplyTo.Address
+	}
 	switch {
 	case cfg.SMTPHost == "" && cfg.InsecureCookies:
 		log.Printf("mail: SMTP_HOST nije postavljen — mejlovi se ispisuju u log (lokalni razvoj)")

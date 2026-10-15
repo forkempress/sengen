@@ -21,6 +21,9 @@ type baseData struct {
 	// TermsPending: the firm has not accepted the current terms yet (shown
 	// to dispatchers, who cannot accept them).
 	TermsPending bool
+	// FeedbackEmail is where signed-in users send remarks (MAIL_REPLY_TO);
+	// "" hides the link.
+	FeedbackEmail string
 }
 
 // base also takes the session's waiting flash message, so the page being
@@ -29,6 +32,11 @@ func (s *Server) base(r *http.Request, active string) baseData {
 	u, _ := auth.UserFromContext(r.Context())
 	sess, _ := auth.SessionFromContext(r.Context())
 	d := baseData{User: u, Active: active, TermsPending: termsPending(r.Context())}
+	if u != nil {
+		// Only to signed-in users: a public page would hand the address
+		// to every scraper.
+		d.FeedbackEmail = s.FeedbackEmail
+	}
 	if sess != nil {
 		d.CSRFToken = sess.CSRFSecret
 		ok, errMsg, err := s.Store.TakeSessionFlash(r.Context(), sess.Token)

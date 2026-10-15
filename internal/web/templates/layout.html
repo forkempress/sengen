@@ -44,6 +44,7 @@
     {{template "content" .}}
   </main>
   <footer class="app-footer">
+    {{if .FeedbackEmail}}<p class="feedback">Imate primedbu, predlog ili nešto ne radi? <a href="mailto:{{.FeedbackEmail}}?subject=Dani90%20%E2%80%94%20utisak">Pišite nam na {{.FeedbackEmail}}</a> — čitamo svaku poruku.</p>{{end}}
     <p class="disclaimer">{{(legal).Disclaimer}}</p>
     <nav aria-label="Pravne informacije"><a href="/privatnost">Privatnost</a> · <a href="/uslovi">Uslovi korišćenja</a> · <a href="/obrada-podataka">Obrada podataka</a></nav>
   </footer>

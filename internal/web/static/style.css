@@ -651,6 +651,8 @@ table.sample-table td { font-family: var(--font-mono); font-size: 0.875rem; }
 .legal li { margin-bottom: 0.4rem; }
 .legal .table-wrap { margin-bottom: 0.75rem; }
 .legal td { white-space: normal; vertical-align: top; }
+.app-footer .feedback { max-width: 680px; margin: 0 auto 0.8rem; font-size: 0.9375rem; }
+.app-footer .feedback a { color: var(--accent); font-weight: 600; }
 .app-footer .disclaimer { max-width: 680px; margin: 0 auto 0.6rem; }
 .app-footer nav a { color: var(--text-muted); text-decoration: underline; }
 .result-disclaimer { font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.5rem; }

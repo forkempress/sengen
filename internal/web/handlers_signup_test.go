@@ -356,3 +356,22 @@ func TestSignup_CrossOriginRefused(t *testing.T) {
 		t.Errorf("cross-site sign-up: %d", w.Code)
 	}
 }
+
+// The feedback address is shown to signed-in users only.
+func TestFeedbackLink(t *testing.T) {
+	a := newResetApp(t)
+	a.srv.FeedbackEmail = "utisci@dani90.rs"
+	f := a.addFirm("Prva Firma", "prva", "vlasnik@prva.rs", "Ana", 30)
+	if body := a.mustLogin(f).get("/pregled").Body.String(); !strings.Contains(body, `href="mailto:utisci@dani90.rs?subject=`) {
+		t.Error("signed-in page lacks the feedback link")
+	}
+	for _, path := range []string{"/login", "/registracija", "/privatnost"} {
+		if strings.Contains(a.request(http.MethodGet, path, nil, nil).Body.String(), "utisci@dani90.rs") {
+			t.Errorf("%s shows the feedback address to visitors", path)
+		}
+	}
+	a.srv.FeedbackEmail = ""
+	if strings.Contains(a.mustLogin(f).get("/pregled").Body.String(), "mailto:") {
+		t.Error("feedback link shown without an address")
+	}
+}

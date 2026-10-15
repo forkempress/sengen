@@ -35,6 +35,8 @@ type Server struct {
 	// could ask for a reset of someone else's account with their own host
 	// in the link and collect the token when the victim clicks.
 	PublicURL string
+	// FeedbackEmail is shown to signed-in users as the place for remarks.
+	FeedbackEmail string
 	// Turnstile guards the public forms; nil turns the check off.
 	Turnstile *Turnstile
 
