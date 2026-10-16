@@ -34,7 +34,7 @@ const (
 // tunnel waits for a response.
 const Timeout = 90 * time.Second
 
-const defaultModel = "claude-opus-5-5"
+const defaultModel = "claude-sonnet-5-5"
 
 // Media types the model accepts.
 var mediaTypes = map[string]bool{
