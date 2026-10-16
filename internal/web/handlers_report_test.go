@@ -46,3 +46,22 @@ func TestDriverReport_CountsOnlyTheWindow(t *testing.T) {
 		t.Error("the stay crossing into the window does not count just its 2 days inside")
 	}
 }
+
+func TestDriverReport_English(t *testing.T) {
+	app := newTestApp(t)
+	f := app.addFirm("Prevoz A", "prevoz-a", "a@prevoz.rs", "Marko Test", 40)
+	s := app.mustLogin(f)
+
+	body := s.get("/vozaci/" + id(f.driver.ID) + "/izvestaj?jezik=en").Body.String()
+	for _, want := range []string{`lang="en"`, "Stays in the Schengen Area — Marko Test", "Days used in the last 180 days", "is a planning aid"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("English report lacks %q", want)
+		}
+	}
+	if strings.Contains(body, "Boravci u Šengenu") {
+		t.Error("English report still has the Serbian heading")
+	}
+	if !strings.Contains(s.get("/vozaci/"+id(f.driver.ID)+"/izvestaj").Body.String(), "Boravci u Šengenu") {
+		t.Error("the default report is not in Serbian")
+	}
+}

@@ -26,6 +26,13 @@ var funcMap = template.FuncMap{
 	"asset":      assetURL,
 	// dana picks "dan" or "dana" for a count: 1 dan, 21 dan, 11 dana, 5 dana.
 	"dana": status.DaysWord,
+	// days is the English one, for the report printed in English.
+	"days": func(n int) string {
+		if n == 1 || n == -1 {
+			return "day"
+		}
+		return "days"
+	},
 	// legal is the provider's details, the terms version and the disclaimer.
 	"legal": legal.Get,
 	"fmtDate": func(t time.Time) string {

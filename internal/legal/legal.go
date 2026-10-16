@@ -23,7 +23,9 @@ const LastUpdated = "15.10.2026."
 
 // Disclaimer is the short notice that the calculation is not legal advice,
 // shown under results, in the footer and (DisclaimerBot) in the bot.
+// DisclaimerEN goes on the English printable report, for police abroad.
 const (
+	DisclaimerEN  = "Dani90 is a planning aid and calculates only from the dates entered. It is not affiliated with the EU or any government authority; entry and stay are decided by the border police. Check the official status with the EU short-stay calculator and the EES information."
 	Disclaimer    = "Dani90 je pomoć za planiranje i računa samo iz unetih datuma. Nije povezan sa EU ni sa državnim organima; o ulasku i boravku odlučuje granična policija, a zvanično stanje proverite u EU kalkulatoru kratkog boravka i informacijama o EES-u."
 	DisclaimerBot = "ⓘ Procena iz unetih datuma, nije pravni savet. Odluku donosi granična policija; zvanično stanje: EU kalkulator i EES."
 )
@@ -42,7 +44,7 @@ const PublicBaseURL = "https://app.dani90.rs"
 type Info struct {
 	ProviderName, ProviderForm, ProviderAddress, ProviderIDs, PrivacyEmail string
 	TermsVersion, LastUpdated                                              string
-	Disclaimer, EUCalculatorURL, EESInfoURL                                string
+	Disclaimer, DisclaimerEN, EUCalculatorURL, EESInfoURL                  string
 }
 
 func Get() Info {
@@ -50,6 +52,6 @@ func Get() Info {
 		ProviderName: ProviderName, ProviderForm: ProviderForm, ProviderAddress: ProviderAddress,
 		ProviderIDs: ProviderIDs, PrivacyEmail: PrivacyEmail,
 		TermsVersion: TermsVersion, LastUpdated: LastUpdated,
-		Disclaimer: Disclaimer, EUCalculatorURL: EUCalculatorURL, EESInfoURL: EESInfoURL,
+		Disclaimer: Disclaimer, DisclaimerEN: DisclaimerEN, EUCalculatorURL: EUCalculatorURL, EESInfoURL: EESInfoURL,
 	}
 }

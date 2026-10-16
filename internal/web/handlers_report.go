@@ -29,11 +29,14 @@ type driverReportData struct {
 	// Earlier is how many older stays the report leaves out; they no longer
 	// count toward 90/180.
 	Earlier int
+	// EN prints the report in English (?jezik=en), for police abroad.
+	EN bool
 }
 
 // handleDriverReport is a one-page report on a driver's days in Schengen,
 // for printing or saving as PDF from the browser: for the driver to carry,
-// for a check at the border, or for the firm's records.
+// for a check at the border, or for the firm's records. ?jezik=en prints it
+// in English.
 func (s *Server) handleDriverReport(w http.ResponseWriter, r *http.Request) {
 	driver, tenantID, ok := s.loadDriverOr404(w, r)
 	if !ok {
@@ -51,6 +54,7 @@ func (s *Server) handleDriverReport(w http.ResponseWriter, r *http.Request) {
 		Status:     status.Compute(*driver, stays, today),
 		Today:      today,
 		WindowFrom: today.AddDate(0, 0, -179),
+		EN:         r.URL.Query().Get("jezik") == "en",
 	}
 	if t, ok := tenant.FromContext(r.Context()); ok {
 		data.FirmName = t.Name

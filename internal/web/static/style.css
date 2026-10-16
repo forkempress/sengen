@@ -795,6 +795,9 @@ table.sample-table td { font-family: var(--font-mono); font-size: 0.875rem; }
 .segmented label:hover span { color: var(--text); }
 .segmented input:checked + span { background: var(--accent); color: #fff; font-weight: 600; }
 .segmented input:focus-visible + span { outline: 3px solid var(--yellow); outline-offset: 1px; }
+.segmented a { text-decoration: none; }
+.segmented a:hover span { color: var(--text); }
+.segmented a[aria-current] span { background: var(--accent); color: #fff; font-weight: 600; }
 .role-form[aria-busy="true"] .segmented { opacity: 0.6; pointer-events: none; }
 /* Sa JS-om promena se čuva odmah; dugme „Promeni“ treba samo bez JS-a. */
 html:not(.no-js) .role-submit { display: none; }
