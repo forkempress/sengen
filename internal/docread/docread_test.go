@@ -41,3 +41,12 @@ func TestCheckResult_CountsDriversCaseInsensitively(t *testing.T) {
 		t.Errorf("%d stays: %v, want ErrTooLarge", MaxStays+1, err)
 	}
 }
+
+func TestCost_PricesHaikuInFractionsOfADollar(t *testing.T) {
+	if got := cost("claude-opus-5-5", 3000, 1000); got != 32000 {
+		t.Errorf("opus: %d µ$, want 32000", got)
+	}
+	if got := cost("claude-haiku-5-5", 10000, 1000); got != 1500 {
+		t.Errorf("haiku: %d µ$, want 1500", got)
+	}
+}

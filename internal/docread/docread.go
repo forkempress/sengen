@@ -74,25 +74,28 @@ type Usage struct {
 	CostMicroUSD int64
 }
 
-// prices are US dollars per million input and output tokens. A refused
-// request may be answered by a fallback model, so the answering model is
-// priced, not the one asked for. An unknown model is priced as the default.
+// prices are US cents per million input and output tokens (Haiku costs a
+// fraction of a dollar). A refused request may be answered by a fallback
+// model, so the answering model is priced, not the one asked for. An unknown
+// model is priced as the default. Haiku's price doubles past 100K input
+// tokens, which a 10-page document does not reach.
 var prices = map[string][2]int64{
-	"claude-opus-5-5":   {4, 20},
-	"claude-opus-5":     {5, 25},
-	"claude-opus-4-8":   {5, 25},
-	"claude-sonnet-5-5": {2, 10},
-	"claude-fable-5-1":  {10, 50},
+	"claude-opus-5-5":   {400, 2000},
+	"claude-opus-5":     {500, 2500},
+	"claude-opus-4-8":   {500, 2500},
+	"claude-sonnet-5-5": {200, 1000},
+	"claude-haiku-5-5":  {10, 50},
+	"claude-fable-5-1":  {1000, 5000},
 }
 
 // cost prices a call in millionths of a dollar: tokens × $/Mtok is exactly
-// that unit.
+// that unit, and the prices are in cents.
 func cost(model string, in, out int64) int64 {
 	p, ok := prices[model]
 	if !ok {
 		p = prices[defaultModel]
 	}
-	return in*p[0] + out*p[1]
+	return (in*p[0] + out*p[1]) / 100
 }
 
 // ErrTooLarge means the file or what was read from it is over the limits.
@@ -106,11 +109,20 @@ type Reader interface {
 // Claude reads documents through the Claude API.
 type Claude struct {
 	client anthropic.Client
+	model  string
 }
 
-func NewClaude(apiKey string) *Claude {
-	return &Claude{client: anthropic.NewClient(option.WithAPIKey(apiKey))}
+func NewClaude(apiKey string) *Claude { return NewClaudeModel(apiKey, defaultModel) }
+
+// NewClaudeModel reads with the given model; the document eval uses it to
+// compare models on the same scans.
+func NewClaudeModel(apiKey, model string) *Claude {
+	return &Claude{client: anthropic.NewClient(option.WithAPIKey(apiKey)), model: model}
 }
+
+// noFallback lists models without a server-side refusal fallback; sending
+// the fallbacks parameter to them is rejected.
+var noFallback = map[string]bool{"claude-haiku-5-5": true}
 
 // pdfPageRe counts page objects in an uncompressed page tree. PDFs that keep
 // their objects in compressed streams count as zero and are left to the
@@ -186,8 +198,8 @@ func (c *Claude) Read(ctx context.Context, data []byte, mediaType string, driver
 
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
-	resp, err := c.client.Beta.Messages.New(ctx, anthropic.BetaMessageNewParams{
-		Model:     defaultModel,
+	params := anthropic.BetaMessageNewParams{
+		Model:     c.model,
 		MaxTokens: 16000,
 		System:    []anthropic.BetaTextBlockParam{{Text: systemPrompt}},
 		Messages: []anthropic.BetaMessageParam{anthropic.NewBetaUserMessage(
@@ -198,10 +210,13 @@ func (c *Claude) Read(ctx context.Context, data []byte, mediaType string, driver
 			Effort: anthropic.BetaOutputConfigEffortMedium,
 			Format: anthropic.BetaJSONOutputFormatParam{Schema: resultSchema},
 		},
+	}
+	if !noFallback[c.model] {
 		// A refused request is answered by a fallback model in the same call.
-		Fallbacks: anthropic.BetaFallbacksParamUnion{OfDefault: constant.ValueOf[constant.Default]()},
-		Betas:     []anthropic.AnthropicBeta{anthropic.AnthropicBetaServerSideFallback2026_07_01},
-	}, option.WithMaxRetries(1))
+		params.Fallbacks = anthropic.BetaFallbacksParamUnion{OfDefault: constant.ValueOf[constant.Default]()}
+		params.Betas = []anthropic.AnthropicBeta{anthropic.AnthropicBetaServerSideFallback2026_07_01}
+	}
+	resp, err := c.client.Beta.Messages.New(ctx, params, option.WithMaxRetries(1))
 	if err != nil {
 		return Result{}, err
 	}
