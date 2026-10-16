@@ -23,6 +23,20 @@ type TenantSettings struct {
 	// CalendarNumber is the number the driver calendar shows in each day
 	// by default: CalendarRemaining (also when empty) or CalendarTrip.
 	CalendarNumber string `json:"calendar_number,omitempty"`
+	// TypicalTripDays is how long the firm's usual trip is; the calendar
+	// colors a day by whether such a trip still fits. Zero means the default.
+	TypicalTripDays int `json:"typical_trip_days,omitempty"`
+}
+
+// DefaultTypicalTripDays is the usual trip when the firm has not set one.
+const DefaultTypicalTripDays = 9
+
+// TypicalTrip is TypicalTripDays with the default filled in.
+func (s TenantSettings) TypicalTrip() int {
+	if s.TypicalTripDays > 0 {
+		return s.TypicalTripDays
+	}
+	return DefaultTypicalTripDays
 }
 
 const (

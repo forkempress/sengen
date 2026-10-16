@@ -428,49 +428,56 @@ h2 { font-size: 1.125rem; font-weight: 600; margin: 1.75rem 0 0.75rem; }
 .month-grid .dow { text-align: center; color: var(--text-muted); font-size: 0.8125rem; padding-bottom: 2px; }
 .day-cell {
   aspect-ratio: 1;
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 1px;
-  border: 0;
-  padding: 0;
-  border-radius: 3px;
+  justify-content: space-between;
+  padding: 4px 2px 5px;
+  border: 1px solid transparent;
+  border-radius: 6px;
   font: inherit;
-  font-family: var(--font-mono);
-  line-height: 1.1;
   background: transparent;
   color: var(--text);
 }
 button.day-cell { cursor: pointer; }
-button.day-cell:hover { filter: brightness(0.95); }
-.day-cell[aria-pressed="true"] { outline: 3px solid var(--accent); outline-offset: 1px; position: relative; z-index: 1; }
-.day-work { background: var(--accent); color: #fff; }
-.day-private { background: #9FB3DE; color: #10264f; }
-.day-projection {
-  background: repeating-linear-gradient(45deg, var(--yellow), var(--yellow) 3px, #fff6e2 3px, #fff6e2 6px);
-  color: #5a4210;
-}
-/* Planirane ture: svetla šrafura, da se ne pomeša sa stvarnim boravkom. */
-.day-planned, .swatch-planned {
-  background: repeating-linear-gradient(-45deg, #C9D5F0, #C9D5F0 3px, #fff 3px, #fff 6px);
-  color: #10264f;
-  outline: 1px dashed var(--accent); outline-offset: -1px;
-}
-.day-planned-over, .swatch-planned-over {
-  background: repeating-linear-gradient(-45deg, #F3C2B9, #F3C2B9 3px, #fff 3px, #fff 6px);
-  color: var(--status-urgent);
-  outline: 1px dashed var(--status-red); outline-offset: -1px;
-  font-weight: 700;
-}
-.day-outside { background: #E3E6E0; color: #9aa09a; }
-.day-freed { border: 2px solid var(--status-green); }
-.day-today { box-shadow: 0 0 0 2px var(--text) inset; font-weight: 700; }
+button.day-cell:hover { border-color: var(--card-border); }
+.day-cell:not(:has(.chip)) { justify-content: center; }
+.cal-dn { font-size: 0.8125rem; line-height: 1.5rem; min-width: 1.5rem; border-radius: 999px; font-variant-numeric: tabular-nums; }
+.day-cell[aria-pressed="true"] { border: 2px solid var(--accent); }
+.day-today .cal-dn { background: var(--text); color: #fff; font-weight: 700; }
+.day-past .cal-dn { color: var(--text-muted); }
 .day-empty { visibility: hidden; }
-.day-past:not([class*="day-work"]):not([class*="day-private"]):not([class*="day-outside"]) { color: var(--text-muted); }
 
-fieldset.choice-list { border: 0; padding: 0; margin: 0 0 1rem; }
-.choice-list label { display: block; padding: 0.35rem 0; font-weight: normal; }
+/* Stanje dana: svetla podloga i traka gore, da broj u znački ostane čitljiv. */
+.day-work, .sw-work { background: #E6ECF8; box-shadow: inset 0 4px 0 var(--accent); }
+.day-private, .sw-private { background: #EEF1F8; box-shadow: inset 0 4px 0 #9FB3DE; }
+.day-projection, .sw-projection { background: #FFF6E2; box-shadow: inset 0 4px 0 var(--yellow); }
+.day-planned, .sw-planned { background: #fff; border: 1px dashed var(--accent); }
+.day-planned-over, .sw-planned-over { background: #FDF1EE; border: 1px dashed var(--status-red); }
+.day-outside, .sw-outside { background: #F0F1EE; }
+.day-past.day-work .cal-dn, .day-past.day-private .cal-dn { color: var(--text); }
+.day-freed::after, .sw-freed::after {
+  content: ""; position: absolute; top: 4px; right: 4px;
+  width: 6px; height: 6px; border-radius: 50%; background: var(--status-green);
+}
+.sw-freed { position: relative; }
+
+/* Broj u danu: značka u boji statusa (iste boje kao na Pregledu). */
+.chip {
+  display: inline-flex; align-items: baseline; gap: 1px;
+  padding: 0 0.4rem; border-radius: 999px; border: 1px solid transparent;
+  font-family: var(--font-sans); font-size: 0.75rem; font-weight: 700; line-height: 1.35rem;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.chip-u { font-weight: 600; font-size: 0.85em; margin-left: 1px; opacity: 0.8; }
+.chip-arr { margin-right: 2px; font-weight: 600; }
+.lvl-ok { background: var(--status-green-bg); border-color: var(--status-green); color: var(--status-green); }
+.lvl-paznja { background: var(--status-orange-bg); border-color: var(--status-orange); color: var(--status-orange); }
+.lvl-kriticno { background: var(--status-red-bg); border-color: var(--status-red); color: var(--status-red); }
+.lvl-preko { background: var(--status-urgent); border-color: var(--status-urgent); color: #fff; }
+.cal-plus { font-weight: 800; margin-left: 1px; }
+.cal-show-remaining .cal-num-trip, .cal-show-trip .cal-num-rem { display: none; }
 
 /* Kalendar vozača: jedan mesec, broj u danu i panel izabranog dana. */
 .cal { margin: 1.5rem 0 2rem; }
@@ -481,19 +488,57 @@ fieldset.choice-list { border: 0; padding: 0; margin: 0 0 1rem; }
 .cal-mode .btn:first-child { border-radius: 4px 0 0 4px; }
 .cal-mode .btn:last-child { border-radius: 0 4px 4px 0; margin-left: -1px; }
 .cal-mode .btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
-.cal-layout { display: grid; grid-template-columns: minmax(0, 30rem) minmax(15rem, 1fr); gap: 1rem 1.5rem; align-items: start; margin: 1rem 0; }
-.cal-nav { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
-.cal-nav h3 { margin: 0; font-size: 1.1rem; min-width: 9.5rem; text-align: center; }
-.cal-nav [aria-disabled="true"] { opacity: 0.4; pointer-events: none; }
+.cal-caption { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 1rem; margin: 0.5rem 0 0; }
+.cal-caption > p { margin: 0; }
+.cal-info > summary { cursor: pointer; color: var(--accent); font-size: 0.875rem; font-weight: 600; list-style: none; }
+.cal-info > summary::-webkit-details-marker { display: none; }
+.cal-info[open] { flex-basis: 100%; }
+.cal-info-body { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 6px; padding: 0.25rem 1rem; margin-top: 0.5rem; max-width: 46rem; font-size: 0.9rem; }
+.cal-info-body p { margin: 0.6rem 0; }
+.cal-layout { display: grid; grid-template-columns: minmax(0, 32rem) minmax(15rem, 1fr); gap: 1rem 1.5rem; align-items: start; margin: 1rem 0; }
+.cal-nav { position: relative; display: flex; align-items: center; gap: 0.35rem; margin-bottom: 0.5rem; }
+.cal-arrow {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.25rem; height: 2.25rem; border-radius: 50%;
+  border: 1px solid var(--card-border); background: var(--card-bg);
+  color: var(--text); font-size: 1.25rem; line-height: 1; text-decoration: none;
+}
+.cal-arrow:hover { border-color: var(--accent); color: var(--accent); }
+.cal-arrow[aria-disabled="true"] { opacity: 0.35; }
 .cal-today-link { margin-left: auto; }
-.cal .month-grid { font-size: 0.95rem; gap: 3px; }
-.cal-n { font-size: 0.7rem; font-weight: 600; }
-.cal-show-remaining .cal-num-trip, .cal-show-trip .cal-num-rem { display: none; }
-.cal-plus { font-weight: 700; }
-.lvl-preko { color: var(--status-urgent); }
-.lvl-kriticno { color: var(--status-red); }
-.lvl-paznja { color: var(--status-orange); }
-.lvl-ok { color: var(--status-green); }
+
+/* Biranje meseca: klik na naziv otvara mrežu meseci. */
+.month-pick { position: static; }
+.month-pick > summary {
+  list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem;
+  padding: 0.3rem 0.7rem; border-radius: 6px; font-size: 1.15rem; font-weight: 700; min-width: 10.5rem; justify-content: center;
+}
+.month-pick > summary::-webkit-details-marker { display: none; }
+.month-pick > summary:hover, .month-pick[open] > summary { background: var(--card-bg); box-shadow: 0 0 0 1px var(--card-border); }
+.month-pick-caret { font-size: 0.8rem; color: var(--text-muted); }
+.month-pick-panel {
+  position: absolute; z-index: 20; top: calc(100% + 6px); left: 0;
+  width: min(17rem, 100%); background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(16, 32, 43, 0.15); padding: 0.6rem;
+}
+html:not(.no-js) .mp-year:not(.is-shown) { display: none; }
+.no-js .mp-step { visibility: hidden; }
+.mp-year + .mp-year { margin-top: 0.5rem; }
+.mp-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem; }
+.mp-step { width: 2rem; height: 2rem; border-radius: 50%; border: 0; background: transparent; font-size: 1.1rem; cursor: pointer; color: var(--text); }
+.mp-step:hover { background: #E6ECF8; }
+.mp-step[disabled] { visibility: hidden; }
+.mp-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.mp-m { position: relative; display: block; text-align: center; padding: 0.55rem 0; border-radius: 6px; text-decoration: none; color: var(--text); font-weight: 600; font-size: 0.9rem; }
+a.mp-m:hover { background: #E6ECF8; }
+.mp-m.is-today { box-shadow: inset 0 0 0 1px var(--accent); }
+.mp-m.is-current { background: var(--accent); color: #fff; }
+.mp-m.is-off { color: var(--text-muted); opacity: 0.45; font-weight: 400; }
+.mp-dot { position: absolute; top: 5px; right: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--yellow); }
+
+.cal .month-grid { gap: 3px; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.cal-legend { margin: 0.75rem 0 0; }
+.cal-legend .swatch { width: 14px; height: 14px; border-radius: 3px; }
 .cal-panel { padding-top: 0.5rem; }
 .cal-panel h3 { margin: 0.5rem 0; }
 .cal-facts { margin: 0 0 0.75rem; }
@@ -503,8 +548,15 @@ fieldset.choice-list { border: 0; padding: 0; margin: 0 0 1rem; }
 .cal-panel [hidden] { display: none; }
 @media (max-width: 700px) {
   .cal-layout { grid-template-columns: minmax(0, 1fr); }
-  .cal .month-grid { font-size: 0.875rem; gap: 2px; }
-  .cal-n { font-size: 0.65rem; }
+  .cal .month-grid { gap: 2px; }
+  .cal .month-card { padding: 0.4rem; }
+  .day-cell { padding: 2px 1px 3px; border-radius: 5px; min-width: 0; }
+  .day-cell .chip { max-width: 100%; overflow: hidden; }
+  .cal-dn { font-size: 0.75rem; line-height: 1.3rem; min-width: 1.3rem; }
+  .chip { font-size: 0.6875rem; padding: 0 0.25rem; line-height: 1.2rem; }
+  .chip-u { display: none; }
+  .chip-arr { display: none; }
+  .month-pick > summary { min-width: 0; font-size: 1.05rem; }
 }
 
 .legend { display: flex; flex-wrap: wrap; gap: 0.9rem; margin-bottom: 1rem; font-size: 0.8125rem; }
@@ -756,21 +808,14 @@ table.sample-table td { font-family: var(--font-mono); font-size: 0.875rem; }
 
 /* Pregled: unos granice iz reda (datum + jedno dugme). */
 .crossing-form { display: flex; gap: 0.4rem; align-items: center; flex-wrap: nowrap; }
-.crossing-form input[type=date] {
-  min-height: 36px;
-  padding: 0.2rem 0.4rem;
-  border: 1px solid var(--field-border);
-  border-radius: 5px;
-  font-family: var(--font-sans);
-  font-size: 0.875rem;
-  background: var(--card-bg);
-  color: var(--text);
-}
-.crossing-form .btn { white-space: nowrap; }
+.crossing-form .btn { white-space: nowrap; font-weight: 600; }
+.crossing-in { border-color: var(--status-green); color: var(--status-green); }
+.crossing-in:hover { background: var(--status-green-bg); }
+.crossing-out { border-color: var(--accent); color: var(--accent); }
+.crossing-out:hover { background: #E6ECF8; }
 .driver-table .crossing-form { margin-top: 0.35rem; }
 .driver-cards .crossing-form { margin-top: 0.35rem; padding: 0 0.2rem; }
-.driver-cards .crossing-form input[type=date] { flex: 1; min-height: 44px; font-size: 1rem; }
-.driver-cards .crossing-form .btn { min-height: 44px; }
+.driver-cards .crossing-form .btn { min-height: 44px; flex: 1; }
 
 /* Planer: raspored dostupnosti (vozači × polazni dani). */
 .schedule-table th, .schedule-table td { text-align: center; white-space: nowrap; }

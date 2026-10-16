@@ -96,32 +96,57 @@
     <button type="button" class="btn btn-sm" data-cal-mode="trip" aria-pressed="{{if eq .CalMode "trip"}}true{{else}}false{{end}}">Može na turu</button>
   </div>
 </div>
+<div class="cal-caption">
+  <p><span class="cal-num-rem">Broj u danu: <strong>koliko dana mu ostaje</strong> na taj datum</span><span class="cal-num-trip">Broj u danu: <strong>koliko dana može na turu</strong> ako krene tog dana</span></p>
+  <details class="cal-info">
+    <summary><span aria-hidden="true">ⓘ</span> Šta znače brojevi?</summary>
+    <div class="cal-info-body">
+      <p><strong>Preostalo</strong> — koliko mu dana ostaje od 90 na taj datum, ako do tada ne putuje. Raste kako mu stari dani ispadaju iz poslednjih 180 dana (danas 8, sutra 9…).</p>
+      <p><strong>Može na turu</strong> — koliko dana može da bude u Šengenu ako krene tog dana. Često je više od preostalog, jer mu se i tokom puta oslobađaju stari dani.</p>
+      <p><span class="chip lvl-ok">{{.Typical}} d</span> staje uobičajena tura od {{.Typical}}+ dana · <span class="chip lvl-paznja">{{.TypicalShort}} d</span> samo kraća tura · <span class="chip lvl-kriticno">3 d</span> samo vrlo kratka · <span class="chip lvl-preko">0</span> ne može da krene.</p>
+      <p><strong>⁺</strong> uz preostale dane — ostaje mu manje od {{.Typical}}, ali tura od {{.Typical}} dana ipak staje.</p>
+      {{if .Status.InSchengen}}<p>Dok je vozač u Šengenu, računa se da ostaje do roka za izlazak.</p>{{end}}
+      <p class="muted">Uobičajenu turu menja vlasnik firme u Podešavanjima → Upozorenja.</p>
+    </div>
+  </details>
+</div>
 <div class="cal-layout">
   <div class="cal-month">
     <div class="cal-nav">
-      {{if .PrevURL}}<a href="{{.PrevURL}}" class="btn btn-sm" aria-label="Prethodni mesec">‹</a>{{else}}<span class="btn btn-sm" aria-disabled="true">‹</span>{{end}}
-      <h3>{{.Month.Label}}</h3>
-      {{if .NextURL}}<a href="{{.NextURL}}" class="btn btn-sm" aria-label="Sledeći mesec">›</a>{{else}}<span class="btn btn-sm" aria-disabled="true">›</span>{{end}}
+      {{if .PrevURL}}<a href="{{.PrevURL}}" class="cal-arrow" aria-label="Prethodni mesec">‹</a>{{else}}<span class="cal-arrow" aria-disabled="true">‹</span>{{end}}
+      <details class="month-pick">
+        <summary aria-label="Izaberi mesec: {{.Month.Label}}"><span class="month-pick-label">{{.Month.Label}}</span> <span class="month-pick-caret" aria-hidden="true">▾</span></summary>
+        <div class="month-pick-panel">
+          {{range $i, $y := .Picker}}
+          <div class="mp-year{{if $y.Shown}} is-shown{{end}}" data-year="{{$y.Year}}">
+            <div class="mp-head">
+              <button type="button" class="mp-step" data-mp-step="-1" aria-label="Prethodna godina">‹</button>
+              <strong>{{$y.Year}}</strong>
+              <button type="button" class="mp-step" data-mp-step="1" aria-label="Sledeća godina">›</button>
+            </div>
+            <div class="mp-grid">{{range $y.Months}}{{if .URL}}<a href="{{.URL}}" class="mp-m{{if .Current}} is-current{{end}}{{if .Today}} is-today{{end}}"{{if .Current}} aria-current="date"{{end}}>{{.Label}}{{if .HasPlan}}<span class="mp-dot" aria-label="ima plan"></span>{{end}}</a>{{else}}<span class="mp-m is-off">{{.Label}}</span>{{end}}{{end}}</div>
+          </div>
+          {{end}}
+        </div>
+      </details>
+      {{if .NextURL}}<a href="{{.NextURL}}" class="cal-arrow" aria-label="Sledeći mesec">›</a>{{else}}<span class="cal-arrow" aria-disabled="true">›</span>{{end}}
       {{if .TodayURL}}<a href="{{.TodayURL}}" class="btn btn-sm cal-today-link">Danas</a>{{end}}
     </div>
     {{template "monthCard" .Month}}
+    {{with .Month}}
+    <div class="legend cal-legend">
+      {{if index .Has "day-work"}}<span><span class="swatch sw-work"></span>Posao</span>{{end}}
+      {{if index .Has "day-private"}}<span><span class="swatch sw-private"></span>Privatno</span>{{end}}
+      {{if index .Has "day-projection"}}<span><span class="swatch sw-projection"></span>U Šengenu do roka</span>{{end}}
+      {{if index .Has "day-planned"}}<span><span class="swatch sw-planned"></span>Plan</span>{{end}}
+      {{if index .Has "day-planned-over"}}<span><span class="swatch sw-planned-over"></span>Plan preko limita</span>{{end}}
+      {{if index .Has "day-outside"}}<span><span class="swatch sw-outside"></span>Van 180 dana</span>{{end}}
+      {{if .Freed}}<span><span class="swatch sw-freed"></span>Oslobađa mu se dan</span>{{end}}
+      {{if .Plus}}<span class="cal-num-rem"><strong>⁺</strong> tura od {{$.Typical}} dana staje</span>{{end}}
+    </div>
+    {{end}}
   </div>
   {{template "dayPanel" .}}
-</div>
-<div class="legend">
-  <span class="cal-num-rem">Broj u danu = preostalo dana na taj datum</span>
-  <span class="cal-num-rem"><span class="cal-plus">⁺</span> = može na turu duže, jer mu se tokom puta oslobađaju dani</span>
-  <span class="cal-num-trip">Broj u danu = koliko dana može na turu ako krene tog dana</span>
-  {{if .Status.InSchengen}}<span>Dok je u Šengenu, računa se da ostaje do roka</span>{{end}}
-</div>
-<div class="legend">
-  <span><span class="swatch" style="background:var(--accent);"></span>Posao</span>
-  <span><span class="swatch" style="background:#9FB3DE;"></span>Privatno</span>
-  <span><span class="swatch" style="background:var(--yellow);"></span>Projekcija boravka</span>
-  <span><span class="swatch swatch-planned"></span>Plan</span>
-  <span><span class="swatch swatch-planned-over"></span>Plan preko limita</span>
-  <span><span class="swatch" style="background:#E3E6E0;"></span>Van prozora (180 dana)</span>
-  <span><span class="swatch" style="border:2px solid var(--status-green);"></span>Dan oslobađanja</span>
 </div>
 </section>
 
@@ -259,7 +284,7 @@
       <button type="button" class="day-cell {{.Class}}{{if .Today}} day-today{{end}}{{if .Freed}} day-freed{{end}}{{if not .Future}} day-past{{end}}" aria-pressed="false" aria-label="{{.Label}}" title="{{if .Title}}{{.Title}}{{else}}{{.Label}}{{end}}"
         data-day="{{fmtDateInput .Date}}" data-date="{{fmtDate .Date}}" data-from="{{fmtDate .WindowFrom}}" data-used="{{.Used}}" data-rem="{{.Remaining}}" data-over="{{.OverBy}}"{{if .Future}} data-future{{if .TripBusy}} data-busy{{else}} data-trip="{{.Trip}}" data-trip-to="{{fmtDateInput .TripTo}}"{{if .TripUntilPlan}} data-until-plan{{end}}{{if .TripBetter}} data-better{{end}}{{end}}{{end}}>
         <span class="cal-dn">{{.Day}}</span>
-        {{if .Future}}<span class="cal-n cal-num-rem{{if not .Class}} lvl-{{.Level}}{{end}}">{{if .OverBy}}−{{.OverBy}}{{else}}{{.Remaining}}{{end}}{{if .TripBetter}}<span class="cal-plus">⁺</span>{{end}}</span><span class="cal-n cal-num-trip{{if not .Class}} lvl-{{.TripLevel}}{{end}}">{{if .OverBy}}−{{.OverBy}}{{else if not .TripBusy}}{{.Trip}}{{end}}</span>{{end}}
+        {{if .Future}}<span class="chip cal-num-rem lvl-{{.Level}}">{{if .OverBy}}−{{.OverBy}}{{else}}{{.Remaining}}{{end}}<span class="chip-u">d</span>{{if .TripBetter}}<span class="cal-plus">⁺</span>{{end}}</span>{{if .OverBy}}<span class="chip cal-num-trip lvl-preko">−{{.OverBy}}<span class="chip-u">d</span></span>{{else if not .TripBusy}}<span class="chip cal-num-trip lvl-{{.TripLevel}}"><span class="chip-arr" aria-hidden="true">→</span>{{.Trip}}<span class="chip-u">d</span></span>{{end}}{{end}}
       </button>
     {{else}}<div class="day-cell day-empty"></div>{{end}}{{end}}{{end}}
   </div>

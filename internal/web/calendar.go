@@ -34,8 +34,9 @@ type DayCell struct {
 	TripBusy      bool // already in Schengen on this day: stay, projection or plan
 	TripUntilPlan bool // Trip is cut short by the next saved plan
 	TripLevel     string
-	// TripBetter: the trip reads a better status than Remaining, because
-	// old days drop out of the window while he is away (the ⁺ mark).
+	// TripBetter: fewer days are left than the firm's usual trip, but that
+	// trip still fits, because old days drop out of the window while he is
+	// away (the ⁺ mark).
 	TripBetter bool
 }
 
@@ -61,6 +62,30 @@ func (c DayCell) TripTo() time.Time { return c.Date.AddDate(0, 0, c.Trip-1) }
 type MonthGrid struct {
 	Label string
 	Weeks [][]DayCell
+	// Has says which day classes appear in the month, so the legend lists
+	// only those; Plus and Freed likewise for the ⁺ mark and freed days.
+	Has         map[string]bool
+	Plus, Freed bool
+}
+
+// shortTrip is the shortest trip still colored Pažnja: two thirds of the
+// usual one, rounded up.
+func shortTrip(typical int) int { return (2*typical + 2) / 3 }
+
+// tripLevel colors a trip by the firm's usual trip (typical days): it fits
+// (OK), only a trip two thirds as long fits (Pažnja), something shorter fits
+// (Kritično), or he cannot leave at all (Preko limita).
+func tripLevel(trip, typical int) status.Level {
+	switch {
+	case trip <= 0:
+		return status.LevelOver
+	case trip >= typical:
+		return status.LevelOK
+	case trip >= shortTrip(typical):
+		return status.LevelWarn
+	default:
+		return status.LevelCritical
+	}
 }
 
 var srMonthNames = [...]string{
@@ -83,7 +108,7 @@ func monthLabel(month time.Time) string {
 //   - days on which the allowance grows as old days drop out: green border
 //
 // and giving every day from today on its remaining days and longest trip.
-func buildMonth(stays []store.Stay, plans []status.PlanView, ds status.DriverStatus, th status.Thresholds, today, month time.Time) MonthGrid {
+func buildMonth(stays []store.Stay, plans []status.PlanView, ds status.DriverStatus, th status.Thresholds, typical int, today, month time.Time) MonthGrid {
 	cstays := status.ToCalcStays(stays)
 	windowStart := today.AddDate(0, 0, -(calc.WindowDays - 1))
 
@@ -144,7 +169,7 @@ func buildMonth(stays []store.Stay, plans []status.PlanView, ds status.DriverSta
 		prevUsed = calc.UsedDays(proj, starts[0].AddDate(0, 0, -1))
 	}
 
-	label := monthLabel(monthStart)
+	grid := MonthGrid{Label: monthLabel(monthStart), Has: map[string]bool{}}
 	leadingBlanks := (int(monthStart.Weekday()) + 6) % 7 // Monday-first offset
 
 	var cells []DayCell
@@ -181,7 +206,7 @@ func buildMonth(stays []store.Stay, plans []status.PlanView, ds status.DriverSta
 			a := avail[day-firstAhead]
 			cell.TripBusy, cell.TripUntilPlan = a.Busy, a.UntilPlan
 			if !a.Busy {
-				cell.Trip, cell.TripLevel = a.MaxLength, a.Level.Key()
+				cell.Trip, cell.TripLevel = a.MaxLength, tripLevel(a.MaxLength, typical).Key()
 			}
 			cell.Freed = prevUsed >= 0 && cell.Used < prevUsed
 			prevUsed = cell.Used
@@ -190,21 +215,23 @@ func buildMonth(stays []store.Stay, plans []status.PlanView, ds status.DriverSta
 		}
 		cell.Remaining = max(calc.MaxDays-cell.Used, 0)
 		cell.OverBy = max(cell.Used-calc.MaxDays, 0)
-		lvl := th.Level(cell.Remaining)
-		cell.Level = lvl.Key()
-		cell.TripBetter = cell.Future && !cell.TripBusy && th.Level(cell.Trip) < lvl
+		cell.Level = th.Level(cell.Remaining).Key()
+		cell.TripBetter = cell.Future && !cell.TripBusy && cell.OverBy == 0 &&
+			cell.Remaining < typical && cell.Trip >= typical
 
+		grid.Has[cell.Class] = true
+		grid.Plus = grid.Plus || cell.TripBetter
+		grid.Freed = grid.Freed || cell.Freed
 		cells = append(cells, cell)
 	}
 	for len(cells)%7 != 0 {
 		cells = append(cells, DayCell{})
 	}
 
-	var weeks [][]DayCell
 	for i := 0; i < len(cells); i += 7 {
-		weeks = append(weeks, cells[i:i+7])
+		grid.Weeks = append(grid.Weeks, cells[i:i+7])
 	}
-	return MonthGrid{Label: label, Weeks: weeks}
+	return grid
 }
 
 // projectAhead is the history the days ahead are counted against: the real

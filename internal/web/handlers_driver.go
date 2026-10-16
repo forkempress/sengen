@@ -27,6 +27,9 @@ type driverDetailData struct {
 	// either side (empty at the end of the range) and back to today's.
 	Month                      MonthGrid
 	PrevURL, NextURL, TodayURL string
+	Picker                     []pickerYear // the month picker behind the month's name
+	Typical                    int          // the firm's usual trip, in days
+	TypicalShort               int          // the shortest trip still colored Pažnja
 	Selected                   DayCell      // the day the panel shows first
 	CalMode                    string       // the firm's default number: store.CalendarRemaining | store.CalendarTrip
 	Stays                      []store.Stay // most recent first
@@ -84,7 +87,7 @@ func (s *Server) handleDriverDetail(w http.ResponseWriter, r *http.Request) {
 	views := status.EvaluatePlans(stays, plans, today)
 
 	month := calendarMonth(r, today)
-	grid := buildMonth(stays, views, driverStatus, thresholds, today, month)
+	grid := buildMonth(stays, views, driverStatus, thresholds, settings.TypicalTrip(), today, month)
 	selected, ok := grid.cellOn(today)
 	if !ok {
 		selected, _ = grid.cellOn(month)
@@ -96,16 +99,19 @@ func (s *Server) handleDriverDetail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := driverDetailData{
-		baseData: s.base(r, "vozaci"),
-		Driver:   *driver,
-		Status:   driverStatus,
-		Month:    grid,
-		Selected: selected,
-		CalMode:  settings.CalendarMode(),
-		Stays:    reversed,
-		Plans:    views,
-		PlanSum:  status.Summarize(views),
-		HasPlans: len(plans) > 0,
+		baseData:     s.base(r, "vozaci"),
+		Driver:       *driver,
+		Status:       driverStatus,
+		Month:        grid,
+		Selected:     selected,
+		CalMode:      settings.CalendarMode(),
+		Typical:      settings.TypicalTrip(),
+		TypicalShort: shortTrip(settings.TypicalTrip()),
+		Picker:       monthPicker(r, today, month, views),
+		Stays:        reversed,
+		Plans:        views,
+		PlanSum:      status.Summarize(views),
+		HasPlans:     len(plans) > 0,
 	}
 	if from, to := tripQuery(r); from != "" || to != "" {
 		data.Trip = checkTrip(stays, plans, today, from, to)
@@ -136,24 +142,27 @@ func calendarMonth(r *http.Request, today time.Time) time.Time {
 	return m
 }
 
+// monthURL is the driver page on month m. It keeps the rest of the query
+// (a trip check), so its result stays on the page.
+func monthURL(r *http.Request, today, m time.Time) string {
+	q := r.URL.Query()
+	if m.Year() == today.Year() && m.Month() == today.Month() {
+		q.Del("mesec")
+	} else {
+		q.Set("mesec", m.Format("2006-01"))
+	}
+	u := r.URL.Path
+	if len(q) > 0 {
+		u += "?" + q.Encode()
+	}
+	return u + "#kalendar"
+}
+
 // monthLinks are the calendar's links to the months either side and back to
-// today's; one is empty where there is nowhere to go. They keep the rest of
-// the query (a trip check), so its result stays on the page.
+// today's; one is empty where there is nowhere to go.
 func monthLinks(r *http.Request, today, month time.Time) (prev, next, todays string) {
 	cur := time.Date(today.Year(), today.Month(), 1, 0, 0, 0, 0, time.UTC)
-	link := func(m time.Time) string {
-		q := r.URL.Query()
-		if m.Equal(cur) {
-			q.Del("mesec")
-		} else {
-			q.Set("mesec", m.Format("2006-01"))
-		}
-		u := r.URL.Path
-		if len(q) > 0 {
-			u += "?" + q.Encode()
-		}
-		return u + "#kalendar"
-	}
+	link := func(m time.Time) string { return monthURL(r, today, m) }
 	if p := month.AddDate(0, -1, 0); !p.Before(cur.AddDate(0, -calendarRange, 0)) {
 		prev = link(p)
 	}
@@ -164,6 +173,53 @@ func monthLinks(r *http.Request, today, month time.Time) (prev, next, todays str
 		todays = link(cur)
 	}
 	return prev, next, todays
+}
+
+type pickerYear struct {
+	Year   int
+	Shown  bool // the year of the month on screen: the one the picker opens on
+	Months []pickerMonth
+}
+
+type pickerMonth struct {
+	Label   string // short name: Jan, Feb, …
+	URL     string // empty outside the calendar's range
+	Current bool   // the month on screen
+	Today   bool   // today's month
+	HasPlan bool   // a plan still ahead falls in it
+}
+
+var srMonthShort = [...]string{"Jan", "Feb", "Mar", "Apr", "Maj", "Jun", "Jul", "Avg", "Sep", "Okt", "Nov", "Dec"}
+
+// monthPicker lists every year the calendar's range touches, twelve months
+// each, so any month is two clicks away instead of a click per month.
+func monthPicker(r *http.Request, today, month time.Time, plans []status.PlanView) []pickerYear {
+	cur := time.Date(today.Year(), today.Month(), 1, 0, 0, 0, 0, time.UTC)
+	lo, hi := cur.AddDate(0, -calendarRange, 0), cur.AddDate(0, calendarRange, 0)
+	planned := map[string]bool{}
+	for _, v := range plans {
+		if !v.Active() {
+			continue
+		}
+		for m := time.Date(v.From.Year(), v.From.Month(), 1, 0, 0, 0, 0, time.UTC); !m.After(v.To); m = m.AddDate(0, 1, 0) {
+			planned[m.Format("2006-01")] = true
+		}
+	}
+	var years []pickerYear
+	for y := lo.Year(); y <= hi.Year(); y++ {
+		py := pickerYear{Year: y, Shown: y == month.Year()}
+		for i := range 12 {
+			m := time.Date(y, time.Month(i+1), 1, 0, 0, 0, 0, time.UTC)
+			pm := pickerMonth{Label: srMonthShort[i], Current: m.Equal(month), Today: m.Equal(cur),
+				HasPlan: planned[m.Format("2006-01")]}
+			if !m.Before(lo) && !m.After(hi) {
+				pm.URL = monthURL(r, today, m)
+			}
+			py.Months = append(py.Months, pm)
+		}
+		years = append(years, py)
+	}
+	return years
 }
 
 func (s *Server) handleDriverReturned(w http.ResponseWriter, r *http.Request) {

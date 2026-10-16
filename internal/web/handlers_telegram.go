@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"shengen/internal/auth"
+	"shengen/internal/calc"
 	"shengen/internal/idgen"
 	"shengen/internal/status"
 	"shengen/internal/store"
@@ -129,6 +130,14 @@ func (s *Server) handleCalendarNumber(w http.ResponseWriter, r *http.Request) {
 	default:
 		s.redirectErr(w, r, "/podesavanja/telegram", "Izaberite broj koji kalendar prikazuje.")
 		return
+	}
+	if v := strings.TrimSpace(r.FormValue("typical_trip_days")); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 1 || n > calc.MaxDays {
+			s.redirectErr(w, r, "/podesavanja/telegram", fmt.Sprintf("Uobičajena tura je od 1 do %d dana.", calc.MaxDays))
+			return
+		}
+		settings.TypicalTripDays = n
 	}
 	if err := s.Store.UpdateTenantSettings(r.Context(), t.ID, settings); err != nil {
 		s.serverError(w, r)

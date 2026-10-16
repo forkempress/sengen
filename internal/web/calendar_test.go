@@ -32,7 +32,7 @@ func monthCells(g MonthGrid) []DayCell {
 func buildFor(stays []store.Stay, plans []store.PlannedStay, today, month time.Time) MonthGrid {
 	ds := status.Compute(store.Driver{}, stays, today)
 	views := status.EvaluatePlans(stays, plans, today)
-	return buildMonth(stays, views, ds, status.DefaultThresholds, today, month)
+	return buildMonth(stays, views, ds, status.DefaultThresholds, store.DefaultTypicalTripDays, today, month)
 }
 
 func TestBuildMonth_NumbersFromTodayOn(t *testing.T) {
@@ -161,5 +161,66 @@ func TestCalendarNumberSetting(t *testing.T) {
 	if !strings.Contains(settings, `name="threshold_red" min="1" max="90" inputmode="numeric" value="10"`) ||
 		!strings.Contains(settings, `id="cal-trip" name="calendar_number" value="trip" checked`) {
 		t.Error("saving the calendar lost the thresholds, or the choice is not shown")
+	}
+}
+
+func TestTripLevel(t *testing.T) {
+	for _, c := range []struct {
+		trip int
+		want status.Level
+	}{
+		{0, status.LevelOver}, {1, status.LevelCritical}, {5, status.LevelCritical},
+		{6, status.LevelWarn}, {8, status.LevelWarn}, {9, status.LevelOK}, {40, status.LevelOK},
+	} {
+		if got := tripLevel(c.trip, 9); got != c.want {
+			t.Errorf("tripLevel(%d, 9) = %v, want %v", c.trip, got, c.want)
+		}
+	}
+}
+
+func TestDriverPage_MonthPicker(t *testing.T) {
+	app := newTestApp(t)
+	f := app.addFirm("Prevoz A", "prevoz-a", "a@prevoz.rs", "Marko Test", 10)
+	s := app.mustLogin(f)
+	page := s.get("/vozaci/" + id(f.driver.ID)).Body.String()
+
+	jan := planDay(0)[:4] + "-01"
+	if jan != planDay(0)[:7] && !strings.Contains(page, "mesec="+jan) {
+		t.Error("the picker has no link to January")
+	}
+	if !strings.Contains(page, `class="mp-m is-current is-today" aria-current="date"`) {
+		t.Error("the picker does not mark the month on screen")
+	}
+	if !strings.Contains(page, `class="mp-m is-off"`) {
+		t.Error("months outside the range are not shown as unavailable")
+	}
+}
+
+func TestTypicalTripSetting(t *testing.T) {
+	app := newTestApp(t)
+	f := app.addFirm("Prevoz A", "prevoz-a", "a@prevoz.rs", "Marko Test", 10)
+	s := app.mustLogin(f)
+
+	if msg := flashFrom(s, s.post("/podesavanja/kalendar", url.Values{"calendar_number": {"remaining"}, "typical_trip_days": {"0"}}), "err"); msg == "" {
+		t.Error("a zero-day usual trip is accepted")
+	}
+	s.post("/podesavanja/kalendar", url.Values{"calendar_number": {"remaining"}, "typical_trip_days": {"6"}})
+	if page := s.get("/podesavanja/telegram").Body.String(); !strings.Contains(page, `id="cal-typical" name="typical_trip_days" min="1" max="90" inputmode="numeric" value="6"`) {
+		t.Error("the usual trip is not saved")
+	}
+	if page := s.get("/vozaci/" + id(f.driver.ID)).Body.String(); !strings.Contains(page, "uobičajena tura od 6+ dana") {
+		t.Error("the calendar does not explain the firm's usual trip")
+	}
+}
+
+func TestCrossingShortcutIsOneClickToday(t *testing.T) {
+	app := newTestApp(t)
+	f := app.addFirm("Prevoz A", "prevoz-a", "a@prevoz.rs", "Marko Test", 10)
+	s := app.mustLogin(f)
+	for _, path := range []string{"/pregled", "/podesavanja/vozaci"} {
+		page := s.get(path).Body.String()
+		if !strings.Contains(page, `<input type="hidden" name="date" value="`+planDay(0)+`">`) || !strings.Contains(page, "danas</button>") {
+			t.Errorf("%s: the crossing shortcut is not a one-click button for today", path)
+		}
 	}
 }

@@ -238,3 +238,37 @@ document.addEventListener('click', function (e) {
     check.href = panel.getAttribute('data-driver-path') + '?od=' + d.day + '&do=' + d.tripTo + '#planovi';
   }
 });
+
+// Biranje meseca: strelice u mreži menjaju godinu; klik van mreže ili Esc
+// je zatvara. Bez JS-a sve godine stoje jedna ispod druge.
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.month-pick').forEach(function (pick) {
+    var years = pick.querySelectorAll('.mp-year');
+    if (!years.length) return;
+    years[0].querySelector('[data-mp-step="-1"]').disabled = true;
+    years[years.length - 1].querySelector('[data-mp-step="1"]').disabled = true;
+  });
+});
+document.addEventListener('click', function (e) {
+  var step = e.target.closest && e.target.closest('[data-mp-step]');
+  if (step) {
+    var year = step.closest('.mp-year');
+    var to = +step.getAttribute('data-mp-step') < 0 ? year.previousElementSibling : year.nextElementSibling;
+    if (to && to.classList.contains('mp-year')) {
+      year.classList.remove('is-shown');
+      to.classList.add('is-shown');
+    }
+    return;
+  }
+  var inside = e.target.closest && e.target.closest('details.month-pick');
+  document.querySelectorAll('details.month-pick[open]').forEach(function (d) {
+    if (d !== inside) d.open = false;
+  });
+});
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape') return;
+  document.querySelectorAll('details.month-pick[open]').forEach(function (d) {
+    d.open = false;
+    d.querySelector('summary').focus();
+  });
+});
