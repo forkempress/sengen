@@ -28,6 +28,22 @@ document.addEventListener('click', function (e) {
   if (target && target.tagName === 'DETAILS') target.open = true;
 });
 
+// Meni „⋯“ u redu: otvoren je samo jedan, a klik van njega ili Esc ga
+// zatvara.
+document.addEventListener('click', function (e) {
+  var inside = e.target.closest && e.target.closest('details.row-menu');
+  document.querySelectorAll('details.row-menu[open]').forEach(function (d) {
+    if (d !== inside) d.open = false;
+  });
+});
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape') return;
+  document.querySelectorAll('details.row-menu[open]').forEach(function (d) {
+    d.open = false;
+    d.querySelector('summary').focus();
+  });
+});
+
 // Polje sa linkom za povezivanje: klik označi ceo link da se lako kopira.
 document.addEventListener('click', function (e) {
   if (e.target.matches && e.target.matches('input[data-select-on-click]')) {

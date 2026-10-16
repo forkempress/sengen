@@ -29,47 +29,73 @@
 </div>
 </dialog>
 
-<h2>Svi vozači</h2>
-{{if and .ShowTelegram .ActiveCount}}<p class="muted">Sa Telegram botom povezano: <span class="num">{{.Linked}}</span> od <span class="num">{{.ActiveCount}}</span> aktivnih vozača.</p>{{end}}
+<h2>{{if .Archived}}Aktivni vozači{{else}}Svi vozači{{end}}</h2>
+{{if and .ShowTelegram .Drivers}}<p class="muted">Sa Telegram botom povezano: <span class="num">{{.Linked}}</span> od <span class="num">{{len .Drivers}}</span> vozača.</p>{{end}}
 <div class="table-wrap">
 <table class="stack">
-  <thead><tr><th>Ime</th><th>Vozilo</th><th>Gde je</th>{{if .ShowTelegram}}<th>Telegram</th>{{end}}<th>Status</th><th><span class="sr-only">Akcije</span></th></tr></thead>
+  <thead><tr><th>Ime</th><th>Vozilo</th><th>Gde je</th><th>Dani</th>{{if .ShowTelegram}}<th>Telegram</th>{{end}}<th><span class="sr-only">Akcije</span></th></tr></thead>
   <tbody>
     {{$csrf := .CSRFToken}}
     {{$where := .Where}}
     {{$tg := .ShowTelegram}}
     {{range .Drivers}}
+    {{$st := index $where .ID}}
     <tr>
       <td><a href="/vozaci/{{.ID}}">{{.Name}}</a></td>
       <td data-label="Vozilo">{{.VehicleLabel}}</td>
-      <td data-label="Gde je">{{if .Active}}{{with index $where .ID}}{{template "where" .}}{{template "crossing" (driverCrossing . $csrf)}}{{end}}{{end}}</td>
+      <td data-label="Gde je">{{template "where" $st}}{{template "crossing" (driverCrossing $st $csrf)}}</td>
+      <td data-label="Dani"><span class="num">{{$st.UsedDays}}/90</span> {{$st.Badge.HTML}}</td>
       {{if $tg}}<td data-label="Telegram">{{if .TelegramChatID}}<span class="tg tg-on"><span aria-hidden="true">✓</span> povezan</span>{{else}}<span class="tg tg-off"><span aria-hidden="true">✗</span> nije</span>{{end}}</td>{{end}}
-      <td data-label="Status">{{if .Active}}aktivan{{else}}<span class="muted">deaktiviran</span>{{end}}</td>
-      <td><div class="row-actions">
-        {{if .Active}}
-        {{if $tg}}
-        <form class="inline" method="post" action="/podesavanja/vozaci/{{.ID}}/telegram-link">
-          <input type="hidden" name="csrf_token" value="{{$csrf}}">
-          <button type="submit" class="btn btn-sm">{{if .TelegramChatID}}Ponovo poveži Telegram{{else}}Telegram link i QR{{end}}</button>
-        </form>
-        {{end}}
-        <form class="inline" method="post" action="/podesavanja/vozaci/{{.ID}}/deaktiviraj" data-confirm="Deaktivirati vozača {{.Name}}? Nestaje sa pregleda i iz upozorenja{{if $tg}}, a bot više ne prima njegove poruke{{end}}. Istorija ostaje.">
-          <input type="hidden" name="csrf_token" value="{{$csrf}}">
-          <button type="submit" class="btn btn-sm">Deaktiviraj</button>
-        </form>
-        {{else}}
-        <form class="inline" method="post" action="/podesavanja/vozaci/{{.ID}}/aktiviraj">
-          <input type="hidden" name="csrf_token" value="{{$csrf}}">
-          <button type="submit" class="btn btn-sm btn-primary">Aktiviraj</button>
-        </form>
-        {{end}}
-      </div></td>
+      <td>
+        <details class="row-menu">
+          <summary class="btn btn-sm" aria-label="Još akcija — {{.Name}}"><span aria-hidden="true">⋯</span></summary>
+          <div class="row-menu-items">
+            <a class="btn btn-sm" href="/vozaci/{{.ID}}/izvestaj">Izveštaj</a>
+            {{if $tg}}
+            <form class="inline" method="post" action="/podesavanja/vozaci/{{.ID}}/telegram-link">
+              <input type="hidden" name="csrf_token" value="{{$csrf}}">
+              <button type="submit" class="btn btn-sm">{{if .TelegramChatID}}Ponovo poveži Telegram{{else}}Telegram link i QR{{end}}</button>
+            </form>
+            {{end}}
+            <form class="inline" method="post" action="/podesavanja/vozaci/{{.ID}}/deaktiviraj" data-confirm="Arhivirati vozača {{.Name}}? Nestaje sa pregleda, iz planera i iz upozorenja{{if $tg}}, a bot više ne prima njegove poruke{{end}}. Istorija ostaje i može se vratiti.">
+              <input type="hidden" name="csrf_token" value="{{$csrf}}">
+              <button type="submit" class="btn btn-sm">Arhiviraj</button>
+            </form>
+          </div>
+        </details>
+      </td>
     </tr>
     {{else}}
-    <tr><td colspan="{{if .ShowTelegram}}6{{else}}5{{end}}" class="muted">Još nema vozača. Dodajte prvog dugmetom „Dodaj vozača“ — ime je dovoljno.</td></tr>
+    <tr><td colspan="{{if .ShowTelegram}}6{{else}}5{{end}}" class="muted">{{if .Archived}}Nema aktivnih vozača. Dodajte novog ili vratite nekog iz arhive ispod.{{else}}Još nema vozača. Dodajte prvog dugmetom „Dodaj vozača“ — ime je dovoljno.{{end}}</td></tr>
     {{end}}
   </tbody>
 </table>
 </div>
 {{if not .ShowTelegram}}<p class="muted">Vozači mogu i sami da javljaju ulaz i izlaz preko Telegrama. <a href="/podesavanja/vozaci?telegram=1">Prikaži povezivanje</a></p>{{end}}
+
+{{with .Archived}}
+<details class="plan-block" id="arhiva">
+  <summary><h2>Arhivirani vozači</h2> <span class="muted num">{{len .}}</span></summary>
+  <p class="muted">Ne vide se na pregledu, u planeru ni u upozorenjima. Istorija boravaka je sačuvana.</p>
+  <div class="table-wrap">
+  <table class="stack">
+    <thead><tr><th>Ime</th><th>Vozilo</th><th><span class="sr-only">Akcije</span></th></tr></thead>
+    <tbody>
+      {{range .}}
+      <tr>
+        <td><a href="/vozaci/{{.ID}}">{{.Name}}</a></td>
+        <td data-label="Vozilo">{{.VehicleLabel}}</td>
+        <td><div class="row-actions">
+          <form class="inline" method="post" action="/podesavanja/vozaci/{{.ID}}/aktiviraj">
+            <input type="hidden" name="csrf_token" value="{{$csrf}}">
+            <button type="submit" class="btn btn-sm">Vrati iz arhive</button>
+          </form>
+        </div></td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  </div>
+</details>
+{{end}}
 {{end}}

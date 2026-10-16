@@ -15,11 +15,14 @@ import (
 
 type settingsDriversData struct {
 	baseData
-	Drivers []store.Driver
-	Link    *telegramLink // set right after generating a driver's link
+	// Drivers are the active ones, Archived the deactivated ones, shown
+	// apart at the bottom of the page.
+	Drivers, Archived []store.Driver
+	Link              *telegramLink // set right after generating a driver's link
 	// Linked counts active drivers connected to the bot.
-	Linked, ActiveCount int
-	// Where is each driver's status today, for the "Ušao/Izašao" button.
+	Linked int
+	// Where is each active driver's status today: the "Ušao/Izašao" button
+	// and the days column.
 	Where map[int64]status.DriverStatus
 	// ShowTelegram shows the bot column and links. A firm that enters
 	// crossings on the web never sees them until it links a driver or
@@ -60,18 +63,20 @@ func (s *Server) renderDriversPageFlash(w http.ResponseWriter, r *http.Request, 
 		s.serverError(w, r)
 		return
 	}
-	data := settingsDriversData{baseData: s.base(r, "vozaci"), Drivers: drivers, Link: link,
-		Where: make(map[int64]status.DriverStatus, len(drivers))}
-	for _, st := range status.ComputeAll(drivers, allStays, clock.Today()) {
+	data := settingsDriversData{baseData: s.base(r, "vozaci"), Link: link}
+	for _, d := range drivers {
+		if d.Active {
+			data.Drivers = append(data.Drivers, d)
+		} else {
+			data.Archived = append(data.Archived, d)
+		}
+	}
+	data.Where = make(map[int64]status.DriverStatus, len(data.Drivers))
+	for _, st := range status.ComputeAll(data.Drivers, allStays, clock.Today()) {
 		data.Where[st.Driver.ID] = st
 	}
 	if ok != "" {
 		data.Flash = ok
-	}
-	for _, d := range drivers {
-		if d.Active {
-			data.ActiveCount++
-		}
 	}
 	data.Linked = linkedCount(drivers)
 	data.ShowTelegram = data.Linked > 0 || link != nil || r.FormValue("telegram") == "1"
@@ -116,7 +121,7 @@ func (s *Server) handleSettingsDriverCreate(w http.ResponseWriter, r *http.Reque
 	s.renderDriversPageFlash(w, r, link, "Vozač dodat. Povežite ga sa Telegram botom linkom ili QR kodom ispod.")
 }
 
-func (s *Server) setDriverActive(w http.ResponseWriter, r *http.Request, active bool) {
+func (s *Server) setDriverActive(w http.ResponseWriter, r *http.Request, active bool, msg string) {
 	t, _ := tenant.FromContext(r.Context())
 	id, err := pathInt64(r, "id")
 	if err != nil {
@@ -130,13 +135,13 @@ func (s *Server) setDriverActive(w http.ResponseWriter, r *http.Request, active 
 		s.serverError(w, r)
 		return
 	}
-	http.Redirect(w, r, "/podesavanja/vozaci", http.StatusSeeOther)
+	s.redirectOk(w, r, "/podesavanja/vozaci", msg)
 }
 
 func (s *Server) handleSettingsDriverDeactivate(w http.ResponseWriter, r *http.Request) {
-	s.setDriverActive(w, r, false)
+	s.setDriverActive(w, r, false, "Vozač je arhiviran. Istorija je sačuvana.")
 }
 
 func (s *Server) handleSettingsDriverActivate(w http.ResponseWriter, r *http.Request) {
-	s.setDriverActive(w, r, true)
+	s.setDriverActive(w, r, true, "Vozač je vraćen iz arhive.")
 }

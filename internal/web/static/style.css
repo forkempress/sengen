@@ -607,6 +607,14 @@ tr.row-muted td { color: var(--text-muted); }
 .tg { font-weight: 600; white-space: nowrap; }
 .tg-on { color: var(--status-green); }
 .tg-off { color: var(--status-red); }
+/* Meni „⋯“ u redu: otvara se u samoj ćeliji, pa ga tabela sa
+   overflow-x ne odseca. */
+.row-menu > summary { list-style: none; min-width: 44px; font-weight: 700; letter-spacing: 0.1em; }
+.row-menu > summary::-webkit-details-marker { display: none; }
+.row-menu[open] > summary { border-color: var(--text); background: #F4F5F2; }
+.row-menu-items { display: flex; flex-direction: column; align-items: stretch; gap: 0.35rem; margin-top: 0.4rem; min-width: 11rem; }
+.row-menu-items form.inline { display: block; }
+.row-menu-items .btn { width: 100%; justify-content: flex-start; }
 .link-box-body { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
 .link-box-qr { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
 .link-box-text { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 0.35rem; }
