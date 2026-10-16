@@ -15,11 +15,12 @@
   </div>
   <form method="post" action="/podesavanja/vozaci">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    {{if .ShowTelegram}}<input type="hidden" name="telegram" value="1">{{end}}
     <div class="form-grid">
       <div><label for="d-name">Ime i prezime</label><input type="text" id="d-name" name="name" required maxlength="120" autocomplete="off"></div>
       <div><label for="d-vehicle">Vozilo</label><input type="text" id="d-vehicle" name="vehicle_label" maxlength="60" placeholder="npr. BG-123-AB" autocomplete="off"></div>
     </div>
-    <p class="muted">Posle dodavanja odmah dobijate link i QR kod za Telegram.</p>
+    {{if .ShowTelegram}}<p class="muted">Posle dodavanja odmah dobijate link i QR kod za Telegram.</p>{{end}}
     <div class="dialog-actions">
       <button type="submit" class="btn btn-primary">Dodaj vozača</button>
       <button type="button" class="btn" data-dialog-close>Odustani</button>
@@ -29,27 +30,30 @@
 </dialog>
 
 <h2>Svi vozači</h2>
-{{if .ActiveCount}}<p class="muted">Sa Telegram botom povezano: <span class="num">{{.Linked}}</span> od <span class="num">{{.ActiveCount}}</span> aktivnih vozača.</p>{{end}}
+{{if and .ShowTelegram .ActiveCount}}<p class="muted">Sa Telegram botom povezano: <span class="num">{{.Linked}}</span> od <span class="num">{{.ActiveCount}}</span> aktivnih vozača.</p>{{end}}
 <div class="table-wrap">
 <table class="stack">
-  <thead><tr><th>Ime</th><th>Vozilo</th><th>Gde je</th><th>Telegram</th><th>Status</th><th><span class="sr-only">Akcije</span></th></tr></thead>
+  <thead><tr><th>Ime</th><th>Vozilo</th><th>Gde je</th>{{if .ShowTelegram}}<th>Telegram</th>{{end}}<th>Status</th><th><span class="sr-only">Akcije</span></th></tr></thead>
   <tbody>
     {{$csrf := .CSRFToken}}
     {{$where := .Where}}
+    {{$tg := .ShowTelegram}}
     {{range .Drivers}}
     <tr>
       <td><a href="/vozaci/{{.ID}}">{{.Name}}</a></td>
       <td data-label="Vozilo">{{.VehicleLabel}}</td>
       <td data-label="Gde je">{{if .Active}}{{with index $where .ID}}{{template "where" .}}{{template "crossing" (driverCrossing . $csrf)}}{{end}}{{end}}</td>
-      <td data-label="Telegram">{{if .TelegramChatID}}<span class="tg tg-on"><span aria-hidden="true">✓</span> povezan</span>{{else}}<span class="tg tg-off"><span aria-hidden="true">✗</span> nije</span>{{end}}</td>
+      {{if $tg}}<td data-label="Telegram">{{if .TelegramChatID}}<span class="tg tg-on"><span aria-hidden="true">✓</span> povezan</span>{{else}}<span class="tg tg-off"><span aria-hidden="true">✗</span> nije</span>{{end}}</td>{{end}}
       <td data-label="Status">{{if .Active}}aktivan{{else}}<span class="muted">deaktiviran</span>{{end}}</td>
       <td><div class="row-actions">
         {{if .Active}}
+        {{if $tg}}
         <form class="inline" method="post" action="/podesavanja/vozaci/{{.ID}}/telegram-link">
           <input type="hidden" name="csrf_token" value="{{$csrf}}">
           <button type="submit" class="btn btn-sm">{{if .TelegramChatID}}Ponovo poveži Telegram{{else}}Telegram link i QR{{end}}</button>
         </form>
-        <form class="inline" method="post" action="/podesavanja/vozaci/{{.ID}}/deaktiviraj" data-confirm="Deaktivirati vozača {{.Name}}? Nestaje sa pregleda i bot više ne prima njegove poruke.">
+        {{end}}
+        <form class="inline" method="post" action="/podesavanja/vozaci/{{.ID}}/deaktiviraj" data-confirm="Deaktivirati vozača {{.Name}}? Nestaje sa pregleda i iz upozorenja{{if $tg}}, a bot više ne prima njegove poruke{{end}}. Istorija ostaje.">
           <input type="hidden" name="csrf_token" value="{{$csrf}}">
           <button type="submit" class="btn btn-sm">Deaktiviraj</button>
         </form>
@@ -62,9 +66,10 @@
       </div></td>
     </tr>
     {{else}}
-    <tr><td colspan="6" class="muted">Još nema vozača. Dodajte prvog dugmetom „Dodaj vozača“ — ime je dovoljno.</td></tr>
+    <tr><td colspan="{{if .ShowTelegram}}6{{else}}5{{end}}" class="muted">Još nema vozača. Dodajte prvog dugmetom „Dodaj vozača“ — ime je dovoljno.</td></tr>
     {{end}}
   </tbody>
 </table>
 </div>
+{{if not .ShowTelegram}}<p class="muted">Vozači mogu i sami da javljaju ulaz i izlaz preko Telegrama. <a href="/podesavanja/vozaci?telegram=1">Prikaži povezivanje</a></p>{{end}}
 {{end}}

@@ -69,13 +69,14 @@ func stayForm() url.Values {
 	return url.Values{"entry_date": {"2026-01-05"}, "exit_date": {"2026-01-10"}, "type": {"work"}}
 }
 
-// Adding a driver answers with the page itself: the one-time link and its
-// QR code are shown at once, and the token never goes into a URL.
+// Adding a driver with Telegram in use answers with the page itself: the
+// one-time link and its QR code are shown at once, and the token never goes
+// into a URL.
 func TestDriverCreate_ShowsLinkAndQRAtOnce(t *testing.T) {
 	app, a, _ := twoFirmApp(t)
 	sa := app.mustLogin(a)
 
-	w := sa.post("/podesavanja/vozaci", url.Values{"name": {"Novi Vozač"}})
+	w := sa.post("/podesavanja/vozaci", url.Values{"name": {"Novi Vozač"}, "telegram": {"1"}})
 	if w.Code != http.StatusOK || w.Header().Get("Location") != "" {
 		t.Fatalf("create = %d %q, want 200 with the page", w.Code, w.Header().Get("Location"))
 	}
@@ -84,5 +85,24 @@ func TestDriverCreate_ShowsLinkAndQRAtOnce(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Errorf("page after adding a driver is missing %q", want)
 		}
+	}
+}
+
+// A firm with no driver on the bot gets no link: just the message, after a
+// redirect.
+func TestDriverCreate_WithoutTelegramRedirects(t *testing.T) {
+	app, a, _ := twoFirmApp(t)
+	sa := app.mustLogin(a)
+
+	w := sa.post("/podesavanja/vozaci", url.Values{"name": {"Novi Vozač"}})
+	if w.Code != http.StatusSeeOther || w.Header().Get("Location") != "/podesavanja/vozaci" {
+		t.Fatalf("create = %d %q, want 303 to the drivers page", w.Code, w.Header().Get("Location"))
+	}
+	body := sa.get("/podesavanja/vozaci").Body.String()
+	if !strings.Contains(body, "Vozač dodat.") || !strings.Contains(body, "Novi Vozač") {
+		t.Error("drivers page does not show the new driver and the message")
+	}
+	if strings.Contains(body, "Link za povezivanje") {
+		t.Error("a link was issued for a firm that does not use the bot")
 	}
 }

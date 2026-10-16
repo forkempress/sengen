@@ -21,6 +21,21 @@ type settingsDriversData struct {
 	Linked, ActiveCount int
 	// Where is each driver's status today, for the "Ušao/Izašao" button.
 	Where map[int64]status.DriverStatus
+	// ShowTelegram shows the bot column and links. A firm that enters
+	// crossings on the web never sees them until it links a driver or
+	// asks for them with ?telegram=1.
+	ShowTelegram bool
+}
+
+// linkedCount counts active drivers connected to the Telegram bot.
+func linkedCount(drivers []store.Driver) int {
+	n := 0
+	for _, d := range drivers {
+		if d.Active && d.TelegramChatID != nil {
+			n++
+		}
+	}
+	return n
 }
 
 func (s *Server) handleSettingsDriversPage(w http.ResponseWriter, r *http.Request) {
@@ -56,11 +71,10 @@ func (s *Server) renderDriversPageFlash(w http.ResponseWriter, r *http.Request, 
 	for _, d := range drivers {
 		if d.Active {
 			data.ActiveCount++
-			if d.TelegramChatID != nil {
-				data.Linked++
-			}
 		}
 	}
+	data.Linked = linkedCount(drivers)
+	data.ShowTelegram = data.Linked > 0 || link != nil || r.FormValue("telegram") == "1"
 	s.render(w, "podesavanja_vozaci.html", data)
 }
 
@@ -77,9 +91,19 @@ func (s *Server) handleSettingsDriverCreate(w http.ResponseWriter, r *http.Reque
 		s.redirectErr(w, r, "/podesavanja/vozaci", msg)
 		return
 	}
+	drivers, err := s.Store.ListDrivers(r.Context(), t.ID, true)
+	if err != nil {
+		s.serverError(w, r)
+		return
+	}
 	driver, err := s.Store.CreateDriver(r.Context(), t.ID, name, vehicle)
 	if err != nil {
 		s.serverError(w, r)
+		return
+	}
+	if linkedCount(drivers) == 0 && r.FormValue("telegram") != "1" {
+		// No driver uses the bot, so no link to hand out.
+		s.redirectOk(w, r, "/podesavanja/vozaci", "Vozač dodat.")
 		return
 	}
 	// The link (and QR) come right away, so the dispatcher can connect the
