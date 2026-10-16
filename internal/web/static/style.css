@@ -574,7 +574,7 @@ footer.app-footer {
 .driver-cards li { margin-bottom: 0.6rem; }
 .driver-card {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.2rem 0.75rem;
   background: var(--card-bg);
   border: 1px solid var(--card-border);
@@ -591,7 +591,9 @@ footer.app-footer {
 .dc-name { font-weight: 600; color: var(--accent); }
 .dc-figure { display: flex; flex-direction: column; align-items: flex-end; gap: 0.2rem; grid-row: span 2; }
 .dc-number { font-size: 2rem; font-weight: 700; line-height: 1; }
-.dc-line { font-size: 1rem; color: var(--text-muted); }
+.dc-line { font-size: 1rem; color: var(--text-muted); min-width: 0; }
+/* Oznaka plana u kartici sme u dva reda, da ne gura broj van ekrana. */
+.driver-card .plan-badge { white-space: normal; }
 .driver-card-empty { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 6px; padding: 0.9rem; }
 
 /* Stranica vozača: hero sa preostalim danima (UX-07). */
