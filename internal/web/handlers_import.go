@@ -3,6 +3,7 @@ package web
 import (
 	"log"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -148,6 +149,8 @@ func (s *Server) handleImportConfirm(w http.ResponseWriter, r *http.Request) {
 
 	written, created := 0, 0
 	usedDrivers := map[int64]bool{}
+	// The period the written stays cover; an open stay runs to today.
+	var from, to time.Time
 	err := s.Store.WithTx(r.Context(), func(txStore *store.Store) error {
 		existing, err := txStore.ListDrivers(r.Context(), t.ID, true)
 		if err != nil {
@@ -201,6 +204,16 @@ func (s *Server) handleImportConfirm(w http.ResponseWriter, r *http.Request) {
 			txStore.RecordAudit(r.Context(), t.ID, "user", &u.ID, "stay", st.ID, "create", nil, nil)
 			written++
 			usedDrivers[driverID] = true
+			end := clock.Today()
+			if exit != nil {
+				end = *exit
+			}
+			if from.IsZero() || entry.Before(from) {
+				from = entry
+			}
+			if end.After(to) {
+				to = end
+			}
 		}
 		return nil
 	})
@@ -215,6 +228,14 @@ func (s *Server) handleImportConfirm(w http.ResponseWriter, r *http.Request) {
 
 	if docID, err := strconv.ParseInt(r.Form.Get("doc_import_id"), 10, 64); err == nil {
 		if err := s.Store.ConfirmDocumentImport(r.Context(), t.ID, docID, written, len(usedDrivers)); err != nil {
+			log.Printf("import dokumenta (firma %d): %v", t.ID, err)
+		}
+		ids := make([]int64, 0, len(usedDrivers))
+		for id := range usedDrivers {
+			ids = append(ids, id)
+		}
+		slices.Sort(ids)
+		if err := s.Store.RecordDocumentWritten(r.Context(), t.ID, docID, ids, from, to); err != nil {
 			log.Printf("import dokumenta (firma %d): %v", t.ID, err)
 		}
 	}

@@ -19,7 +19,7 @@ const (
 const TermsVersion = "2026-10-15"
 
 // LastUpdated is shown on the three legal pages.
-const LastUpdated = "15.10.2026."
+const LastUpdated = "16.10.2026."
 
 // Disclaimer is the short notice that the calculation is not legal advice,
 // shown under results, in the footer and (DisclaimerBot) in the bot.

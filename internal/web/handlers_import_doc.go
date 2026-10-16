@@ -101,7 +101,10 @@ func (s *Server) handleImportDocument(w http.ResponseWriter, r *http.Request) {
 		only, names = d, []string{d.Name}
 	}
 
-	res, err := s.DocReader.Read(r.Context(), data, mediaType, names)
+	// A firm may be set to its own model; an unreadable setting falls back
+	// to the server's.
+	settings, _ := t.ParsedSettings()
+	res, err := s.DocReader.Read(r.Context(), data, mediaType, names, settings.DocReadModel)
 	if only != nil {
 		for i := range res.Stays {
 			res.Stays[i].Driver = only.Name
@@ -165,6 +168,16 @@ func (s *Server) handleImportDocument(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	importID := record(store.DocImportOK, valid)
+	// The scan is kept a while to test other models on it (cmd/doceval).
+	if importID != 0 {
+		file := store.DocumentFile{ImportID: importID, TenantID: t.ID, MediaType: mediaType, Data: data, DriverNames: names}
+		if only != nil {
+			file.SingleDriverID = &only.ID
+		}
+		if err := s.Store.SaveDocumentFile(r.Context(), file); err != nil {
+			log.Printf("import dokumenta (firma %d): %v", t.ID, err)
+		}
+	}
 	// docread.CSV puts stay i on line i+2 (after the header).
 	uncertain := map[int]bool{}
 	for i, st := range res.Stays {

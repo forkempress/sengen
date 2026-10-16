@@ -37,6 +37,30 @@ Za 10 skenova trošak je ispod $1. Rezultat se ispisuje kao tabela, a sve grešk
 
 Ostale opcije: `-models opus,haiku`, `-reps 3`, `-dir drugi/folder`.
 
+## Skenovi koje su učitali korisnici
+
+Aplikacija čuva svaki pročitan sken 30 dana. Kad je uvoz potvrđen, tačni boravci su oni koji su sada u aplikaciji za vozače iz tog uvoza, u periodu koji je uvoz pokrio, pa se računaju i ispravke na stranici vozača. Ništa ne moraš da upisuješ ručno.
+
+Povuci kopiju baze sa servera (kao u glavnom README-u, odeljak „Proba izmena pre produkcije“) i pokreni:
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-api03-... go run ./cmd/doceval -db dani90.db
+```
+
+Greška koju niko nije ispravio računa se kao tačna, pa je model koji je sken pročitao u aplikaciji u prednosti. Izveštaj uz svaki sken piše koji je to model. Ako se svi modeli slažu u grešci, uporedi taj sken sa originalom.
+
+Model za jednu firmu menja se na serveru, bez restarta. `seed` se pravi i kopira kao i server:
+
+```bash
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/seed-linux ./cmd/seed && scp bin/seed-linux veljko@SERVER_IP:/tmp/seed
+```
+
+```bash
+ssh veljko@SERVER_IP "sudo -u dani90 env DB_PATH=/var/lib/dani90/dani90.db /tmp/seed -slug <firma> -doc-model haiku"
+```
+
+`-doc-model default` vraća firmu na model servera (`DOC_READ_MODEL`, podrazumevano Sonnet 5.5).
+
 ## Kako se ocenjuje
 
 Boravak je tačan samo ako se slažu vozač, ulaz, izlaz i tip.

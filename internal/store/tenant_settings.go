@@ -17,6 +17,9 @@ type TenantSettings struct {
 	TelegramAlertChatID int64 `json:"telegram_alert_chat_id,omitempty"`
 	ThresholdRedDays    int   `json:"threshold_red_days,omitempty"`    // default 15
 	ThresholdOrangeDays int   `json:"threshold_orange_days,omitempty"` // default 30
+	// DocReadModel reads this firm's scans; empty is the server's default.
+	// Set by the operators (cmd/seed -doc-model), not by the firm.
+	DocReadModel string `json:"doc_read_model,omitempty"`
 }
 
 func (t *Tenant) ParsedSettings() (TenantSettings, error) {

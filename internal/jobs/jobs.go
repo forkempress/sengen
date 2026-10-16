@@ -119,6 +119,11 @@ func (r *Runner) Cleanup(ctx context.Context, now time.Time) {
 	if _, err := r.Store.DeleteEmailLogBefore(ctx, now.Add(-emailLogRetention)); err != nil {
 		log.Printf("jobs: cleanup email log: %v", err)
 	}
+	if n, err := r.Store.DeleteDocumentFilesBefore(ctx, now.Add(-store.DocumentFileRetention)); err != nil {
+		log.Printf("jobs: cleanup document files: %v", err)
+	} else if n > 0 {
+		log.Printf("jobs: deleted %d old scans", n)
+	}
 	if _, err := r.Store.DeleteTelegramUpdatesBefore(ctx, now.Add(-telegramUpdateRetention)); err != nil {
 		log.Printf("jobs: cleanup telegram updates: %v", err)
 	}

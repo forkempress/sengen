@@ -159,3 +159,18 @@ func TestLoad_AnthropicKeyExpires(t *testing.T) {
 		t.Errorf("bad date: err %v", err)
 	}
 }
+
+func TestLoad_DocReadModel(t *testing.T) {
+	t.Setenv("DOC_READ_MODEL", " Haiku ")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.DocReadModel != "claude-haiku-5-5" {
+		t.Errorf("model %q, want claude-haiku-5-5", cfg.DocReadModel)
+	}
+	t.Setenv("DOC_READ_MODEL", "gpt-5")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "DOC_READ_MODEL") {
+		t.Errorf("unknown model: err %v", err)
+	}
+}

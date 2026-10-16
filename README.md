@@ -254,6 +254,7 @@ Kopija sadrži lične podatke vozača — obrisati je kad proba završi.
 | `MAIL_DAILY_LIMIT` | `250` | najviše mejlova u 24h |
 | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | — | Cloudflare Turnstile na javnim formama; oba ili nijedan |
 | `ANTHROPIC_API_KEY` | — | Uključuje čitanje skenirane evidencije (PDF, slika) na stranici „Uvoz istorije“ preko Claude-a; najviše 10 strana / 10 MB, 10 dokumenata dnevno po firmi |
+| `DOC_READ_MODEL` | `sonnet` | Model koji čita skenove: `opus`, `sonnet` ili `haiku`. Firma može imati svoj: `seed -slug <firma> -doc-model haiku` (`default` vraća na ovaj). Učitani skenovi čuvaju se 30 dana za poređenje modela (`eval/README.md`) |
 | `ANTHROPIC_API_KEY_EXPIRES` | — | Poslednji dan važenja ključa (`2026-11-14`); od 5 dana pre isteka operatori svako jutro u 8h dobijaju podsetnik, a `/zdravlje` prikazuje istek |
 
 Token i secret idu samo u okruženje (`/etc/dani90/dani90.env`), nikada u repo. Firma u

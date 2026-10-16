@@ -30,11 +30,12 @@ type fakeReader struct {
 	calls     int
 	mediaType string
 	names     []string
+	model     string
 }
 
-func (f *fakeReader) Read(_ context.Context, _ []byte, mediaType string, names []string) (docread.Result, error) {
+func (f *fakeReader) Read(_ context.Context, _ []byte, mediaType string, names []string, model string) (docread.Result, error) {
 	f.calls++
-	f.mediaType, f.names = mediaType, names
+	f.mediaType, f.names, f.model = mediaType, names, model
 	return f.res, f.err
 }
 
@@ -322,4 +323,78 @@ func (s *session) uploadDocumentFor(content []byte, driverID int64) *httptest.Re
 	w := httptest.NewRecorder()
 	s.app.handler.ServeHTTP(w, r)
 	return w
+}
+
+func TestImportDocument_KeepsScanForModelTests(t *testing.T) {
+	entry := clock.Today().AddDate(0, 0, -20)
+	exit := clock.Today().AddDate(0, 0, -15)
+	reader := &fakeReader{res: docread.Result{Stays: []docread.Stay{
+		{Driver: "Ana Prva", Entry: entry.Format("02.01.2006"), Exit: exit.Format("02.01.2006"), Type: "posao"},
+	}}}
+	app, a, b := docApp(t, reader)
+	ctx := context.Background()
+	if err := app.st.UpdateTenantSettings(ctx, a.tenant.ID, store.TenantSettings{DocReadModel: "claude-haiku-5-5"}); err != nil {
+		t.Fatal(err)
+	}
+	sa := app.mustLogin(a)
+
+	m := docImportIDRe.FindStringSubmatch(sa.uploadDocument(fakePDF).Body.String())
+	if m == nil {
+		t.Fatal("confirm form has no doc_import_id")
+	}
+	if reader.model != "claude-haiku-5-5" {
+		t.Errorf("read with %q, want the firm's own model", reader.model)
+	}
+	// Another firm's read, never confirmed, has no correct stays to test on.
+	app.mustLogin(b).uploadDocument(fakePDF)
+	if reader.model != "" {
+		t.Errorf("firm without a setting read with %q, want the server's default", reader.model)
+	}
+	sa.post("/import/potvrdi", url.Values{
+		"doc_import_id": {m[1]}, "row_driver_id": {id(a.driver.ID)},
+		"row_entry": {entry.Format("2006-01-02")}, "row_exit": {exit.Format("2006-01-02")},
+		"row_type": {"work"}, "row_note": {""},
+	})
+
+	// The user then fixes the exit on the driver's page: the fix is the
+	// correct reading. The firm's older stay lies outside the period.
+	stays, _ := app.st.ListStaysByDriver(ctx, a.tenant.ID, a.driver.ID)
+	fixed := exit.AddDate(0, 0, 1)
+	for _, st := range stays {
+		if st.Entry.Equal(entry) {
+			if err := app.st.UpdateStay(ctx, a.tenant.ID, st.ID, entry, &fixed, "work", ""); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+
+	docs, err := app.st.ListEvalDocuments(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(docs) != 1 {
+		t.Fatalf("%d documents, want the confirmed one", len(docs))
+	}
+	d := docs[0]
+	if !bytes.Equal(d.Data, fakePDF) || d.MediaType != "application/pdf" || d.TenantID != a.tenant.ID ||
+		len(d.DriverNames) != 1 || d.DriverNames[0] != "Ana Prva" || d.Drivers[a.driver.ID] != "Ana Prva" || d.SingleDriverID != nil {
+		t.Errorf("document %+v", d.DocumentFile)
+	}
+	if len(d.Stays) != 1 || !d.Stays[0].Exit.Equal(fixed) {
+		t.Errorf("correct stays %+v, want the one fixed stay", d.Stays)
+	}
+
+	// Erasing the driver takes his scans with him.
+	if err := app.st.DeleteDriverPermanently(ctx, a.tenant.ID, a.driver.ID); err != nil {
+		t.Fatal(err)
+	}
+	var left int
+	app.st.DB.QueryRowContext(ctx, `SELECT COUNT(*) FROM document_files WHERE tenant_id = ?`, a.tenant.ID).Scan(&left)
+	if left != 0 {
+		t.Errorf("%d scans left after erasing the driver", left)
+	}
+	// The other firm's scan goes once it is past the retention.
+	if n, err := app.st.DeleteDocumentFilesBefore(ctx, clock.Now().Add(time.Hour)); err != nil || n != 1 {
+		t.Errorf("deleted %d old scans (%v), want 1", n, err)
+	}
 }

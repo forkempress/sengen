@@ -34,7 +34,38 @@ const (
 // tunnel waits for a response.
 const Timeout = 90 * time.Second
 
-const defaultModel = "claude-sonnet-5-5"
+// DefaultModel reads documents unless DOC_READ_MODEL or a firm's own
+// setting names another.
+const DefaultModel = "claude-sonnet-5-5"
+
+// aliases are the short names accepted wherever a model is set.
+var aliases = map[string]string{
+	"opus":   "claude-opus-5-5",
+	"sonnet": "claude-sonnet-5-5",
+	"haiku":  "claude-haiku-5-5",
+}
+
+// ResolveModel turns a short name (opus, sonnet, haiku) or a full model id
+// into the id, and reports false for a model with no price here: its cost
+// could not be shown.
+func ResolveModel(name string) (string, bool) {
+	name = strings.ToLower(strings.TrimSpace(name))
+	if id, ok := aliases[name]; ok {
+		return id, true
+	}
+	_, ok := prices[name]
+	return name, ok
+}
+
+// ShortName is the alias of a model id, or the id itself.
+func ShortName(model string) string {
+	for a, id := range aliases {
+		if id == model {
+			return a
+		}
+	}
+	return model
+}
 
 // Media types the model accepts.
 var mediaTypes = map[string]bool{
@@ -93,7 +124,7 @@ var prices = map[string][2]int64{
 func cost(model string, in, out int64) int64 {
 	p, ok := prices[model]
 	if !ok {
-		p = prices[defaultModel]
+		p = prices[DefaultModel]
 	}
 	return (in*p[0] + out*p[1]) / 100
 }
@@ -102,8 +133,9 @@ func cost(model string, in, out int64) int64 {
 var ErrTooLarge = errors.New("dokument je prevelik")
 
 // Reader reads documents. The web server holds one; nil turns the feature off.
+// An empty model uses the reader's own.
 type Reader interface {
-	Read(ctx context.Context, data []byte, mediaType string, driverNames []string) (Result, error)
+	Read(ctx context.Context, data []byte, mediaType string, driverNames []string, model string) (Result, error)
 }
 
 // Claude reads documents through the Claude API.
@@ -112,11 +144,12 @@ type Claude struct {
 	model  string
 }
 
-func NewClaude(apiKey string) *Claude { return NewClaudeModel(apiKey, defaultModel) }
-
-// NewClaudeModel reads with the given model; the document eval uses it to
-// compare models on the same scans.
-func NewClaudeModel(apiKey, model string) *Claude {
+// NewClaude reads with model unless a call names another; empty is
+// DefaultModel.
+func NewClaude(apiKey, model string) *Claude {
+	if model == "" {
+		model = DefaultModel
+	}
 	return &Claude{client: anthropic.NewClient(option.WithAPIKey(apiKey)), model: model}
 }
 
@@ -178,7 +211,10 @@ var resultSchema = map[string]any{
 	"additionalProperties": false,
 }
 
-func (c *Claude) Read(ctx context.Context, data []byte, mediaType string, driverNames []string) (Result, error) {
+func (c *Claude) Read(ctx context.Context, data []byte, mediaType string, driverNames []string, model string) (Result, error) {
+	if model == "" {
+		model = c.model
+	}
 	if !Supported(mediaType) {
 		return Result{}, fmt.Errorf("nepodržan tip fajla %q", mediaType)
 	}
@@ -199,7 +235,7 @@ func (c *Claude) Read(ctx context.Context, data []byte, mediaType string, driver
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	params := anthropic.BetaMessageNewParams{
-		Model:     c.model,
+		Model:     model,
 		MaxTokens: 16000,
 		System:    []anthropic.BetaTextBlockParam{{Text: systemPrompt}},
 		Messages: []anthropic.BetaMessageParam{anthropic.NewBetaUserMessage(
@@ -211,7 +247,7 @@ func (c *Claude) Read(ctx context.Context, data []byte, mediaType string, driver
 			Format: anthropic.BetaJSONOutputFormatParam{Schema: resultSchema},
 		},
 	}
-	if !noFallback[c.model] {
+	if !noFallback[model] {
 		// A refused request is answered by a fallback model in the same call.
 		params.Fallbacks = anthropic.BetaFallbacksParamUnion{OfDefault: constant.ValueOf[constant.Default]()}
 		params.Betas = []anthropic.AnthropicBeta{anthropic.AnthropicBetaServerSideFallback2026_07_01}

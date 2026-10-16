@@ -6,6 +6,13 @@
 //
 //	ANTHROPIC_API_KEY=... go run ./cmd/doceval
 //
+// With -db it instead takes the scans users uploaded in the app (kept 30
+// days) from a copy of the database. The correct stays are the ones now in
+// the app for the drivers each import wrote to, over the period it covered,
+// so fixes made on the driver's page count. A mistake nobody fixed counts as
+// correct, which favors the model that read the scan in the app; the report
+// names it per scan.
+//
 // Each call costs money. Rows land in <out>/results.jsonl as they finish;
 // running again with the same -out skips what is already there. The summary
 // is printed and written with every mistake to <out>/izvestaj.md.
@@ -27,14 +34,10 @@ import (
 	"sync"
 	"time"
 
+	"shengen/internal/db"
 	"shengen/internal/docread"
+	"shengen/internal/store"
 )
-
-var aliases = map[string]string{
-	"opus":   "claude-opus-5-5",
-	"sonnet": "claude-sonnet-5-5",
-	"haiku":  "claude-haiku-5-5",
-}
 
 var mediaTypes = map[string]string{
 	".pdf": "application/pdf", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
@@ -47,6 +50,10 @@ type scan struct {
 	mediaType string
 	want      []docread.Stay
 	drivers   []string
+	// single: every row goes on this driver, as when read on his page.
+	single string
+	// note says where the scan came from, for the report.
+	note string
 }
 
 // Row is one graded call.
@@ -69,6 +76,7 @@ func (r Row) key() string { return fmt.Sprintf("%s|%s|%d", r.Model, r.Scan, r.Re
 
 func main() {
 	dir := flag.String("dir", "eval/dokumenti", "folder sa skenovima i tačnim rezultatima")
+	dbPath := flag.String("db", "", "kopija baze: testira skenove koje su korisnici učitali u aplikaciji (umesto -dir)")
 	out := flag.String("out", "eval/rezultati/"+time.Now().Format("2006-01-02-1504"), "folder za rezultate (isti folder nastavlja prekinut test)")
 	modelsArg := flag.String("models", "opus,sonnet,haiku", "modeli, odvojeni zarezom (opus, sonnet, haiku ili pun ID)")
 	reps := flag.Int("reps", 2, "koliko puta se svaki skan čita istim modelom")
@@ -81,14 +89,22 @@ func main() {
 	}
 	var models []string
 	for _, m := range strings.Split(*modelsArg, ",") {
-		if m = strings.TrimSpace(m); m != "" {
-			if id, ok := aliases[m]; ok {
-				m = id
-			}
-			models = append(models, m)
+		if strings.TrimSpace(m) == "" {
+			continue
 		}
+		id, ok := docread.ResolveModel(m)
+		if !ok {
+			log.Fatalf("nepoznat model %q", m)
+		}
+		models = append(models, id)
 	}
-	scans, err := loadScans(*dir)
+	var scans []scan
+	var err error
+	if *dbPath != "" {
+		scans, err = loadFromDB(*dbPath)
+	} else {
+		scans, err = loadScans(*dir)
+	}
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -134,10 +150,7 @@ func main() {
 	}
 	defer errorsFile.Close()
 
-	readers := map[string]*docread.Claude{}
-	for _, m := range models {
-		readers[m] = docread.NewClaudeModel(apiKey, m)
-	}
+	reader := docread.NewClaude(apiKey, "")
 	var (
 		mu   sync.Mutex
 		wg   sync.WaitGroup
@@ -150,7 +163,7 @@ func main() {
 		go func() {
 			defer wg.Done()
 			defer func() { <-sem }()
-			row := run(readers[j.model], j.model, j.scan, j.rep)
+			row := run(reader, j.model, j.scan, j.rep)
 			line, _ := json.Marshal(row)
 			mu.Lock()
 			defer mu.Unlock()
@@ -169,7 +182,11 @@ func main() {
 	}
 	wg.Wait()
 
-	report := summarize(done, models)
+	notes := map[string]string{}
+	for _, s := range scans {
+		notes[s.name] = s.note
+	}
+	report := summarize(done, models, notes)
 	fmt.Print("\n" + report.summary)
 	if err := os.WriteFile(filepath.Join(*out, "izvestaj.md"), []byte(report.full), 0o644); err != nil {
 		log.Fatal(err)
@@ -180,12 +197,17 @@ func main() {
 func run(r *docread.Claude, model string, s scan, rep int) Row {
 	row := Row{Model: model, Scan: s.name, Rep: rep}
 	start := time.Now()
-	res, err := r.Read(context.Background(), s.data, s.mediaType, s.drivers)
+	res, err := r.Read(context.Background(), s.data, s.mediaType, s.drivers, model)
 	row.Seconds = time.Since(start).Seconds()
 	row.ServedModel, row.InputTok, row.OutputTok, row.CostMicro = res.Usage.Model, res.Usage.InputTokens, res.Usage.OutputTokens, res.Usage.CostMicroUSD
 	if err != nil {
 		row.Error = err.Error()
 		return row
+	}
+	if s.single != "" {
+		for i := range res.Stays {
+			res.Stays[i].Driver = s.single
+		}
 	}
 	row.Stays, row.Reason = res.Stays, res.Reason
 	row.Grade = grade(s.want, res.Stays)
@@ -269,18 +291,58 @@ func readRows(path string) ([]Row, error) {
 	return rows, sc.Err()
 }
 
-func short(model string) string {
-	for a, id := range aliases {
-		if id == model {
-			return a
-		}
+func short(model string) string { return docread.ShortName(model) }
+
+// loadFromDB takes the kept scans of confirmed imports from a copy of the
+// database.
+func loadFromDB(path string) ([]scan, error) {
+	// db.Open would create a missing file and run migrations on it.
+	if _, err := os.Stat(path); err != nil {
+		return nil, err
 	}
-	return model
+	conn, err := db.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	docs, err := store.New(conn).ListEvalDocuments(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	if len(docs) == 0 {
+		return nil, fmt.Errorf("u bazi nema sačuvanih skenova potvrđenih uvoza")
+	}
+	ext := map[string]string{"application/pdf": ".pdf", "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+	scans := make([]scan, 0, len(docs))
+	for _, d := range docs {
+		s := scan{
+			name:      fmt.Sprintf("uvoz-%d%s", d.ImportID, ext[d.MediaType]),
+			data:      d.Data,
+			mediaType: d.MediaType,
+			drivers:   d.DriverNames,
+			note:      fmt.Sprintf("%s, %s; u aplikaciji pročitao %s", d.TenantName, d.CreatedAt.Format("02.01.2006"), short(d.Model)),
+		}
+		if d.SingleDriverID != nil {
+			s.single = d.Drivers[*d.SingleDriverID]
+		}
+		for _, st := range d.Stays {
+			stay := docread.Stay{Driver: d.Drivers[st.DriverID], Entry: st.Entry.Format("02.01.2006"), Type: "posao"}
+			if st.Exit != nil {
+				stay.Exit = st.Exit.Format("02.01.2006")
+			}
+			if st.Type == "private" {
+				stay.Type = "privatno"
+			}
+			s.want = append(s.want, stay)
+		}
+		scans = append(scans, s)
+	}
+	return scans, nil
 }
 
 type report struct{ summary, full string }
 
-func summarize(rows []Row, models []string) report {
+func summarize(rows []Row, models []string, notes map[string]string) report {
 	var b strings.Builder
 	fmt.Fprintln(&b, "| model | tačno | pogrešno pročitano | izmišljeno | propušteno | skenova bez greške | greške označene nesigurno | lažno nesigurno | cena po skenu | vreme po skenu |")
 	fmt.Fprintln(&b, "|---|---|---|---|---|---|---|---|---|---|")
@@ -340,6 +402,9 @@ func summarize(rows []Row, models []string) report {
 		if r.Scan != scanName {
 			scanName = r.Scan
 			fmt.Fprintf(&d, "\n### %s (%d boravaka)\n\n", r.Scan, r.Grade.Expected)
+			if n := notes[r.Scan]; n != "" {
+				fmt.Fprintf(&d, "%s\n\n", n)
+			}
 		}
 		if r.Grade.Perfect {
 			fmt.Fprintf(&d, "- **%s #%d**: bez greške\n", short(r.Model), r.Rep+1)

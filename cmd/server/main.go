@@ -5,6 +5,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"log"
 	"net/http"
@@ -59,8 +60,8 @@ func main() {
 	log.Printf("trusted proxy: %s", cfg.TrustedProxy)
 	configureMail(cfg, webServer)
 	if cfg.AnthropicAPIKey != "" {
-		webServer.DocReader = docread.NewClaude(cfg.AnthropicAPIKey)
-		log.Printf("uvoz dokumenata: uključen")
+		webServer.DocReader = docread.NewClaude(cfg.AnthropicAPIKey, cfg.DocReadModel)
+		log.Printf("uvoz dokumenata: uključen (%s)", docread.ShortName(cmp.Or(cfg.DocReadModel, docread.DefaultModel)))
 	}
 
 	runner := jobs.New(st, bot.Client())

@@ -10,6 +10,11 @@
 //
 // Without -price and -currency a firm pays 300 RSD per active driver.
 //
+// -doc-model picks the model that reads the firm's scans (opus, sonnet,
+// haiku or a model id); "default" goes back to the server's:
+//
+//	make seed ARGS="-slug prevoz-djuric -doc-model haiku"
+//
 // The owner's password is never a command-line argument (it would stay in
 // the shell history and show in ps): it is typed at the prompt without echo,
 // piped on stdin, or taken from SEED_PASSWORD.
@@ -33,6 +38,7 @@ import (
 	"shengen/internal/auth"
 	"shengen/internal/config"
 	"shengen/internal/db"
+	"shengen/internal/docread"
 	"shengen/internal/store"
 )
 
@@ -46,17 +52,18 @@ func main() {
 	trialUntil := flag.String("trial-until", "", "poslednji dan triala, YYYY-MM-DD")
 	price := flag.String("price", "", "mesečna cena po aktivnom vozaču, npr. 300 ili 3,50 (podrazumevano 300)")
 	currency := flag.String("currency", "", "valuta cene: RSD ili EUR (podrazumevano RSD)")
+	docModel := flag.String("doc-model", "", "model za čitanje skenova firme: opus, sonnet, haiku ili default")
 	flag.Parse()
 
 	if *passwordArg != "" {
 		log.Fatal("-password više nije podržan: lozinka bi ostala u istoriji shell-a. " +
 			"Pokrenite bez njega i ukucajte lozinku na upit, ili je prosledite kroz SEED_PASSWORD.")
 	}
-	billingOnly := *email == "" && *ownerName == "" && *slug != "" &&
-		(*plan != "" || *trialUntil != "" || *price != "" || *currency != "")
+	billing := *plan != "" || *trialUntil != "" || *price != "" || *currency != ""
+	billingOnly := *email == "" && *ownerName == "" && *slug != "" && (billing || *docModel != "")
 	if !billingOnly && (*tenantName == "" || *email == "" || *ownerName == "") {
-		log.Fatal("obavezni parametri: -tenant-name -email -name (opciono: -slug, -plan, -trial-until, -price, -currency)\n" +
-			"ili samo naplata postojeće firme: -slug uz -plan / -trial-until / -price / -currency")
+		log.Fatal("obavezni parametri: -tenant-name -email -name (opciono: -slug, -plan, -trial-until, -price, -currency, -doc-model)\n" +
+			"ili samo podešavanje postojeće firme: -slug uz -plan / -trial-until / -price / -currency / -doc-model")
 	}
 	if *slug == "" {
 		*slug = store.SlugFromName(*tenantName)
@@ -83,7 +90,12 @@ func main() {
 		if err != nil {
 			log.Fatalf("firma %q: %v", *slug, err)
 		}
-		setBilling(ctx, st, t.ID, *plan, *trialUntil, *price, *currency)
+		if billing {
+			setBilling(ctx, st, t.ID, *plan, *trialUntil, *price, *currency)
+		}
+		if *docModel != "" {
+			setDocModel(ctx, st, t, *docModel)
+		}
 		return
 	}
 	if errors.Is(err, store.ErrNotFound) {
@@ -124,8 +136,37 @@ func main() {
 	}
 	fmt.Printf("Kreiran vlasnik #%d (%s) — prijava %s\n", u.ID, u.Email, where)
 
-	if *plan != "" || *trialUntil != "" || *price != "" || *currency != "" {
+	if billing {
 		setBilling(ctx, st, t.ID, *plan, *trialUntil, *price, *currency)
+	}
+	if *docModel != "" {
+		setDocModel(ctx, st, t, *docModel)
+	}
+}
+
+// setDocModel sets the model that reads the firm's scans; "default" clears
+// it, so the server's DOC_READ_MODEL applies.
+func setDocModel(ctx context.Context, st *store.Store, t *store.Tenant, name string) {
+	settings, err := t.ParsedSettings()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if strings.EqualFold(strings.TrimSpace(name), "default") {
+		settings.DocReadModel = ""
+	} else {
+		model, ok := docread.ResolveModel(name)
+		if !ok {
+			log.Fatalf("-doc-model: nepoznat model %q (opus, sonnet, haiku ili default)", name)
+		}
+		settings.DocReadModel = model
+	}
+	if err := st.UpdateTenantSettings(ctx, t.ID, settings); err != nil {
+		log.Fatal(err)
+	}
+	if settings.DocReadModel == "" {
+		fmt.Printf("Firma #%d: skenove čita podrazumevani model servera\n", t.ID)
+	} else {
+		fmt.Printf("Firma #%d: skenove čita %s\n", t.ID, settings.DocReadModel)
 	}
 }
 

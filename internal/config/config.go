@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"shengen/internal/auth"
+	"shengen/internal/docread"
 )
 
 type Config struct {
@@ -72,6 +73,10 @@ type Config struct {
 	// (ANTHROPIC_API_KEY_EXPIRES, YYYY-MM-DD); the superadmins are reminded
 	// before it. nil when not set.
 	AnthropicKeyExpires *time.Time
+	// DocReadModel reads documents for firms without their own model
+	// (DOC_READ_MODEL: opus, sonnet, haiku or a model id); empty is
+	// docread.DefaultModel.
+	DocReadModel string
 
 	// Cloudflare Turnstile on the public forms; both keys or neither.
 	TurnstileSiteKey   string
@@ -137,6 +142,13 @@ func Load() (Config, error) {
 			return Config{}, fmt.Errorf("ANTHROPIC_API_KEY_EXPIRES: %q nije datum (primer: 2026-11-14)", raw)
 		}
 		cfg.AnthropicKeyExpires = &d
+	}
+	if raw := os.Getenv("DOC_READ_MODEL"); strings.TrimSpace(raw) != "" {
+		model, ok := docread.ResolveModel(raw)
+		if !ok {
+			return Config{}, fmt.Errorf("DOC_READ_MODEL: nepoznat model %q (opus, sonnet ili haiku)", raw)
+		}
+		cfg.DocReadModel = model
 	}
 	if (cfg.TurnstileSiteKey == "") != (cfg.TurnstileSecretKey == "") {
 		return Config{}, fmt.Errorf("TURNSTILE_SITE_KEY i TURNSTILE_SECRET_KEY se postavljaju zajedno")

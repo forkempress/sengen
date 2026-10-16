@@ -127,7 +127,8 @@ func (s *Store) UnlinkDriverTelegram(ctx context.Context, tenantID, driverID int
 
 // DeleteDriverPermanently removes a driver and everything recorded about
 // him: stays, plans, pending link tokens, alert history, the location
-// events table (unused so far) and stays another firm once forged onto him. Audit entries about his stays and plans keep
+// events table (unused so far), kept scans that may show him and stays
+// another firm once forged onto him. Audit entries about his stays and plans keep
 // only who did what and when: their before/after copies, which hold dates,
 // are cleared. It runs in one transaction; call it on the top-level Store.
 func (s *Store) DeleteDriverPermanently(ctx context.Context, tenantID, driverID int64) error {
@@ -152,6 +153,9 @@ func (s *Store) DeleteDriverPermanently(ctx context.Context, tenantID, driverID 
 			`UPDATE audit_log SET before_json = NULL, after_json = NULL WHERE tenant_id = ? AND entity = 'driver' AND entity_id = ?`,
 			tenantID, driverID); err != nil {
 			return fmt.Errorf("scrub driver audit: %w", err)
+		}
+		if err := tx.deleteDriverDocumentFiles(ctx, tenantID, driverID); err != nil {
+			return fmt.Errorf("delete driver (document_files): %w", err)
 		}
 		for _, q := range []string{
 			`DELETE FROM planned_stays WHERE tenant_id = ? AND driver_id = ?`,
