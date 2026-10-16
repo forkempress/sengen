@@ -423,26 +423,28 @@ h2 { font-size: 1.125rem; font-weight: 600; margin: 1.75rem 0 0.75rem; }
 .login-help { margin: 1.25rem 0 0; text-align: center; }
 @media (max-width: 700px) { .login-wrap { margin: 1.5rem 0; padding: 1.25rem; } }
 
-.months-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1rem;
-  margin: 1rem 0 2rem;
-}
 .month-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; padding: 0.75rem; }
-.month-card h3 { margin: 0 0 0.5rem; font-size: 1rem; text-align: center; }
 .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; font-size: 0.8125rem; }
 .month-grid .dow { text-align: center; color: var(--text-muted); font-size: 0.8125rem; padding-bottom: 2px; }
 .day-cell {
   aspect-ratio: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1px;
+  border: 0;
+  padding: 0;
   border-radius: 3px;
+  font: inherit;
   font-family: var(--font-mono);
+  line-height: 1.1;
   background: transparent;
   color: var(--text);
 }
+button.day-cell { cursor: pointer; }
+button.day-cell:hover { filter: brightness(0.95); }
+.day-cell[aria-pressed="true"] { outline: 3px solid var(--accent); outline-offset: 1px; position: relative; z-index: 1; }
 .day-work { background: var(--accent); color: #fff; }
 .day-private { background: #9FB3DE; color: #10264f; }
 .day-projection {
@@ -465,6 +467,45 @@ h2 { font-size: 1.125rem; font-weight: 600; margin: 1.75rem 0 0.75rem; }
 .day-freed { border: 2px solid var(--status-green); }
 .day-today { box-shadow: 0 0 0 2px var(--text) inset; font-weight: 700; }
 .day-empty { visibility: hidden; }
+.day-past:not([class*="day-work"]):not([class*="day-private"]):not([class*="day-outside"]) { color: var(--text-muted); }
+
+fieldset.choice-list { border: 0; padding: 0; margin: 0 0 1rem; }
+.choice-list label { display: block; padding: 0.35rem 0; font-weight: normal; }
+
+/* Kalendar vozača: jedan mesec, broj u danu i panel izabranog dana. */
+.cal { margin: 1.5rem 0 2rem; }
+.cal-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; }
+.cal-head h2 { margin: 0; }
+.cal-mode { display: inline-flex; }
+.cal-mode .btn { border-radius: 0; }
+.cal-mode .btn:first-child { border-radius: 4px 0 0 4px; }
+.cal-mode .btn:last-child { border-radius: 0 4px 4px 0; margin-left: -1px; }
+.cal-mode .btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.cal-layout { display: grid; grid-template-columns: minmax(0, 30rem) minmax(15rem, 1fr); gap: 1rem 1.5rem; align-items: start; margin: 1rem 0; }
+.cal-nav { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+.cal-nav h3 { margin: 0; font-size: 1.1rem; min-width: 9.5rem; text-align: center; }
+.cal-nav [aria-disabled="true"] { opacity: 0.4; pointer-events: none; }
+.cal-today-link { margin-left: auto; }
+.cal .month-grid { font-size: 0.95rem; gap: 3px; }
+.cal-n { font-size: 0.7rem; font-weight: 600; }
+.cal-show-remaining .cal-num-trip, .cal-show-trip .cal-num-rem { display: none; }
+.cal-plus { font-weight: 700; }
+.lvl-preko { color: var(--status-urgent); }
+.lvl-kriticno { color: var(--status-red); }
+.lvl-paznja { color: var(--status-orange); }
+.lvl-ok { color: var(--status-green); }
+.cal-panel { padding-top: 0.5rem; }
+.cal-panel h3 { margin: 0.5rem 0; }
+.cal-facts { margin: 0 0 0.75rem; }
+.cal-facts div { display: flex; justify-content: space-between; gap: 1rem; padding: 0.35rem 0; border-bottom: 1px solid var(--card-border); }
+.cal-facts dt { color: var(--text-muted); font-size: 0.875rem; }
+.cal-facts dd { margin: 0; font-weight: 600; text-align: right; }
+.cal-panel [hidden] { display: none; }
+@media (max-width: 700px) {
+  .cal-layout { grid-template-columns: minmax(0, 1fr); }
+  .cal .month-grid { font-size: 0.875rem; gap: 2px; }
+  .cal-n { font-size: 0.65rem; }
+}
 
 .legend { display: flex; flex-wrap: wrap; gap: 0.9rem; margin-bottom: 1rem; font-size: 0.8125rem; }
 .legend span.swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 0.3rem; vertical-align: middle; }
@@ -526,10 +567,6 @@ footer.app-footer {
 .actions-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
 .panel { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 6px; padding: 0.25rem 1rem 1rem; margin-bottom: 1rem; }
 .panel h2 { margin-top: 0.75rem; }
-.months-earlier > summary { list-style: none; margin-bottom: 0.5rem; }
-.months-earlier > summary::-webkit-details-marker { display: none; }
-.months-earlier[open] > summary { display: none; }
-.months-earlier .months-grid { margin-bottom: 1rem; }
 .plan-block { margin-top: 2rem; }
 .plan-block > summary { cursor: pointer; display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; }
 .plan-block > summary h2 { display: inline; margin: 0; }
@@ -555,7 +592,6 @@ td.wrap { white-space: normal; }
   .driver-table { display: none; }
   .hero { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
   .hero-figure { flex-direction: row; align-items: baseline; gap: 0.5rem; min-width: 0; }
-  .months-earlier:not([open]) + .months-grid .month-card:nth-child(n+4) { display: none; }
 
   /* Tabela sa klasom stack postaje niz kartica (istorija boravaka, UX-14). */
   table.stack { min-width: 0; }

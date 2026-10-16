@@ -117,6 +117,26 @@ func (s *Server) handleThresholds(w http.ResponseWriter, r *http.Request) {
 	s.redirectOk(w, r, "/podesavanja/telegram", "Pragovi sačuvani.")
 }
 
+// handleCalendarNumber saves which number the driver calendar shows in
+// each day by default; everyone can still switch it on the page.
+func (s *Server) handleCalendarNumber(w http.ResponseWriter, r *http.Request) {
+	t, _ := tenant.FromContext(r.Context())
+	settings, _ := t.ParsedSettings()
+
+	switch v := r.FormValue("calendar_number"); v {
+	case store.CalendarRemaining, store.CalendarTrip:
+		settings.CalendarNumber = v
+	default:
+		s.redirectErr(w, r, "/podesavanja/telegram", "Izaberite broj koji kalendar prikazuje.")
+		return
+	}
+	if err := s.Store.UpdateTenantSettings(r.Context(), t.ID, settings); err != nil {
+		s.serverError(w, r)
+		return
+	}
+	s.redirectOk(w, r, "/podesavanja/telegram", "Kalendar vozača sačuvan.")
+}
+
 func (s *Server) handleTelegramLinkSelf(w http.ResponseWriter, r *http.Request) {
 	t, _ := tenant.FromContext(r.Context())
 	u, _ := auth.UserFromContext(r.Context())

@@ -26,7 +26,12 @@ type AvailCell struct {
 // take from that day on, counting his real stays and the plans still ahead.
 // A day from which he cannot leave at all reads as a zero-day cell.
 func Availability(stays []store.Stay, plans []store.PlannedStay, today time.Time, starts []time.Time, t Thresholds) []AvailCell {
-	proj := calc.Projection(ToCalcStays(stays), PlansToCalc(plans), today)
+	return AvailabilityIn(calc.Projection(ToCalcStays(stays), PlansToCalc(plans), today), starts, t)
+}
+
+// AvailabilityIn is Availability against a projection the caller has
+// already built (every stay in it closed).
+func AvailabilityIn(proj []calc.Stay, starts []time.Time, t Thresholds) []AvailCell {
 	cells := make([]AvailCell, len(starts))
 	for i, start := range starts {
 		c := AvailCell{Start: start}

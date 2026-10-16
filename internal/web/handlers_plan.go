@@ -399,6 +399,7 @@ func (s *Server) redirectPlanSaved(w http.ResponseWriter, r *http.Request, tenan
 		return
 	}
 	var warn string
+	path := plansPath(driverID)
 	for _, v := range status.EvaluatePlans(stays, plans, clock.Today()) {
 		over := v.Evaluated && !v.OK
 		switch {
@@ -407,6 +408,10 @@ func (s *Server) redirectPlanSaved(w http.ResponseWriter, r *http.Request, tenan
 				warn += fmt.Sprintf(" Plan %s prelazi limit %s.", status.PlanDates(v.PlannedStay), v.FirstOverstay.Format("02.01.2006"))
 			}
 		default:
+			// The calendar opens on the month the plan starts in.
+			if today := clock.Today(); v.From.Year() != today.Year() || v.From.Month() != today.Month() {
+				path = "/vozaci/" + strconv.FormatInt(driverID, 10) + "?mesec=" + v.From.Format("2006-01") + "#planovi"
+			}
 			if over {
 				warn += fmt.Sprintf(" Ovaj plan prelazi limit %s.", v.FirstOverstay.Format("02.01.2006"))
 			}
@@ -418,7 +423,7 @@ func (s *Server) redirectPlanSaved(w http.ResponseWriter, r *http.Request, tenan
 	if warn != "" {
 		warn = "Pažnja:" + warn
 	}
-	s.redirectFlash(w, r, plansPath(driverID), msg, warn)
+	s.redirectFlash(w, r, path, msg, warn)
 }
 
 func (s *Server) auditPlan(r *http.Request, tenantID, actorID, planID int64, action string, before, after *store.PlannedStay) {

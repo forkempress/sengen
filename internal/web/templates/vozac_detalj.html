@@ -88,7 +88,32 @@
   </div>
 </section>
 {{else}}
-<h2>Kalendar</h2>
+<section class="cal cal-show-{{.CalMode}}" id="kalendar" aria-labelledby="kalendar-naslov">
+<div class="cal-head">
+  <h2 id="kalendar-naslov">Kalendar</h2>
+  <div class="cal-mode" role="group" aria-label="Broj u danu">
+    <button type="button" class="btn btn-sm" data-cal-mode="remaining" aria-pressed="{{if eq .CalMode "remaining"}}true{{else}}false{{end}}">Preostalo</button>
+    <button type="button" class="btn btn-sm" data-cal-mode="trip" aria-pressed="{{if eq .CalMode "trip"}}true{{else}}false{{end}}">Može na turu</button>
+  </div>
+</div>
+<div class="cal-layout">
+  <div class="cal-month">
+    <div class="cal-nav">
+      {{if .PrevURL}}<a href="{{.PrevURL}}" class="btn btn-sm" aria-label="Prethodni mesec">‹</a>{{else}}<span class="btn btn-sm" aria-disabled="true">‹</span>{{end}}
+      <h3>{{.Month.Label}}</h3>
+      {{if .NextURL}}<a href="{{.NextURL}}" class="btn btn-sm" aria-label="Sledeći mesec">›</a>{{else}}<span class="btn btn-sm" aria-disabled="true">›</span>{{end}}
+      {{if .TodayURL}}<a href="{{.TodayURL}}" class="btn btn-sm cal-today-link">Danas</a>{{end}}
+    </div>
+    {{template "monthCard" .Month}}
+  </div>
+  {{template "dayPanel" .}}
+</div>
+<div class="legend">
+  <span class="cal-num-rem">Broj u danu = preostalo dana na taj datum</span>
+  <span class="cal-num-rem"><span class="cal-plus">⁺</span> = može na turu duže, jer mu se tokom puta oslobađaju dani</span>
+  <span class="cal-num-trip">Broj u danu = koliko dana može na turu ako krene tog dana</span>
+  {{if .Status.InSchengen}}<span>Dok je u Šengenu, računa se da ostaje do roka</span>{{end}}
+</div>
 <div class="legend">
   <span><span class="swatch" style="background:var(--accent);"></span>Posao</span>
   <span><span class="swatch" style="background:#9FB3DE;"></span>Privatno</span>
@@ -98,11 +123,7 @@
   <span><span class="swatch" style="background:#E3E6E0;"></span>Van prozora (180 dana)</span>
   <span><span class="swatch" style="border:2px solid var(--status-green);"></span>Dan oslobađanja</span>
 </div>
-<details class="months-earlier" open data-close-on-mobile>
-  <summary class="btn btn-sm">Prethodni meseci</summary>
-  <div class="months-grid">{{range .EarlierMonths}}{{template "monthCard" .}}{{end}}</div>
-</details>
-<div class="months-grid">{{range .Months}}{{template "monthCard" .}}{{end}}</div>
+</section>
 
 <h2>Istorija boravaka</h2>
 <div class="table-wrap">
@@ -232,12 +253,31 @@
 
 {{define "monthCard"}}
 <div class="month-card">
-  <h3>{{.Label}}</h3>
   <div class="month-grid">
     <div class="dow">Pon</div><div class="dow">Uto</div><div class="dow">Sre</div><div class="dow">Čet</div><div class="dow">Pet</div><div class="dow">Sub</div><div class="dow">Ned</div>
-    {{range .Weeks}}{{range .}}
-      <div class="day-cell {{.Class}}{{if .Today}} day-today{{end}}{{if .Freed}} day-freed{{end}}{{if eq .Day 0}} day-empty{{end}}"{{if .Title}} title="{{.Title}}"{{end}}>{{if .Day}}{{.Day}}{{end}}</div>
-    {{end}}{{end}}
+    {{range .Weeks}}{{range .}}{{if .Day}}
+      <button type="button" class="day-cell {{.Class}}{{if .Today}} day-today{{end}}{{if .Freed}} day-freed{{end}}{{if not .Future}} day-past{{end}}" aria-pressed="false" aria-label="{{.Label}}" title="{{if .Title}}{{.Title}}{{else}}{{.Label}}{{end}}"
+        data-day="{{fmtDateInput .Date}}" data-date="{{fmtDate .Date}}" data-from="{{fmtDate .WindowFrom}}" data-used="{{.Used}}" data-rem="{{.Remaining}}" data-over="{{.OverBy}}"{{if .Future}} data-future{{if .TripBusy}} data-busy{{else}} data-trip="{{.Trip}}" data-trip-to="{{fmtDateInput .TripTo}}"{{if .TripUntilPlan}} data-until-plan{{end}}{{if .TripBetter}} data-better{{end}}{{end}}{{end}}>
+        <span class="cal-dn">{{.Day}}</span>
+        {{if .Future}}<span class="cal-n cal-num-rem{{if not .Class}} lvl-{{.Level}}{{end}}">{{if .OverBy}}−{{.OverBy}}{{else}}{{.Remaining}}{{end}}{{if .TripBetter}}<span class="cal-plus">⁺</span>{{end}}</span><span class="cal-n cal-num-trip{{if not .Class}} lvl-{{.TripLevel}}{{end}}">{{if .OverBy}}−{{.OverBy}}{{else if not .TripBusy}}{{.Trip}}{{end}}</span>{{end}}
+      </button>
+    {{else}}<div class="day-cell day-empty"></div>{{end}}{{end}}{{end}}
   </div>
 </div>
+{{end}}
+
+{{define "dayPanel"}}
+{{with .Selected}}
+<aside class="cal-panel panel" aria-live="polite" data-driver-path="/vozaci/{{$.Driver.ID}}">
+  <h3 id="cp-date">{{fmtDate .Date}}</h3>
+  <dl class="cal-facts">
+    <div><dt>Za period (180 dana)</dt><dd id="cp-window" class="num">{{fmtDate .WindowFrom}} – {{fmtDate .Date}}</dd></div>
+    <div><dt>Preostalo</dt><dd id="cp-rem" class="num">{{if .OverBy}}−{{.OverBy}} {{dana .OverBy}} (preko limita){{else}}{{.Remaining}} {{dana .Remaining}}{{end}}</dd></div>
+    <div><dt>Iskorišćeno</dt><dd id="cp-used" class="num">{{.Used}}/90</dd></div>
+    <div id="cp-trip-row"{{if not .Future}} hidden{{end}}><dt>Može na turu ako krene tog dana</dt><dd id="cp-trip">{{if .TripBusy}}— već je u Šengenu tog dana{{else}}{{.Trip}} {{dana .Trip}}{{if .TripUntilPlan}} (do sledećeg plana){{end}}{{end}}</dd></div>
+  </dl>
+  <p id="cp-better" class="muted"{{if not .TripBetter}} hidden{{end}}>Preostalo je manje od ture jer mu se tokom puta oslobađaju stari dani.</p>
+  <a id="cp-check" class="btn" href="/vozaci/{{$.Driver.ID}}?od={{fmtDateInput .Date}}&amp;do={{fmtDateInput .TripTo}}#planovi"{{if or (not .Future) .TripBusy (not .Trip)}} hidden{{end}}>Proveri turu od ovog datuma</a>
+</aside>
+{{end}}
 {{end}}

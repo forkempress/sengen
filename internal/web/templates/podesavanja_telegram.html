@@ -75,4 +75,18 @@
     <button type="submit" class="btn btn-primary">Sačuvaj pragove</button>
   </form>
 </section>
+
+<section class="panel" id="kalendar-vozaca">
+  <h2>Kalendar vozača</h2>
+  <p class="muted">Koji broj kalendar na stranici vozača prikazuje u svakom danu. Na samoj stranici svako može da prebaci prikaz.</p>
+  <form method="post" action="/podesavanja/kalendar">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <fieldset class="choice-list">
+      <legend class="sr-only">Broj u danu</legend>
+      <label for="cal-rem"><input type="radio" id="cal-rem" name="calendar_number" value="remaining"{{if eq .Settings.CalendarMode "remaining"}} checked{{end}}> <strong>Preostalo</strong> — koliko dana mu ostaje na taj datum (danas 8, sutra 9…)</label>
+      <label for="cal-trip"><input type="radio" id="cal-trip" name="calendar_number" value="trip"{{if eq .Settings.CalendarMode "trip"}} checked{{end}}> <strong>Može na turu</strong> — koliko dana može da bude na turi ako krene tog dana</label>
+    </fieldset>
+    <button type="submit" class="btn btn-primary">Sačuvaj</button>
+  </form>
+</section>
 {{end}}

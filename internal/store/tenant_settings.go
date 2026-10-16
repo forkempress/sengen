@@ -20,6 +20,22 @@ type TenantSettings struct {
 	// DocReadModel reads this firm's scans; empty is the server's default.
 	// Set by the operators (cmd/seed -doc-model), not by the firm.
 	DocReadModel string `json:"doc_read_model,omitempty"`
+	// CalendarNumber is the number the driver calendar shows in each day
+	// by default: CalendarRemaining (also when empty) or CalendarTrip.
+	CalendarNumber string `json:"calendar_number,omitempty"`
+}
+
+const (
+	CalendarRemaining = "remaining" // days left on that day
+	CalendarTrip      = "trip"      // longest trip starting that day
+)
+
+// CalendarMode is CalendarNumber with the default filled in.
+func (s TenantSettings) CalendarMode() string {
+	if s.CalendarNumber == CalendarTrip {
+		return CalendarTrip
+	}
+	return CalendarRemaining
 }
 
 func (t *Tenant) ParsedSettings() (TenantSettings, error) {

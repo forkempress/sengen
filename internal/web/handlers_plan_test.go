@@ -146,7 +146,13 @@ func TestPlans_WarningsAndOverview(t *testing.T) {
 	if !strings.Contains(body, "plan prekoračuje 90/180") || !strings.Contains(body, "prelazi 90/180") {
 		t.Error("overview does not flag the driver with a plan over the limit")
 	}
-	if page := s.get("/vozaci/" + id(f.driver.ID)).Body.String(); !strings.Contains(page, "day-planned-over") {
+	// The calendar shows one month: look through the ones the plans cover.
+	marked := false
+	for n := 62; n <= 101 && !marked; n += 7 {
+		page := s.get("/vozaci/" + id(f.driver.ID) + "?mesec=" + planDay(n)[:7]).Body.String()
+		marked = strings.Contains(page, "day-planned-over")
+	}
+	if !marked {
 		t.Error("calendar does not mark the planned days over the limit")
 	}
 }

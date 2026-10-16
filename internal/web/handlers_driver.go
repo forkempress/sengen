@@ -23,11 +23,13 @@ type driverDetailData struct {
 	baseData
 	Driver store.Driver
 	Status status.DriverStatus
-	// The calendar: the current month and the next ones, then the earlier
-	// months, which phones show only on request (UX-14).
-	Months        []MonthGrid
-	EarlierMonths []MonthGrid
-	Stays         []store.Stay // most recent first
+	// The calendar: one month, ?mesec=YYYY-MM, with links to the months
+	// either side (empty at the end of the range) and back to today's.
+	Month                      MonthGrid
+	PrevURL, NextURL, TodayURL string
+	Selected                   DayCell      // the day the panel shows first
+	CalMode                    string       // the firm's default number: store.CalendarRemaining | store.CalendarTrip
+	Stays                      []store.Stay // most recent first
 
 	// Saved plans, earliest first, and the quick check once its form has
 	// been submitted.
@@ -68,10 +70,12 @@ func (s *Server) handleDriverDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	today := clock.Today()
 	driverStatus := status.Compute(*driver, stays, today)
+	var settings store.TenantSettings
 	if t, ok := tenant.FromContext(r.Context()); ok {
-		settings, _ := t.ParsedSettings()
-		driverStatus.ApplyThresholds(status.ThresholdsFor(settings))
+		settings, _ = t.ParsedSettings()
 	}
+	thresholds := status.ThresholdsFor(settings)
+	driverStatus.ApplyThresholds(thresholds)
 	plans, err := s.Store.ListPlannedStaysByDriver(r.Context(), tenantID, driver.ID)
 	if err != nil {
 		s.serverError(w, r)
@@ -79,8 +83,12 @@ func (s *Server) handleDriverDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	views := status.EvaluatePlans(stays, plans, today)
 
-	const monthsBefore = 3
-	months := buildMonthGrids(stays, views, today, monthsBefore, monthsAhead(views, today))
+	month := calendarMonth(r, today)
+	grid := buildMonth(stays, views, driverStatus, thresholds, today, month)
+	selected, ok := grid.cellOn(today)
+	if !ok {
+		selected, _ = grid.cellOn(month)
+	}
 
 	reversed := make([]store.Stay, len(stays))
 	for i, st := range stays {
@@ -88,38 +96,74 @@ func (s *Server) handleDriverDetail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := driverDetailData{
-		baseData:      s.base(r, "vozaci"),
-		Driver:        *driver,
-		Status:        driverStatus,
-		Months:        months[monthsBefore:],
-		EarlierMonths: months[:monthsBefore],
-		Stays:         reversed,
-		Plans:         views,
-		PlanSum:       status.Summarize(views),
-		HasPlans:      len(plans) > 0,
+		baseData: s.base(r, "vozaci"),
+		Driver:   *driver,
+		Status:   driverStatus,
+		Month:    grid,
+		Selected: selected,
+		CalMode:  settings.CalendarMode(),
+		Stays:    reversed,
+		Plans:    views,
+		PlanSum:  status.Summarize(views),
+		HasPlans: len(plans) > 0,
 	}
 	if from, to := tripQuery(r); from != "" || to != "" {
 		data.Trip = checkTrip(stays, plans, today, from, to)
 	}
 	data.Trip.DriverID, data.Trip.DriverName, data.Trip.CSRFToken = driver.ID, driver.Name, data.CSRFToken
+	data.PrevURL, data.NextURL, data.TodayURL = monthLinks(r, today, month)
 	s.render(w, "vozac_detalj.html", data)
 }
 
-// monthsAhead is how many months after the current one the calendar shows:
-// two, or as many as it takes to reach the end of the last plan still ahead
-// (at most a year).
-func monthsAhead(views []status.PlanView, today time.Time) int {
-	n := 2
-	for _, v := range views {
-		if !v.Active() {
-			continue
-		}
-		m := (v.To.Year()-today.Year())*12 + int(v.To.Month()) - int(today.Month())
-		if m > n {
-			n = m
-		}
+// calendarRange is how many months either side of today's the calendar
+// goes.
+const calendarRange = 12
+
+// calendarMonth is the month the calendar shows: ?mesec=YYYY-MM, within
+// calendarRange of today's month, which is also what anything else means.
+func calendarMonth(r *http.Request, today time.Time) time.Time {
+	cur := time.Date(today.Year(), today.Month(), 1, 0, 0, 0, 0, time.UTC)
+	m, err := time.Parse("2006-01", r.URL.Query().Get("mesec"))
+	if err != nil {
+		return cur
 	}
-	return min(n, 12)
+	if lo := cur.AddDate(0, -calendarRange, 0); m.Before(lo) {
+		return lo
+	}
+	if hi := cur.AddDate(0, calendarRange, 0); m.After(hi) {
+		return hi
+	}
+	return m
+}
+
+// monthLinks are the calendar's links to the months either side and back to
+// today's; one is empty where there is nowhere to go. They keep the rest of
+// the query (a trip check), so its result stays on the page.
+func monthLinks(r *http.Request, today, month time.Time) (prev, next, todays string) {
+	cur := time.Date(today.Year(), today.Month(), 1, 0, 0, 0, 0, time.UTC)
+	link := func(m time.Time) string {
+		q := r.URL.Query()
+		if m.Equal(cur) {
+			q.Del("mesec")
+		} else {
+			q.Set("mesec", m.Format("2006-01"))
+		}
+		u := r.URL.Path
+		if len(q) > 0 {
+			u += "?" + q.Encode()
+		}
+		return u + "#kalendar"
+	}
+	if p := month.AddDate(0, -1, 0); !p.Before(cur.AddDate(0, -calendarRange, 0)) {
+		prev = link(p)
+	}
+	if n := month.AddDate(0, 1, 0); !n.After(cur.AddDate(0, calendarRange, 0)) {
+		next = link(n)
+	}
+	if !month.Equal(cur) {
+		todays = link(cur)
+	}
+	return prev, next, todays
 }
 
 func (s *Server) handleDriverReturned(w http.ResponseWriter, r *http.Request) {

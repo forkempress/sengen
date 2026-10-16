@@ -12,14 +12,6 @@ document.addEventListener('click', function (e) {
   toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
 });
 
-// Na telefonu se sklapaju blokovi koji na desktopu stoje otvoreni
-// (npr. raniji meseci kalendara).
-document.addEventListener('DOMContentLoaded', function () {
-  if (window.matchMedia('(max-width: 700px)').matches) {
-    document.querySelectorAll('details[data-close-on-mobile]').forEach(function (d) { d.open = false; });
-  }
-});
-
 // Link ka sklopljenom bloku (npr. „Provera ture“) ga otvara.
 document.addEventListener('click', function (e) {
   var link = e.target.closest && e.target.closest('a[data-open-details]');
@@ -182,4 +174,67 @@ document.addEventListener('DOMContentLoaded', function () {
     var from = document.getElementById(to.getAttribute('data-after'));
     if (from && from.value) to.min = from.value;
   });
+});
+
+// Kalendar vozača: prekidač „Preostalo | Može na turu“ menja broj u danima
+// (oba su već u stranici) i pamti se u ovom pregledaču; bez zapamćenog
+// izbora važi podešavanje firme.
+function setCalMode(cal, mode) {
+  cal.classList.remove('cal-show-remaining', 'cal-show-trip');
+  cal.classList.add('cal-show-' + mode);
+  cal.querySelectorAll('[data-cal-mode]').forEach(function (b) {
+    b.setAttribute('aria-pressed', b.getAttribute('data-cal-mode') === mode ? 'true' : 'false');
+  });
+}
+document.addEventListener('click', function (e) {
+  var btn = e.target.closest && e.target.closest('[data-cal-mode]');
+  if (!btn) return;
+  var mode = btn.getAttribute('data-cal-mode');
+  setCalMode(btn.closest('.cal'), mode);
+  try { localStorage.setItem('calMode', mode); } catch (err) {}
+});
+document.addEventListener('DOMContentLoaded', function () {
+  var cal = document.querySelector('.cal');
+  if (!cal) return;
+  var mode = null;
+  try { mode = localStorage.getItem('calMode'); } catch (err) {}
+  if (mode === 'remaining' || mode === 'trip') setCalMode(cal, mode);
+  var today = cal.querySelector('.day-today') || cal.querySelector('.day-cell[data-day]');
+  if (today) today.setAttribute('aria-pressed', 'true');
+});
+
+// Klik na dan prikazuje stanje na taj datum u panelu pored kalendara.
+function daysWord(n) {
+  n = Math.abs(n);
+  return n % 10 === 1 && n % 100 !== 11 ? 'dan' : 'dana';
+}
+document.addEventListener('click', function (e) {
+  var cell = e.target.closest && e.target.closest('.cal .day-cell[data-day]');
+  if (!cell) return;
+  var cal = cell.closest('.cal');
+  var panel = cal.querySelector('.cal-panel');
+  if (!panel) return;
+  cal.querySelectorAll('.day-cell[aria-pressed="true"]').forEach(function (c) { c.setAttribute('aria-pressed', 'false'); });
+  cell.setAttribute('aria-pressed', 'true');
+
+  var d = cell.dataset;
+  var over = +d.over, rem = +d.rem;
+  panel.querySelector('#cp-date').textContent = d.date;
+  panel.querySelector('#cp-window').textContent = d.from + ' – ' + d.date;
+  panel.querySelector('#cp-rem').textContent = over > 0
+    ? '−' + over + ' ' + daysWord(over) + ' (preko limita)'
+    : rem + ' ' + daysWord(rem);
+  panel.querySelector('#cp-used').textContent = d.used + '/90';
+
+  var future = 'future' in d, busy = 'busy' in d, trip = +(d.trip || 0);
+  panel.querySelector('#cp-trip-row').hidden = !future;
+  panel.querySelector('#cp-trip').textContent = busy
+    ? '— već je u Šengenu tog dana'
+    : trip + ' ' + daysWord(trip) + ('untilPlan' in d ? ' (do sledećeg plana)' : '');
+  panel.querySelector('#cp-better').hidden = !('better' in d);
+  var check = panel.querySelector('#cp-check');
+  check.hidden = !future || busy || trip < 1;
+  if (!check.hidden) {
+    check.href = panel.getAttribute('data-driver-path') + '?od=' + d.day + '&do=' + d.tripTo + '#planovi';
+  }
 });
