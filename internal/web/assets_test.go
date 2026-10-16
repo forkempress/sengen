@@ -33,3 +33,22 @@ func TestStaticAssets_VersionedURLAndCaching(t *testing.T) {
 		t.Errorf("plain Cache-Control = %q", got)
 	}
 }
+
+// /favicon.ico used to fall through to the login redirect, so browsers showed
+// no icon. It must lead to the SVG, and pages must link it.
+func TestFavicon(t *testing.T) {
+	app, _, _ := twoFirmApp(t)
+
+	ico := app.request(http.MethodGet, "/favicon.ico", nil, nil)
+	if ico.Code != http.StatusMovedPermanently || ico.Header().Get("Location") != "/static/favicon.svg" {
+		t.Fatalf("GET /favicon.ico = %d -> %q", ico.Code, ico.Header().Get("Location"))
+	}
+	svg := app.request(http.MethodGet, "/static/favicon.svg", nil, nil)
+	if svg.Code != http.StatusOK || svg.Header().Get("Content-Type") != "image/svg+xml" {
+		t.Fatalf("GET /static/favicon.svg = %d %q", svg.Code, svg.Header().Get("Content-Type"))
+	}
+	body, _ := io.ReadAll(app.request(http.MethodGet, "/login", nil, nil).Body)
+	if !regexp.MustCompile(`rel="icon" href="/static/favicon\.svg\?v=[0-9a-f]{10}"`).Match(body) {
+		t.Errorf("login page does not link favicon.svg")
+	}
+}

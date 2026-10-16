@@ -124,6 +124,9 @@ func (s *Server) Routes() http.Handler {
 	mux.Handle("POST /nova-lozinka", http.NewCrossOriginProtection().Handler(http.HandlerFunc(s.handleResetSubmit)))
 	mux.HandleFunc("POST /telegram/webhook", s.Bot.HandleWebhook)
 	mux.Handle("GET /static/", staticHandler())
+	// Browsers and crawlers ask for /favicon.ico regardless of the <link>;
+	// without this it fell through to the login redirect.
+	mux.Handle("GET /favicon.ico", http.RedirectHandler("/static/favicon.svg", http.StatusMovedPermanently))
 	mux.HandleFunc("GET /kontakt", s.handleContact)
 	mux.HandleFunc("GET /privatnost", s.handlePrivacyPage)
 	mux.HandleFunc("GET /uslovi", s.handleTermsPage)
