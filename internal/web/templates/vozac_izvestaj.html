@@ -1,3 +1,5 @@
+{{define "title"}}{{if .EN}}Stays in the Schengen Area{{else}}Boravci u Šengenu{{end}} — {{.Driver.Name}}{{end}}
+
 {{define "content"}}
 {{$en := .EN}}
 <div class="report"{{if $en}} lang="en"{{end}}>
@@ -11,7 +13,7 @@
 </div>
 
 <header class="report-head">
-  <p class="report-brand"><span class="logo" aria-hidden="true">90</span> {{if $en}}Dani90 · 90/180 record{{else}}Dani90 · evidencija 90/180{{end}}</p>
+  <p class="report-brand">{{if $en}}Record of stays · 90/180 rule{{else}}Evidencija boravaka · pravilo 90/180{{end}}</p>
   <h1>{{if $en}}Stays in the Schengen Area{{else}}Boravci u Šengenu{{end}} — {{.Driver.Name}}</h1>
   <p class="muted">{{if .Driver.VehicleLabel}}{{if $en}}Vehicle{{else}}Vozilo{{end}} {{.Driver.VehicleLabel}} · {{end}}{{if .FirmName}}{{.FirmName}} · {{end}}{{if $en}}as of{{else}}stanje na dan{{end}} <span class="num">{{fmtDate .Today}}</span></p>
 </header>
@@ -70,12 +72,6 @@
 {{end}}
 {{if .Earlier}}<p class="muted small">{{if $en}}Older stays: {{.Earlier}}. They no longer affect the 90/180 rule and are not included in this report.{{else}}Starijih boravaka: {{.Earlier}}. Oni više ne utiču na pravilo 90/180 i nisu u izveštaju.{{end}}</p>{{end}}
 
-{{if $en}}
-<p class="report-note">{{(legal).DisclaimerEN}}</p>
-<p class="muted small">Report generated on {{fmtDate .Today}} from data entered by the company in Dani90 (dani90.rs).</p>
-{{else}}
-<p class="report-note">{{(legal).Disclaimer}}</p>
-<p class="muted small">Izveštaj je napravljen {{fmtDate .Today}} iz podataka koje je firma unela u Dani90 (dani90.rs).</p>
-{{end}}
+<p class="report-note">{{if $en}}{{(legal).ReportNoteEN}}{{else}}{{(legal).ReportNote}}{{end}}</p>
 </div>
 {{end}}

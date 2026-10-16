@@ -53,10 +53,15 @@ func TestDriverReport_English(t *testing.T) {
 	s := app.mustLogin(f)
 
 	body := s.get("/vozaci/" + id(f.driver.ID) + "/izvestaj?jezik=en").Body.String()
-	for _, want := range []string{`lang="en"`, "Stays in the Schengen Area — Marko Test", "Days used in the last 180 days", "is a planning aid"} {
+	for _, want := range []string{`lang="en"`, "Stays in the Schengen Area — Marko Test", "Days used in the last 180 days", "not an official document"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("English report lacks %q", want)
 		}
+	}
+	// The site header and footer do not print; the report itself must not
+	// name the app, so it reads as a personal record.
+	if i := strings.Index(body, `<div class="report"`); i < 0 || strings.Contains(body[i:strings.Index(body, `<footer`)], "Dani90") {
+		t.Error("the printed report names the app")
 	}
 	if strings.Contains(body, "Boravci u Šengenu") {
 		t.Error("English report still has the Serbian heading")
